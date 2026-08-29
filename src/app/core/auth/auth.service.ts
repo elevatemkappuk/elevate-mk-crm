@@ -43,7 +43,7 @@ export class AuthService {
     return this.bootstrapCsrf().pipe(
       switchMap(() =>
         this.http.post<AuthenticatedUser>(this.buildUrl('/auth/login/'), payload).pipe(
-          tap((user) => this.currentUserState.set(user)),
+          tap((user) => this.setAuthenticatedUser(user)),
         ),
       ),
     );
@@ -51,10 +51,10 @@ export class AuthService {
 
   loadCurrentUser(): Observable<AuthenticatedUser | null> {
     return this.http.get<AuthenticatedUser>(this.buildUrl('/auth/me/')).pipe(
-      tap((user) => this.currentUserState.set(user)),
+      tap((user) => this.setAuthenticatedUser(user)),
       catchError((error: { status?: number }) => {
         if (error.status === 401) {
-          this.currentUserState.set(null);
+          this.clearUserState();
           return of(null);
         }
 
@@ -65,16 +65,28 @@ export class AuthService {
 
   logout(): Observable<void> {
     return this.http.post<void>(this.buildUrl('/auth/logout/'), null).pipe(
-      tap(() => this.currentUserState.set(null)),
+      tap(() => this.clearUserState()),
     );
+  }
+
+  setAuthenticatedUser(user: AuthenticatedUser): void {
+    this.currentUserState.set(normalizeAuthenticatedUser(user));
   }
 
   clearUserState(): void {
     this.currentUserState.set(null);
   }
 
+  getAuthorizedRoute(user: AuthenticatedUser | null = this.currentUser()): string {
+    if (!user) {
+      return '/login';
+    }
+
+    return hasStaffCrmAccess(user) ? '/' : '/access-denied';
+  }
+
   setCurrentUserForTest(user: AuthenticatedUser | null): void {
-    this.currentUserState.set(user);
+    this.currentUserState.set(user ? normalizeAuthenticatedUser(user) : null);
   }
 
   private buildUrl(path: string): string {
@@ -84,4 +96,11 @@ export class AuthService {
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
+}
+
+function normalizeAuthenticatedUser(user: AuthenticatedUser): AuthenticatedUser {
+  return {
+    ...user,
+    staff_roles: Array.isArray(user.staff_roles) ? user.staff_roles : [],
+  };
 }

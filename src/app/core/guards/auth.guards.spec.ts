@@ -38,6 +38,14 @@ class MockAuthService {
     return this.currentUser()?.staff_roles.length !== 0;
   }
 
+  getAuthorizedRoute(user: AuthenticatedUser | null): string {
+    if (!user) {
+      return '/login';
+    }
+
+    return this.hasStaffAccess() ? '/' : '/access-denied';
+  }
+
   setInitialized(value: boolean): void {
     this.initializedState.set(value);
   }

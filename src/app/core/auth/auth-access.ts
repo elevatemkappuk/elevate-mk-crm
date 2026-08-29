@@ -7,7 +7,9 @@ export function hasStaffCrmAccess(user: AuthenticatedUser | null): boolean {
     return false;
   }
 
-  return user.staff_roles.some((role) =>
+  const staffRoles = Array.isArray(user.staff_roles) ? user.staff_roles : [];
+
+  return staffRoles.some((role) =>
     CRM_STAFF_ROLE_CODES.includes(role as (typeof CRM_STAFF_ROLE_CODES)[number]),
   );
 }

@@ -145,8 +145,9 @@ export class LoginPageComponent {
     this.errorMessage.set(null);
 
     this.auth.login(this.form.getRawValue()).subscribe({
-      next: () => {
-        const destination = this.auth.hasStaffAccess() ? '/' : '/access-denied';
+      next: (user) => {
+        this.auth.setAuthenticatedUser(user);
+        const destination = this.auth.getAuthorizedRoute(user);
         void this.router.navigateByUrl(destination);
       },
       error: (error: HttpErrorResponse) => {

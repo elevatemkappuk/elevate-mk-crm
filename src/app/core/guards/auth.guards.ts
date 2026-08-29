@@ -9,38 +9,41 @@ function redirectTo(url: string): UrlTree {
 
 export const authGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
+  const user = auth.currentUser();
 
   if (!auth.authInitialized()) {
     return true;
   }
 
-  return auth.isAuthenticated() ? true : redirectTo('/login');
+  return user ? true : redirectTo('/login');
 };
 
 export const staffAccessGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
+  const user = auth.currentUser();
 
   if (!auth.authInitialized()) {
     return true;
   }
 
-  if (!auth.isAuthenticated()) {
+  if (!user) {
     return redirectTo('/login');
   }
 
-  return auth.hasStaffAccess() ? true : redirectTo('/access-denied');
+  return auth.getAuthorizedRoute(user) === '/' ? true : redirectTo('/access-denied');
 };
 
 export const loginGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
+  const user = auth.currentUser();
 
   if (!auth.authInitialized()) {
     return true;
   }
 
-  if (!auth.isAuthenticated()) {
+  if (!user) {
     return true;
   }
 
-  return auth.hasStaffAccess() ? redirectTo('/') : redirectTo('/access-denied');
+  return redirectTo(auth.getAuthorizedRoute(user));
 };

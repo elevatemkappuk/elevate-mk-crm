@@ -105,6 +105,53 @@ describe('AuthService', () => {
     expect(sessionStorageSpy).not.toHaveBeenCalled();
   });
 
+  it('sets login state before subscribers evaluate route authorization', () => {
+    let currentUserDuringNext: AuthenticatedUser | null = null;
+    let routeDuringNext = '';
+
+    authService.login({ email: 'ada@example.com', password: 'secret' }).subscribe((user) => {
+      currentUserDuringNext = authService.currentUser();
+      routeDuringNext = authService.getAuthorizedRoute(user);
+    });
+
+    const csrfRequest = httpTesting.expectOne(`${apiBaseUrl}/auth/csrf/`);
+    mockDocument.cookie = 'csrftoken=test-token';
+    csrfRequest.flush({ detail: 'CSRF cookie set.' });
+
+    const loginRequest = httpTesting.expectOne(`${apiBaseUrl}/auth/login/`);
+    loginRequest.flush(staffUser);
+
+    expect(currentUserDuringNext).toEqual(staffUser);
+    expect(routeDuringNext).toBe('/');
+  });
+
+  it('normalizes missing staff roles to an empty array before route evaluation', () => {
+    const loginUser = {
+      ...staffUser,
+      staff_roles: undefined as unknown as string[],
+    };
+    let currentUserDuringNext: AuthenticatedUser | null = null;
+    let routeDuringNext = '';
+
+    authService.login({ email: 'ada@example.com', password: 'secret' }).subscribe((user) => {
+      currentUserDuringNext = authService.currentUser();
+      routeDuringNext = authService.getAuthorizedRoute(user);
+    });
+
+    const csrfRequest = httpTesting.expectOne(`${apiBaseUrl}/auth/csrf/`);
+    mockDocument.cookie = 'csrftoken=test-token';
+    csrfRequest.flush({ detail: 'CSRF cookie set.' });
+
+    const loginRequest = httpTesting.expectOne(`${apiBaseUrl}/auth/login/`);
+    loginRequest.flush(loginUser);
+
+    expect(currentUserDuringNext).toEqual({
+      ...staffUser,
+      staff_roles: [],
+    });
+    expect(routeDuringNext).toBe('/access-denied');
+  });
+
   it('clears the current user on logout without storing session tokens', () => {
     const localStorageSpy = vi.spyOn(Storage.prototype, 'setItem');
     const sessionStorageSpy = vi.spyOn(Storage.prototype, 'setItem');
