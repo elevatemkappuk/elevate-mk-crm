@@ -47,3 +47,22 @@ export const loginGuard: CanActivateFn = () => {
 
   return redirectTo(auth.getAuthorizedRoute(user));
 };
+
+export const administrationGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  const user = auth.currentUser();
+
+  if (!auth.authInitialized()) {
+    return true;
+  }
+
+  if (!user) {
+    return redirectTo('/login');
+  }
+
+  if (!auth.hasStaffAccess()) {
+    return redirectTo('/access-denied');
+  }
+
+  return auth.canAccessAdministration(user) ? true : redirectTo('/access-denied');
+};

@@ -4,7 +4,7 @@ import { firstValueFrom, Observable, of } from 'rxjs';
 import { catchError, map, switchMap, tap } from 'rxjs/operators';
 
 import { API_CONFIG } from '../http/api-config';
-import { hasStaffCrmAccess } from './auth-access';
+import { hasStaffCrmAccess, isCrmAdmin } from './auth-access';
 import { AuthenticatedUser, CsrfBootstrapResponse, LoginCredentials } from './auth.types';
 
 @Injectable({ providedIn: 'root' })
@@ -19,6 +19,7 @@ export class AuthService {
   readonly authInitialized = this.initializedState.asReadonly();
   readonly isAuthenticated = computed(() => this.currentUser() !== null);
   readonly hasStaffAccess = computed(() => hasStaffCrmAccess(this.currentUser()));
+  readonly isCrmAdmin = computed(() => isCrmAdmin(this.currentUser()));
 
   async initialize(): Promise<void> {
     await firstValueFrom(
@@ -83,6 +84,10 @@ export class AuthService {
     }
 
     return hasStaffCrmAccess(user) ? '/' : '/access-denied';
+  }
+
+  canAccessAdministration(user: AuthenticatedUser | null = this.currentUser()): boolean {
+    return isCrmAdmin(user);
   }
 
   setCurrentUserForTest(user: AuthenticatedUser | null): void {

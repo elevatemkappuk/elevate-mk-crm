@@ -1,16 +1,18 @@
 import { Routes } from '@angular/router';
 
-import { authGuard, loginGuard, staffAccessGuard } from './core/guards/auth.guards';
+import {
+  administrationGuard,
+  authGuard,
+  loginGuard,
+  staffAccessGuard,
+} from './core/guards/auth.guards';
 import { AccessDeniedPageComponent } from './features/auth/access-denied-page.component';
 import { LoginPageComponent } from './features/auth/login-page.component';
 import { StaffCrmShellPageComponent } from './features/auth/staff-crm-shell-page.component';
+import { AdministrationPageComponent } from './features/administration/administration-page.component';
+import { PeoplePageComponent } from './features/people/people-page.component';
 
 export const routes: Routes = [
-  {
-    path: '',
-    component: StaffCrmShellPageComponent,
-    canActivate: [authGuard, staffAccessGuard],
-  },
   {
     path: 'login',
     component: LoginPageComponent,
@@ -22,7 +24,28 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
-    path: '**',
-    redirectTo: '',
+    path: '',
+    component: StaffCrmShellPageComponent,
+    canActivate: [authGuard, staffAccessGuard],
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: 'people',
+      },
+      {
+        path: 'people',
+        component: PeoplePageComponent,
+      },
+      {
+        path: 'administration',
+        component: AdministrationPageComponent,
+        canActivate: [administrationGuard],
+      },
+      {
+        path: '**',
+        redirectTo: 'people',
+      },
+    ],
   },
 ];

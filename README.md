@@ -51,6 +51,22 @@ Authenticated access to the CRM shell requires one of these backend role codes:
 
 Authenticated users without one of those roles are redirected to `/access-denied`.
 
+## Shell and navigation
+
+The Staff CRM now renders inside a persistent shell:
+
+- `/people` is the default workspace route for CRM staff
+- `/administration` is visible and accessible only to `CRM_ADMIN`
+- `CRM_MANAGER` and `CRM_VIEWER` can use the CRM shell and People route, but do not see Administration
+- the signed-in user area shows the linked person name and account email
+- logout is available from the shell on desktop and mobile layouts
+
+Routing intent:
+
+- unauthenticated users go to `/login`
+- authenticated non-staff users go to `/access-denied`
+- authenticated CRM staff enter the shell and are redirected to `/people`
+
 ## Expected backend browser configuration
 
 For browser testing from `http://localhost:4200` to `http://localhost:8000`, the Django API still needs:
