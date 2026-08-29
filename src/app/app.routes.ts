@@ -10,6 +10,7 @@ import { AccessDeniedPageComponent } from './features/auth/access-denied-page.co
 import { LoginPageComponent } from './features/auth/login-page.component';
 import { StaffCrmShellPageComponent } from './features/auth/staff-crm-shell-page.component';
 import { AdministrationPageComponent } from './features/administration/administration-page.component';
+import { PersonDetailPageComponent } from './features/people/person-detail-page.component';
 import { PeoplePageComponent } from './features/people/people-page.component';
 
 export const routes: Routes = [
@@ -36,6 +37,10 @@ export const routes: Routes = [
       {
         path: 'people',
         component: PeoplePageComponent,
+      },
+      {
+        path: 'people/:id',
+        component: PersonDetailPageComponent,
       },
       {
         path: 'administration',

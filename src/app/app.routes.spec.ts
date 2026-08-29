@@ -1,3 +1,5 @@
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Component, computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
@@ -6,6 +8,8 @@ import { of } from 'rxjs';
 
 import { AuthService } from './core/auth/auth.service';
 import { AuthenticatedUser } from './core/auth/auth.types';
+import { apiCredentialsInterceptor, csrfHeaderInterceptor } from './core/http/auth-http.interceptors';
+import { API_CONFIG } from './core/http/api-config';
 import { routes } from './app.routes';
 
 @Component({
@@ -78,15 +82,40 @@ class MockAuthService {
 describe('app routes', () => {
   let auth: MockAuthService;
   let router: Router;
+  let httpTesting: HttpTestingController;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideRouter(routes), { provide: AuthService, useClass: MockAuthService }],
+      providers: [
+        provideRouter(routes),
+        provideHttpClient(withInterceptors([apiCredentialsInterceptor, csrfHeaderInterceptor])),
+        provideHttpClientTesting(),
+        { provide: API_CONFIG, useValue: { apiBaseUrl: 'http://localhost:8000/api/v1' } },
+        { provide: AuthService, useClass: MockAuthService },
+      ],
     });
 
     auth = TestBed.inject(AuthService) as unknown as MockAuthService;
     router = TestBed.inject(Router);
+    httpTesting = TestBed.inject(HttpTestingController);
   });
+
+  afterEach(() => {
+    httpTesting.verify();
+  });
+
+  function expectDefaultPeopleRequest() {
+    return httpTesting.expectOne((request) => {
+      return (
+        request.url === 'http://localhost:8000/api/v1/people/' &&
+        request.params.get('q') === '' &&
+        request.params.get('record_state') === 'active' &&
+        request.params.get('ordering') === 'last_name' &&
+        request.params.get('page') === '1' &&
+        request.params.get('page_size') === '25'
+      );
+    });
+  }
 
   it('redirects the CRM root to people for authenticated staff', async () => {
     auth.setUser(managerUser);
@@ -94,20 +123,59 @@ describe('app routes', () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/');
 
+    expectDefaultPeopleRequest().flush({ count: 0, next: null, previous: null, results: [] });
+
     expect(router.url).toBe('/people');
-    expect(harness.routeNativeElement?.textContent).toContain('People will be the core Staff CRM workspace.');
+    expect(harness.routeNativeElement?.textContent).toContain('View and find people in the Elevate MK CRM.');
   });
 
-  it('allows people for CRM admin, manager, and viewer roles', async () => {
+  it('allows people for CRM admin', async () => {
+    auth.setUser(adminUser);
+
     const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people');
 
-    for (const user of [adminUser, managerUser, viewerUser]) {
-      auth.setUser(user);
-      await harness.navigateByUrl('/people');
+    expectDefaultPeopleRequest().flush({ count: 0, next: null, previous: null, results: [] });
 
-      expect(router.url).toBe('/people');
-      expect(harness.routeNativeElement?.textContent).toContain('People will be the core Staff CRM workspace.');
-    }
+    expect(router.url).toBe('/people');
+    expect(harness.routeNativeElement?.textContent).toContain('View and find people in the Elevate MK CRM.');
+  });
+
+  it('allows people for CRM manager', async () => {
+    auth.setUser(managerUser);
+
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people');
+
+    expectDefaultPeopleRequest().flush({ count: 0, next: null, previous: null, results: [] });
+
+    expect(router.url).toBe('/people');
+    expect(harness.routeNativeElement?.textContent).toContain('View and find people in the Elevate MK CRM.');
+  });
+
+  it('allows people for CRM viewer', async () => {
+    auth.setUser(viewerUser);
+
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people');
+
+    expectDefaultPeopleRequest().flush({ count: 0, next: null, previous: null, results: [] });
+
+    expect(router.url).toBe('/people');
+    expect(harness.routeNativeElement?.textContent).toContain('View and find people in the Elevate MK CRM.');
+  });
+
+  it('allows CRM staff to reach the person detail placeholder route', async () => {
+    auth.setUser(viewerUser);
+
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/44');
+
+    expect(router.url).toBe('/people/44');
+    expect(harness.routeNativeElement?.textContent).toContain('Person 44');
+    expect(harness.routeNativeElement?.textContent).toContain(
+      'The 360-degree person profile will be implemented next.',
+    );
   });
 
   it('blocks direct administration navigation for non-admin staff', async () => {

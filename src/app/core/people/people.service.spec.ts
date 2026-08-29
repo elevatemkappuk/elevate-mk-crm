@@ -1,0 +1,55 @@
+import { DOCUMENT } from '@angular/common';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
+
+import { apiCredentialsInterceptor, csrfHeaderInterceptor } from '../http/auth-http.interceptors';
+import { API_CONFIG } from '../http/api-config';
+import { PeopleService } from './people.service';
+
+describe('PeopleService', () => {
+  let service: PeopleService;
+  let httpTesting: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([apiCredentialsInterceptor, csrfHeaderInterceptor])),
+        provideHttpClientTesting(),
+        { provide: API_CONFIG, useValue: { apiBaseUrl: 'http://localhost:8000/api/v1' } },
+        { provide: DOCUMENT, useValue: { cookie: '' } as Document },
+      ],
+    });
+
+    service = TestBed.inject(PeopleService);
+    httpTesting = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    httpTesting.verify();
+  });
+
+  it('sends the backend people query contract', () => {
+    service
+      .listPeople({
+        q: 'ama',
+        record_state: 'archived',
+        ordering: '-updated_at',
+        page: 2,
+        page_size: 50,
+      })
+      .subscribe();
+
+    const request = httpTesting.expectOne((candidate) => candidate.url.endsWith('/people/'));
+
+    expect(request.request.method).toBe('GET');
+    expect(request.request.withCredentials).toBe(true);
+    expect(request.request.params.get('q')).toBe('ama');
+    expect(request.request.params.get('record_state')).toBe('archived');
+    expect(request.request.params.get('ordering')).toBe('-updated_at');
+    expect(request.request.params.get('page')).toBe('2');
+    expect(request.request.params.get('page_size')).toBe('50');
+
+    request.flush({ count: 0, next: null, previous: null, results: [] });
+  });
+});
