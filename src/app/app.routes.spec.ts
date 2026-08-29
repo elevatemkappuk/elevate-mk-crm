@@ -126,7 +126,7 @@ describe('app routes', () => {
     expectDefaultPeopleRequest().flush({ count: 0, next: null, previous: null, results: [] });
 
     expect(router.url).toBe('/people');
-    expect(harness.routeNativeElement?.textContent).toContain('View and find people in the Elevate MK CRM.');
+    expect(harness.routeNativeElement?.textContent).toContain('Search');
   });
 
   it('allows people for CRM admin', async () => {
@@ -138,7 +138,7 @@ describe('app routes', () => {
     expectDefaultPeopleRequest().flush({ count: 0, next: null, previous: null, results: [] });
 
     expect(router.url).toBe('/people');
-    expect(harness.routeNativeElement?.textContent).toContain('View and find people in the Elevate MK CRM.');
+    expect(harness.routeNativeElement?.textContent).toContain('Search');
   });
 
   it('allows people for CRM manager', async () => {
@@ -150,7 +150,7 @@ describe('app routes', () => {
     expectDefaultPeopleRequest().flush({ count: 0, next: null, previous: null, results: [] });
 
     expect(router.url).toBe('/people');
-    expect(harness.routeNativeElement?.textContent).toContain('View and find people in the Elevate MK CRM.');
+    expect(harness.routeNativeElement?.textContent).toContain('Search');
   });
 
   it('allows people for CRM viewer', async () => {
@@ -162,7 +162,7 @@ describe('app routes', () => {
     expectDefaultPeopleRequest().flush({ count: 0, next: null, previous: null, results: [] });
 
     expect(router.url).toBe('/people');
-    expect(harness.routeNativeElement?.textContent).toContain('View and find people in the Elevate MK CRM.');
+    expect(harness.routeNativeElement?.textContent).toContain('Search');
   });
 
   it('allows CRM staff to reach the person detail placeholder route', async () => {

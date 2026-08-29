@@ -47,14 +47,6 @@ interface OrderingOption {
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
   template: `
     <section class="page">
-      <header class="page-header">
-        <div>
-          <p class="eyebrow">People</p>
-          <h2>People</h2>
-          <p class="intro">View and find people in the Elevate MK CRM.</p>
-        </div>
-      </header>
-
       <form class="controls" [formGroup]="filters" aria-label="People list controls">
         <label class="search-field">
           <span>Search</span>
@@ -108,8 +100,8 @@ interface OrderingOption {
       } @else {
         <section class="results-card">
           <div class="results-meta">
-            <p>{{ peopleResponse()!.count }} people</p>
-            <p>Page {{ currentPage() }} of {{ totalPages() }}</p>
+            <p class="results-count">{{ peopleResponse()!.count }} people</p>
+            <p class="results-page">Page {{ currentPage() }} of {{ totalPages() }}</p>
           </div>
 
           <div class="table-wrap">
@@ -124,15 +116,15 @@ interface OrderingOption {
               </thead>
               <tbody>
                 @for (person of peopleResponse()!.results; track person.id) {
-                  <tr>
+                  <tr class="person-row">
                     <td data-label="Name">
                       <a [routerLink]="['/people', person.id]" class="row-link">
                         {{ fullName(person) }}
                       </a>
                     </td>
-                    <td data-label="Email">{{ person.primary_email || '—' }}</td>
-                    <td data-label="Mobile">{{ person.mobile || '—' }}</td>
-                    <td data-label="Location">{{ person.location || '—' }}</td>
+                    <td data-label="Email">{{ person.primary_email || '-' }}</td>
+                    <td data-label="Mobile">{{ person.mobile || '-' }}</td>
+                    <td data-label="Location">{{ person.location || '-' }}</td>
                   </tr>
                 }
               </tbody>
@@ -166,111 +158,149 @@ interface OrderingOption {
       display: block;
     }
 
-    .page,
-    .page-header,
+    .page {
+      display: grid;
+      gap: 0.9rem;
+    }
+
     .controls,
     .results-card,
     .state-card {
       display: grid;
-      gap: 1rem;
-    }
-
-    .page-header,
-    .controls,
-    .results-card,
-    .state-card {
-      padding: 1.5rem;
-      border-radius: 1.25rem;
+      gap: 0.9rem;
+      padding: 1.2rem 1.25rem;
+      border-radius: 1.1rem;
       border: 1px solid rgba(22, 39, 53, 0.08);
-      background: rgba(255, 255, 255, 0.82);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+      background: rgba(255, 255, 255, 0.88);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.85),
+        0 10px 24px rgba(17, 29, 40, 0.04);
     }
 
-    .eyebrow,
-    .results-meta p,
-    label span {
-      margin: 0;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      font-size: 0.75rem;
-      color: #617d90;
-    }
-
-    h2,
-    .intro,
     .state-card p {
       margin: 0;
     }
 
-    h2 {
-      font-size: clamp(1.75rem, 3vw, 2.4rem);
-      color: #193042;
-    }
-
-    .intro,
     .state-card p {
+      max-width: 42rem;
       color: #4f697b;
-      line-height: 1.6;
+      line-height: 1.5;
     }
 
     .controls {
-      grid-template-columns: minmax(0, 2.2fr) repeat(3, minmax(11rem, 1fr));
+      grid-template-columns: minmax(0, 2.7fr) repeat(3, minmax(8.75rem, 0.95fr));
       align-items: end;
+      gap: 0.85rem 1rem;
     }
 
     label {
       display: grid;
-      gap: 0.45rem;
+      gap: 0.4rem;
       color: #1c3344;
       font-weight: 600;
+    }
+
+    label span {
+      margin: 0;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #5c7789;
     }
 
     input,
     select,
     .pagination-button {
       border: 1px solid #b7c7d4;
-      border-radius: 0.85rem;
-      padding: 0.85rem 0.95rem;
+      border-radius: 0.8rem;
+      padding: 0.72rem 0.88rem;
       font: inherit;
       background: #fdfefe;
       color: #173248;
+      transition:
+        border-color 120ms ease,
+        box-shadow 120ms ease,
+        background-color 120ms ease,
+        color 120ms ease;
+    }
+
+    input::placeholder {
+      color: #8097a6;
+    }
+
+    input:focus-visible,
+    select:focus-visible,
+    .pagination-button:focus-visible,
+    .row-link:focus-visible {
+      outline: none;
+      border-color: #5d88a0;
+      box-shadow: 0 0 0 3px rgba(108, 154, 180, 0.2);
     }
 
     .results-meta {
       display: flex;
       justify-content: space-between;
-      align-items: baseline;
-      gap: 1rem;
+      align-items: center;
+      gap: 0.75rem;
       flex-wrap: wrap;
+    }
+
+    .results-count,
+    .results-page {
+      margin: 0;
+      font-size: 0.9rem;
+      color: #5b7383;
+    }
+
+    .results-count {
+      font-weight: 700;
+      color: #234257;
     }
 
     .table-wrap {
       overflow-x: auto;
+      border-radius: 0.9rem;
+      border: 1px solid rgba(22, 39, 53, 0.08);
+      background: rgba(251, 253, 254, 0.92);
     }
 
     table {
       width: 100%;
+      min-width: 40rem;
       border-collapse: collapse;
     }
 
     th,
     td {
-      padding: 1rem 0.5rem;
+      padding: 0.82rem 1rem;
       border-bottom: 1px solid rgba(22, 39, 53, 0.08);
       text-align: left;
       vertical-align: top;
     }
 
     th {
-      font-size: 0.85rem;
-      color: #476074;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: #5b7383;
+      background: rgba(244, 248, 250, 0.94);
     }
 
     td {
       color: #274356;
     }
 
+    .person-row {
+      transition: background-color 120ms ease;
+    }
+
+    .person-row:hover,
+    .person-row:focus-within {
+      background: rgba(240, 246, 249, 0.96);
+    }
+
     .row-link {
+      display: inline-block;
+      border-radius: 0.35rem;
       color: #173248;
       font-weight: 700;
       text-decoration: none;
@@ -284,20 +314,42 @@ interface OrderingOption {
 
     .pagination {
       display: flex;
+      align-items: center;
       justify-content: flex-end;
       gap: 0.75rem;
       flex-wrap: wrap;
+      padding-top: 0.15rem;
     }
 
     .pagination-button {
-      min-width: 7.5rem;
+      min-width: 7.25rem;
       font-weight: 700;
       cursor: pointer;
+      background: #f8fbfc;
+    }
+
+    .pagination-button:not(:disabled):hover {
+      background: #f0f6f8;
+      border-color: #9db7c6;
     }
 
     .pagination-button:disabled {
       cursor: not-allowed;
-      opacity: 0.55;
+      opacity: 1;
+      color: #8aa0ae;
+      border-color: #d5dfe6;
+      background: #f3f6f8;
+      box-shadow: none;
+    }
+
+    .state-card {
+      min-height: 9.5rem;
+      align-content: center;
+    }
+
+    .state-card-error {
+      background: rgba(255, 250, 250, 0.94);
+      border-color: rgba(184, 81, 81, 0.16);
     }
 
     .state-card-error p {
@@ -307,7 +359,7 @@ interface OrderingOption {
 
     @media (max-width: 900px) {
       .controls {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       }
 
       .search-field {
@@ -320,6 +372,11 @@ interface OrderingOption {
         grid-template-columns: 1fr;
       }
 
+      .table-wrap {
+        border: 0;
+        background: transparent;
+      }
+
       table,
       thead,
       tbody,
@@ -327,6 +384,10 @@ interface OrderingOption {
       th,
       td {
         display: block;
+      }
+
+      table {
+        min-width: 0;
       }
 
       thead {
@@ -338,22 +399,30 @@ interface OrderingOption {
       }
 
       tr {
-        padding: 0.5rem 0;
+        padding: 0.2rem 0;
+        border-bottom: 1px solid rgba(22, 39, 53, 0.08);
       }
 
       td {
-        padding: 0.45rem 0;
+        padding: 0.5rem 0.95rem;
         border-bottom: 0;
       }
 
       td::before {
         content: attr(data-label);
         display: block;
-        margin-bottom: 0.2rem;
-        font-size: 0.72rem;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
+        margin-bottom: 0.15rem;
+        font-size: 0.74rem;
+        font-weight: 700;
         color: #617d90;
+      }
+
+      .pagination {
+        justify-content: stretch;
+      }
+
+      .pagination-button {
+        flex: 1 1 10rem;
       }
     }
   `,

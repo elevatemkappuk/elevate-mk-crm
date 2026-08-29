@@ -144,7 +144,6 @@ describe('PeoplePageComponent', () => {
     harness.detectChanges();
     const text = harness.routeNativeElement?.textContent ?? '';
 
-    expect(text).toContain('View and find people in the Elevate MK CRM.');
     expect(text).toContain('Amina Zulu');
     expect(text).toContain('amina@example.com');
     expect(text).toContain('991000001');
