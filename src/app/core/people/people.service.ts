@@ -3,7 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { API_CONFIG } from '../http/api-config';
-import { PaginatedResponse, PersonListItem, PeopleListQueryState } from './people.types';
+import { PaginatedResponse, PersonListItem, PersonOverview, PeopleListQueryState } from './people.types';
 
 @Injectable({ providedIn: 'root' })
 export class PeopleService {
@@ -30,6 +30,10 @@ export class PeopleService {
 
   getPerson(personId: number): Observable<PersonListItem> {
     return this.http.get<PersonListItem>(this.buildUrl(`/people/${personId}/`));
+  }
+
+  getPersonOverview(personId: number): Observable<PersonOverview> {
+    return this.http.get<PersonOverview>(this.buildUrl(`/people/${personId}/overview/`));
   }
 
   private buildUrl(path: string): string {

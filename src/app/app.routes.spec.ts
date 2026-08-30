@@ -122,8 +122,8 @@ describe('app routes', () => {
     });
   }
 
-  function expectPersonDetailRequest(personId: number) {
-    return httpTesting.expectOne(`http://localhost:8000/api/v1/people/${personId}/`);
+  function expectPersonOverviewRequest(personId: number) {
+    return httpTesting.expectOne(`http://localhost:8000/api/v1/people/${personId}/overview/`);
   }
 
   it('redirects the CRM root to people for authenticated staff', async () => {
@@ -180,18 +180,25 @@ describe('app routes', () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/people/44');
 
-    expectPersonDetailRequest(44).flush({
-      id: 44,
-      first_name: 'Ama',
-      last_name: 'Amoah',
-      primary_email: 'ama@example.com',
-      mobile: '0991000001',
-      location: 'Lilongwe',
-      age_range: '',
-      gender: '',
-      archived_at: null,
-      created_at: '2026-08-30T09:00:00Z',
-      updated_at: '2026-08-30T09:15:00Z',
+    expectPersonOverviewRequest(44).flush({
+      person: {
+        id: 44,
+        first_name: 'Ama',
+        last_name: 'Amoah',
+        primary_email: 'ama@example.com',
+        mobile: '0991000001',
+        location: 'Lilongwe',
+        age_range: '',
+        gender: '',
+        archived_at: null,
+        created_at: '2026-08-30T09:00:00Z',
+        updated_at: '2026-08-30T09:15:00Z',
+      },
+      relationship: {
+        type: 'CONTACT',
+        label: 'Contact',
+      },
+      membership: null,
     });
     await stabilize(harness);
 
@@ -199,6 +206,7 @@ describe('app routes', () => {
     expect(harness.routeNativeElement?.textContent).toContain('Ama Amoah');
     expect(harness.routeNativeElement?.textContent).toContain('Back to People');
     expect(harness.routeNativeElement?.textContent).toContain('Personal details');
+    expect(harness.routeNativeElement?.textContent).toContain('Membership');
   });
 
   it('blocks direct administration navigation for non-admin staff', async () => {

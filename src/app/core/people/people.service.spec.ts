@@ -75,4 +75,42 @@ describe('PeopleService', () => {
       updated_at: '2026-08-30T09:15:00Z',
     });
   });
+
+  it('sends the backend person overview request contract', () => {
+    service.getPersonOverview(44).subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/overview/');
+
+    expect(request.request.method).toBe('GET');
+    expect(request.request.withCredentials).toBe(true);
+
+    request.flush({
+      person: {
+        id: 44,
+        first_name: 'Ama',
+        last_name: 'Amoah',
+        primary_email: 'ama@example.com',
+        mobile: '0991000001',
+        location: 'Lilongwe',
+        age_range: '',
+        gender: '',
+        archived_at: null,
+        created_at: '2026-08-30T09:00:00Z',
+        updated_at: '2026-08-30T09:15:00Z',
+      },
+      relationship: {
+        type: 'ACTIVE_MEMBER',
+        label: 'Active Member',
+      },
+      membership: {
+        id: 9,
+        status: 'ACTIVE',
+        joined_at: '2024-04-12',
+        ended_at: null,
+        membership_source: 'WEBSITE_FORM',
+        created_at: '2026-08-30T10:00:00Z',
+        updated_at: '2026-08-30T10:00:00Z',
+      },
+    });
+  });
 });

@@ -409,7 +409,14 @@ describe('PeoplePageComponent', () => {
 
     await harness.navigateByUrl(link.getAttribute('href') ?? '/people/11');
 
-    httpTesting.expectOne(`${apiBaseUrl}/people/11/`).flush(firstPerson);
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush({
+      person: firstPerson,
+      relationship: {
+        type: 'CONTACT',
+        label: 'Contact',
+      },
+      membership: null,
+    });
     await stabilize(harness);
 
     expect(router.url).toBe('/people/11');

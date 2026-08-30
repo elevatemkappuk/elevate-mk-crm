@@ -6,7 +6,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { distinctUntilChanged, map } from 'rxjs/operators';
 
 import { PeopleService } from '../../core/people/people.service';
-import { PersonListItem } from '../../core/people/people.types';
+import { PersonListItem, PersonMembership, PersonOverview } from '../../core/people/people.types';
 import { CrmSectionCardComponent } from '../../shared/ui/crm-section-card.component';
 import { DetailListComponent, DetailListItem } from '../../shared/ui/detail-list.component';
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
@@ -55,9 +55,13 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
                 <p>{{ primaryContactLine() }}</p>
               </div>
 
-              @if (person()!.archived_at) {
-                <app-status-badge label="Archived" tone="archived" />
-              }
+              <div class="identity-badges">
+                <app-status-badge [label]="relationshipLabel()" />
+
+                @if (person()!.archived_at) {
+                  <app-status-badge label="Archived" tone="archived" />
+                }
+              </div>
             </div>
 
             <div class="identity-meta">
@@ -72,6 +76,14 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 
           <app-crm-section-card title="Record information">
             <app-detail-list [items]="recordInformation()" />
+          </app-crm-section-card>
+
+          <app-crm-section-card title="Membership">
+            @if (membershipDetails().length) {
+              <app-detail-list [items]="membershipDetails()" />
+            } @else {
+              <p class="empty-section-copy">No membership record</p>
+            }
           </app-crm-section-card>
         </div>
       }
@@ -152,6 +164,13 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
       line-height: 1.5;
     }
 
+    .identity-badges {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: end;
+      gap: 0.45rem;
+    }
+
     .identity-meta {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -169,7 +188,17 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
       color: #617b8c;
     }
 
+    .empty-section-copy {
+      margin: 0;
+      color: #4f697b;
+      line-height: 1.5;
+    }
+
     @media (max-width: 680px) {
+      .identity-badges {
+        justify-content: start;
+      }
+
       .identity-meta {
         grid-template-columns: 1fr;
       }
@@ -184,7 +213,10 @@ export class PersonDetailPageComponent {
   readonly loading = signal(true);
   readonly notFound = signal(false);
   readonly errorMessage = signal<string | null>(null);
-  readonly person = signal<PersonListItem | null>(null);
+  readonly overview = signal<PersonOverview | null>(null);
+  readonly person = computed<PersonListItem | null>(() => this.overview()?.person ?? null);
+  readonly membership = computed<PersonMembership | null>(() => this.overview()?.membership ?? null);
+  readonly relationshipLabel = computed(() => this.overview()?.relationship.label ?? 'Contact');
 
   readonly fullName = computed(() => {
     const person = this.person();
@@ -222,6 +254,25 @@ export class PersonDetailPageComponent {
     ];
   });
 
+  readonly membershipDetails = computed<DetailListItem[]>(() => {
+    const membership = this.membership();
+    if (!membership) {
+      return [];
+    }
+
+    const items: DetailListItem[] = [
+      { label: 'Status', value: membership.status === 'ACTIVE' ? 'Active' : 'Former' },
+      { label: 'Joined', value: formatBusinessDate(membership.joined_at) },
+      { label: 'Source', value: getMembershipSourceLabel(membership.membership_source) },
+    ];
+
+    if (membership.ended_at) {
+      items.push({ label: 'Ended', value: formatBusinessDate(membership.ended_at) });
+    }
+
+    return items;
+  });
+
   constructor() {
     this.route.paramMap
       .pipe(
@@ -235,7 +286,7 @@ export class PersonDetailPageComponent {
           return;
         }
 
-        this.loadPerson(personId);
+        this.loadOverview(personId);
       });
   }
 
@@ -260,22 +311,22 @@ export class PersonDetailPageComponent {
     return value && value.trim() ? value : 'Not provided';
   }
 
-  private loadPerson(personId: number): void {
+  private loadOverview(personId: number): void {
     this.loading.set(true);
     this.notFound.set(false);
     this.errorMessage.set(null);
-    this.person.set(null);
+    this.overview.set(null);
 
     this.peopleService
-      .getPerson(personId)
+      .getPersonOverview(personId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (person) => {
-          this.person.set(person);
+        next: (overview) => {
+          this.overview.set(overview);
           this.loading.set(false);
         },
         error: (error: HttpErrorResponse) => {
-          this.person.set(null);
+          this.overview.set(null);
           this.loading.set(false);
 
           if (error.status === 404) {
@@ -290,7 +341,7 @@ export class PersonDetailPageComponent {
 
   private showNotFound(): void {
     this.loading.set(false);
-    this.person.set(null);
+    this.overview.set(null);
     this.errorMessage.set(null);
     this.notFound.set(true);
   }
@@ -306,4 +357,28 @@ function formatDateTime(value: string): string {
     hour: '2-digit',
     minute: '2-digit',
   }).format(date);
+}
+
+function formatBusinessDate(value: string): string {
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
+}
+
+function getMembershipSourceLabel(value: PersonMembership['membership_source']): string {
+  switch (value) {
+    case 'WEBSITE_FORM':
+      return 'Website Form';
+    case 'STAFF':
+      return 'Staff';
+    case 'COMMUNITY_PLATFORM':
+      return 'Community Platform';
+    case 'OTHER':
+      return 'Other';
+  }
 }

@@ -26,6 +26,27 @@ export interface PersonListItem {
   updated_at: string;
 }
 
+export interface PersonRelationship {
+  type: 'CONTACT' | 'ACTIVE_MEMBER' | 'FORMER_MEMBER';
+  label: 'Contact' | 'Active Member' | 'Former Member';
+}
+
+export interface PersonMembership {
+  id: number;
+  status: 'ACTIVE' | 'FORMER';
+  joined_at: string;
+  ended_at: string | null;
+  membership_source: 'WEBSITE_FORM' | 'STAFF' | 'COMMUNITY_PLATFORM' | 'OTHER';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PersonOverview {
+  person: PersonListItem;
+  relationship: PersonRelationship;
+  membership: PersonMembership | null;
+}
+
 export interface PaginatedResponse<T> {
   count: number;
   next: string | null;
