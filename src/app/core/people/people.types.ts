@@ -41,6 +41,40 @@ export interface PersonMembership {
   updated_at: string;
 }
 
+export interface Industry {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+export type ProfessionalProfileCareerStage =
+  | 'STUDENT'
+  | 'EARLY_CAREER'
+  | 'MID_CAREER'
+  | 'SENIOR'
+  | 'LEADERSHIP'
+  | 'FOUNDER_BUSINESS_OWNER'
+  | 'OTHER';
+
+export interface ProfessionalProfile {
+  id: number;
+  job_title: string;
+  company: string;
+  industry: Industry | null;
+  career_stage: ProfessionalProfileCareerStage | '' | null;
+  linkedin_url: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProfessionalProfileWriteRequest {
+  job_title: string;
+  company: string;
+  industry: number | null;
+  career_stage: ProfessionalProfileCareerStage | '' | null;
+  linkedin_url: string;
+}
+
 export interface MakeMembershipRequest {
   joined_at: string;
   membership_source: 'STAFF';
@@ -54,6 +88,7 @@ export interface PersonOverview {
   person: PersonListItem;
   relationship: PersonRelationship;
   membership: PersonMembership | null;
+  professional_profile: ProfessionalProfile | null;
 }
 
 export interface PaginatedResponse<T> {

@@ -5,12 +5,15 @@ import { Observable } from 'rxjs';
 import { API_CONFIG } from '../http/api-config';
 import {
   EndMembershipRequest,
+  Industry,
   MakeMembershipRequest,
   PaginatedResponse,
   PersonListItem,
   PersonMembership,
   PersonOverview,
   PeopleListQueryState,
+  ProfessionalProfile,
+  ProfessionalProfileWriteRequest,
 } from './people.types';
 
 @Injectable({ providedIn: 'root' })
@@ -42,6 +45,24 @@ export class PeopleService {
 
   getPersonOverview(personId: number): Observable<PersonOverview> {
     return this.http.get<PersonOverview>(this.buildUrl(`/people/${personId}/overview/`));
+  }
+
+  getIndustries(): Observable<Industry[]> {
+    return this.http.get<Industry[]>(this.buildUrl('/industries/'));
+  }
+
+  createProfessionalProfile(
+    personId: number,
+    payload: ProfessionalProfileWriteRequest,
+  ): Observable<ProfessionalProfile> {
+    return this.http.post<ProfessionalProfile>(this.buildUrl(`/people/${personId}/professional-profile/`), payload);
+  }
+
+  updateProfessionalProfile(
+    personId: number,
+    payload: ProfessionalProfileWriteRequest,
+  ): Observable<ProfessionalProfile> {
+    return this.http.patch<ProfessionalProfile>(this.buildUrl(`/people/${personId}/professional-profile/`), payload);
   }
 
   makeMember(personId: number, payload: MakeMembershipRequest): Observable<void> {

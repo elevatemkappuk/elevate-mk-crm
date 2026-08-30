@@ -111,7 +111,112 @@ describe('PeopleService', () => {
         created_at: '2026-08-30T10:00:00Z',
         updated_at: '2026-08-30T10:00:00Z',
       },
+      professional_profile: null,
     });
+  });
+
+  it('sends the industries request contract', () => {
+    service.getIndustries().subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/industries/');
+
+    expect(request.request.method).toBe('GET');
+    expect(request.request.withCredentials).toBe(true);
+
+    request.flush([
+      { id: 1, name: 'Technology', slug: 'technology' },
+      { id: 2, name: 'Engineering', slug: 'engineering' },
+    ]);
+  });
+
+  it('sends only editable professional profile fields on create', () => {
+    service
+      .createProfessionalProfile(44, {
+        job_title: 'Engineer',
+        company: 'Elevate MK',
+        industry: 1,
+        career_stage: 'MID_CAREER',
+        linkedin_url: 'https://www.linkedin.com/in/example',
+      })
+      .subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/professional-profile/');
+
+    expect(request.request.method).toBe('POST');
+    expect(request.request.withCredentials).toBe(true);
+    expect(request.request.body).toEqual({
+      job_title: 'Engineer',
+      company: 'Elevate MK',
+      industry: 1,
+      career_stage: 'MID_CAREER',
+      linkedin_url: 'https://www.linkedin.com/in/example',
+    });
+    expect(Object.keys(request.request.body)).toEqual([
+      'job_title',
+      'company',
+      'industry',
+      'career_stage',
+      'linkedin_url',
+    ]);
+
+    request.flush(
+      {
+        id: 13,
+        job_title: 'Engineer',
+        company: 'Elevate MK',
+        industry: { id: 1, name: 'Technology', slug: 'technology' },
+        career_stage: 'MID_CAREER',
+        linkedin_url: 'https://www.linkedin.com/in/example',
+        created_at: '2026-08-30T10:00:00Z',
+        updated_at: '2026-08-30T10:00:00Z',
+      },
+      { status: 201, statusText: 'Created' },
+    );
+  });
+
+  it('sends only editable professional profile fields on update', () => {
+    service
+      .updateProfessionalProfile(44, {
+        job_title: '',
+        company: '',
+        industry: null,
+        career_stage: '',
+        linkedin_url: '',
+      })
+      .subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/professional-profile/');
+
+    expect(request.request.method).toBe('PATCH');
+    expect(request.request.withCredentials).toBe(true);
+    expect(request.request.body).toEqual({
+      job_title: '',
+      company: '',
+      industry: null,
+      career_stage: '',
+      linkedin_url: '',
+    });
+    expect(Object.keys(request.request.body)).toEqual([
+      'job_title',
+      'company',
+      'industry',
+      'career_stage',
+      'linkedin_url',
+    ]);
+
+    request.flush(
+      {
+        id: 13,
+        job_title: '',
+        company: '',
+        industry: null,
+        career_stage: '',
+        linkedin_url: '',
+        created_at: '2026-08-30T10:00:00Z',
+        updated_at: '2026-08-30T11:00:00Z',
+      },
+      { status: 200, statusText: 'OK' },
+    );
   });
 
   it('sends only joined_at and membership_source for make member', () => {

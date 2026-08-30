@@ -7,20 +7,34 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { switchMap } from 'rxjs';
 import { distinctUntilChanged, map } from 'rxjs/operators';
 
-import { AuthService } from '../../core/auth/auth.service';
 import { hasStaffRole } from '../../core/auth/auth-access';
+import { AuthService } from '../../core/auth/auth.service';
 import { PeopleService } from '../../core/people/people.service';
 import {
   EndMembershipRequest,
+  Industry,
   MakeMembershipRequest,
   PersonListItem,
   PersonMembership,
   PersonOverview,
+  ProfessionalProfile,
+  ProfessionalProfileCareerStage,
+  ProfessionalProfileWriteRequest,
 } from '../../core/people/people.types';
 import { CrmSectionCardComponent } from '../../shared/ui/crm-section-card.component';
 import { DetailListComponent, DetailListItem } from '../../shared/ui/detail-list.component';
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
+
+type ProfessionalProfileFormMode = 'create' | 'edit' | null;
+
+interface ProfessionalProfileFormValue {
+  job_title: string;
+  company: string;
+  industry: string;
+  career_stage: string;
+  linkedin_url: string;
+}
 
 @Component({
   selector: 'app-person-detail-page',
@@ -89,6 +103,117 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
             <app-detail-list [items]="recordInformation()" />
           </app-crm-section-card>
 
+          <app-crm-section-card title="Professional Profile">
+            @if (professionalProfile()) {
+              <app-detail-list [items]="professionalProfileDetails()" />
+
+              <div class="professional-profile-link-row">
+                <p class="detail-label">LinkedIn</p>
+
+                @if (professionalProfileLinkedInUrl()) {
+                  <a
+                    class="external-link"
+                    [href]="professionalProfileLinkedInUrl()!"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    View profile
+                  </a>
+                } @else {
+                  <p class="detail-value">Not provided</p>
+                }
+              </div>
+
+              @if (canEditProfessionalProfile() && !showProfessionalProfileForm()) {
+                <div class="section-actions">
+                  <button type="button" class="button-primary" (click)="openEditProfessionalProfileForm()">Edit</button>
+                </div>
+              }
+            } @else {
+              <div class="professional-profile-empty-state">
+                <p class="empty-section-copy">No professional profile recorded.</p>
+
+                @if (canAddProfessionalProfile() && !showProfessionalProfileForm()) {
+                  <button type="button" class="button-primary" (click)="openCreateProfessionalProfileForm()">
+                    Add Professional Profile
+                  </button>
+                }
+              </div>
+            }
+
+            @if (showProfessionalProfileForm()) {
+              <form
+                class="professional-profile-form"
+                [formGroup]="professionalProfileForm"
+                (ngSubmit)="submitProfessionalProfile()"
+              >
+                <label>
+                  <span>Job title</span>
+                  <input type="text" formControlName="job_title" />
+                </label>
+
+                <label>
+                  <span>Company</span>
+                  <input type="text" formControlName="company" />
+                </label>
+
+                <label>
+                  <span>Industry</span>
+                  <select formControlName="industry" [disabled]="industriesLoading() || !!industriesLoadErrorMessage()">
+                    <option value="">No industry</option>
+                    @for (industry of industries(); track industry.id) {
+                      <option [value]="industry.id">{{ industry.name }}</option>
+                    }
+                  </select>
+                </label>
+
+                <label>
+                  <span>Career stage</span>
+                  <select formControlName="career_stage">
+                    <option value="">Not specified</option>
+                    @for (option of careerStageOptions; track option.value) {
+                      <option [value]="option.value">{{ option.label }}</option>
+                    }
+                  </select>
+                </label>
+
+                <label>
+                  <span>LinkedIn URL</span>
+                  <input type="url" formControlName="linkedin_url" />
+                </label>
+
+                @if (industriesLoading()) {
+                  <p class="form-note">Loading industry options.</p>
+                }
+
+                @if (industriesLoadErrorMessage()) {
+                  <p class="form-error">{{ industriesLoadErrorMessage() }}</p>
+                }
+
+                @if (professionalProfileErrorMessage()) {
+                  <p class="form-error">{{ professionalProfileErrorMessage() }}</p>
+                }
+
+                <div class="form-actions">
+                  <button
+                    type="submit"
+                    [disabled]="professionalProfileSubmitting() || industriesLoading() || !!industriesLoadErrorMessage()"
+                  >
+                    {{ professionalProfileSubmitting() ? 'Saving...' : 'Save' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="button-secondary"
+                    [disabled]="professionalProfileSubmitting()"
+                    (click)="cancelProfessionalProfileForm()"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            }
+          </app-crm-section-card>
+
           <app-crm-section-card title="Membership">
             @if (membershipDetails().length) {
               <app-detail-list [items]="membershipDetails()" />
@@ -102,23 +227,23 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
                         <input type="date" formControlName="ended_at" [attr.min]="membership()?.joined_at ?? null" />
                       </label>
 
-                      <p class="membership-form-note">This person will become a Former Member.</p>
+                      <p class="form-note">This person will become a Former Member.</p>
 
                       @if (showEndMembershipRequiredError()) {
-                        <p class="membership-form-error">End date is required.</p>
+                        <p class="form-error">End date is required.</p>
                       }
 
                       @if (showEndMembershipBeforeJoinedError()) {
-                        <p class="membership-form-error">
+                        <p class="form-error">
                           End date cannot be before the membership join date.
                         </p>
                       }
 
                       @if (endMembershipErrorMessage()) {
-                        <p class="membership-form-error">{{ endMembershipErrorMessage() }}</p>
+                        <p class="form-error">{{ endMembershipErrorMessage() }}</p>
                       }
 
-                      <div class="membership-form-actions">
+                      <div class="form-actions">
                         <button type="submit" [disabled]="endMembershipSubmitting()">
                           {{ endMembershipSubmitting() ? 'Ending membership...' : 'End Membership' }}
                         </button>
@@ -145,14 +270,14 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
                       </label>
 
                       @if (makeMemberForm.invalid && makeMemberForm.touched) {
-                        <p class="membership-form-error">Join date is required.</p>
+                        <p class="form-error">Join date is required.</p>
                       }
 
                       @if (makeMemberErrorMessage()) {
-                        <p class="membership-form-error">{{ makeMemberErrorMessage() }}</p>
+                        <p class="form-error">{{ makeMemberErrorMessage() }}</p>
                       }
 
-                      <div class="membership-form-actions">
+                      <div class="form-actions">
                         <button type="submit" [disabled]="makeMemberSubmitting()">
                           {{ makeMemberSubmitting() ? 'Making member...' : 'Make Member' }}
                         </button>
@@ -188,7 +313,8 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
     }
 
     .back-link,
-    .state-link {
+    .state-link,
+    .external-link {
       width: fit-content;
       color: #1b546b;
       font-weight: 700;
@@ -198,7 +324,9 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
     .back-link:hover,
     .back-link:focus-visible,
     .state-link:hover,
-    .state-link:focus-visible {
+    .state-link:focus-visible,
+    .external-link:hover,
+    .external-link:focus-visible {
       text-decoration: underline;
       outline: none;
     }
@@ -231,7 +359,9 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
     .identity-copy h3,
     .identity-copy p,
     .identity-meta p,
-    .identity-meta span {
+    .identity-meta span,
+    .detail-label,
+    .detail-value {
       margin: 0;
     }
 
@@ -242,7 +372,8 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
     }
 
     .identity-copy p,
-    .identity-meta p {
+    .identity-meta p,
+    .detail-value {
       color: #4f697b;
       line-height: 1.5;
     }
@@ -265,7 +396,8 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
       gap: 0.18rem;
     }
 
-    .identity-meta span {
+    .identity-meta span,
+    .detail-label {
       font-size: 0.8rem;
       font-weight: 700;
       color: #617b8c;
@@ -277,23 +409,34 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
       line-height: 1.5;
     }
 
-    .membership-empty-state {
+    .membership-empty-state,
+    .professional-profile-empty-state {
       display: grid;
       gap: 0.9rem;
       align-items: start;
     }
 
-    .membership-actions {
+    .membership-actions,
+    .section-actions {
       margin-top: 0.9rem;
     }
 
-    .membership-form {
+    .professional-profile-link-row {
       display: grid;
-      gap: 0.85rem;
-      width: min(100%, 26rem);
+      gap: 0.22rem;
+      margin-top: 0.9rem;
     }
 
-    .membership-form label {
+    .membership-form,
+    .professional-profile-form {
+      display: grid;
+      gap: 0.85rem;
+      width: min(100%, 32rem);
+      margin-top: 0.9rem;
+    }
+
+    .membership-form label,
+    .professional-profile-form label {
       display: grid;
       gap: 0.4rem;
       color: #1c3344;
@@ -301,7 +444,9 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
     }
 
     .membership-form input,
-    .membership-form select {
+    .membership-form select,
+    .professional-profile-form input,
+    .professional-profile-form select {
       width: 100%;
       border: 1px solid #b7c7d4;
       border-radius: 0.85rem;
@@ -311,13 +456,13 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
       color: #203a4c;
     }
 
-    .membership-form-note {
+    .form-note {
       margin: 0;
       color: #4f697b;
       line-height: 1.5;
     }
 
-    .membership-form-actions {
+    .form-actions {
       display: flex;
       flex-wrap: wrap;
       gap: 0.7rem;
@@ -325,7 +470,8 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 
     .button-primary,
     .button-secondary,
-    .membership-form button {
+    .membership-form button,
+    .professional-profile-form button {
       width: fit-content;
       border-radius: 999px;
       padding: 0.75rem 1.1rem;
@@ -335,7 +481,8 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
     }
 
     .button-primary,
-    .membership-form button[type='submit'] {
+    .membership-form button[type='submit'],
+    .professional-profile-form button[type='submit'] {
       border: 0;
       color: #fff;
       background: linear-gradient(135deg, #16354a, #2f6f84);
@@ -349,12 +496,13 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 
     .button-primary:disabled,
     .button-secondary:disabled,
-    .membership-form button:disabled {
+    .membership-form button:disabled,
+    .professional-profile-form button:disabled {
       cursor: wait;
       opacity: 0.7;
     }
 
-    .membership-form-error {
+    .form-error {
       margin: 0;
       color: #9b1c1c;
       font-weight: 600;
@@ -373,6 +521,8 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
   `,
 })
 export class PersonDetailPageComponent {
+  readonly careerStageOptions = CAREER_STAGE_OPTIONS;
+
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(AuthService);
@@ -389,8 +539,16 @@ export class PersonDetailPageComponent {
   readonly showEndMembershipForm = signal(false);
   readonly endMembershipSubmitting = signal(false);
   readonly endMembershipErrorMessage = signal<string | null>(null);
+  readonly industries = signal<Industry[]>([]);
+  readonly industriesLoaded = signal(false);
+  readonly industriesLoading = signal(false);
+  readonly industriesLoadErrorMessage = signal<string | null>(null);
+  readonly professionalProfileFormMode = signal<ProfessionalProfileFormMode>(null);
+  readonly professionalProfileSubmitting = signal(false);
+  readonly professionalProfileErrorMessage = signal<string | null>(null);
   readonly person = computed<PersonListItem | null>(() => this.overview()?.person ?? null);
   readonly membership = computed<PersonMembership | null>(() => this.overview()?.membership ?? null);
+  readonly professionalProfile = computed<ProfessionalProfile | null>(() => this.overview()?.professional_profile ?? null);
   readonly relationshipLabel = computed(() => this.overview()?.relationship.label ?? 'Contact');
   readonly canMakeMember = computed(() => {
     const overview = this.overview();
@@ -422,12 +580,36 @@ export class PersonDetailPageComponent {
 
     return hasStaffRole(currentUser, 'CRM_ADMIN') || hasStaffRole(currentUser, 'CRM_MANAGER');
   });
+  readonly canManageProfessionalProfile = computed(() => {
+    const person = this.person();
+    const currentUser = this.auth.currentUser();
+
+    if (!person || person.archived_at) {
+      return false;
+    }
+
+    return hasStaffRole(currentUser, 'CRM_ADMIN') || hasStaffRole(currentUser, 'CRM_MANAGER');
+  });
+  readonly canAddProfessionalProfile = computed(() => this.canManageProfessionalProfile() && this.professionalProfile() === null);
+  readonly canEditProfessionalProfile = computed(() => this.canManageProfessionalProfile() && this.professionalProfile() !== null);
+  readonly showProfessionalProfileForm = computed(() => this.professionalProfileFormMode() !== null);
+  readonly professionalProfileLinkedInUrl = computed(() => {
+    const value = this.professionalProfile()?.linkedin_url ?? '';
+    return value.trim() ? value : null;
+  });
 
   readonly makeMemberForm = this.fb.nonNullable.group({
     joined_at: [getLocalTodayDateInputValue(), Validators.required],
   });
   readonly endMembershipForm = this.fb.nonNullable.group({
     ended_at: [getLocalTodayDateInputValue(), Validators.required],
+  });
+  readonly professionalProfileForm = this.fb.nonNullable.group({
+    job_title: [''],
+    company: [''],
+    industry: [''],
+    career_stage: [''],
+    linkedin_url: [''],
   });
 
   readonly fullName = computed(() => {
@@ -463,6 +645,20 @@ export class PersonDetailPageComponent {
       { label: 'Created', value: formatDateTime(person.created_at) },
       { label: 'Last updated', value: formatDateTime(person.updated_at) },
       { label: 'Archived on', value: person.archived_at ? formatDateTime(person.archived_at) : null },
+    ];
+  });
+
+  readonly professionalProfileDetails = computed<DetailListItem[]>(() => {
+    const profile = this.professionalProfile();
+    if (!profile) {
+      return [];
+    }
+
+    return [
+      { label: 'Job title', value: profile.job_title },
+      { label: 'Company', value: profile.company },
+      { label: 'Industry', value: profile.industry?.name ?? null },
+      { label: 'Career stage', value: getCareerStageLabel(profile.career_stage) },
     ];
   });
 
@@ -524,6 +720,36 @@ export class PersonDetailPageComponent {
     return value && value.trim() ? value : 'Not provided';
   }
 
+  openCreateProfessionalProfileForm(): void {
+    if (!this.canAddProfessionalProfile()) {
+      return;
+    }
+
+    this.professionalProfileFormMode.set('create');
+    this.professionalProfileErrorMessage.set(null);
+    this.professionalProfileForm.reset(getProfessionalProfileFormValue(null));
+    this.ensureIndustriesLoaded();
+  }
+
+  openEditProfessionalProfileForm(): void {
+    const profile = this.professionalProfile();
+    if (!profile || !this.canEditProfessionalProfile()) {
+      return;
+    }
+
+    this.professionalProfileFormMode.set('edit');
+    this.professionalProfileErrorMessage.set(null);
+    this.professionalProfileForm.reset(getProfessionalProfileFormValue(profile));
+    this.ensureIndustriesLoaded();
+  }
+
+  cancelProfessionalProfileForm(): void {
+    this.professionalProfileFormMode.set(null);
+    this.professionalProfileSubmitting.set(false);
+    this.professionalProfileErrorMessage.set(null);
+    this.professionalProfileForm.reset(getProfessionalProfileFormValue(this.professionalProfile()));
+  }
+
   openMakeMemberForm(): void {
     this.showMakeMemberForm.set(true);
     this.makeMemberErrorMessage.set(null);
@@ -574,6 +800,46 @@ export class PersonDetailPageComponent {
     const membership = this.membership();
     const endedAt = this.endMembershipForm.controls.ended_at.value;
     return Boolean(membership && endedAt && endedAt < membership.joined_at);
+  }
+
+  submitProfessionalProfile(): void {
+    const person = this.person();
+    const profile = this.professionalProfile();
+
+    if (
+      !person ||
+      !this.canManageProfessionalProfile() ||
+      !this.showProfessionalProfileForm() ||
+      this.professionalProfileSubmitting() ||
+      this.industriesLoading() ||
+      this.industriesLoadErrorMessage()
+    ) {
+      return;
+    }
+
+    this.professionalProfileSubmitting.set(true);
+    this.professionalProfileErrorMessage.set(null);
+
+    const payload = buildProfessionalProfileWriteRequest(this.professionalProfileForm.getRawValue());
+    const request$ = profile
+      ? this.peopleService.updateProfessionalProfile(person.id, payload)
+      : this.peopleService.createProfessionalProfile(person.id, payload);
+
+    request$
+      .pipe(switchMap(() => this.peopleService.getPersonOverview(person.id)), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (overview) => {
+          this.overview.set(overview);
+          this.professionalProfileFormMode.set(null);
+        },
+        error: (error: HttpErrorResponse) => {
+          this.professionalProfileErrorMessage.set(formatProfessionalProfileError(error));
+          this.professionalProfileSubmitting.set(false);
+        },
+        complete: () => {
+          this.professionalProfileSubmitting.set(false);
+        },
+      });
   }
 
   submitMakeMember(): void {
@@ -657,11 +923,41 @@ export class PersonDetailPageComponent {
       });
   }
 
+  private ensureIndustriesLoaded(): void {
+    if (this.industriesLoaded() || this.industriesLoading()) {
+      return;
+    }
+
+    this.industriesLoading.set(true);
+    this.industriesLoadErrorMessage.set(null);
+
+    this.peopleService
+      .getIndustries()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (industries) => {
+          this.industries.set(industries);
+          this.industriesLoaded.set(true);
+        },
+        error: () => {
+          this.industriesLoading.set(false);
+          this.industriesLoadErrorMessage.set('Industry options could not be loaded right now. Try again.');
+        },
+        complete: () => {
+          this.industriesLoading.set(false);
+        },
+      });
+  }
+
   private loadOverview(personId: number): void {
     this.loading.set(true);
     this.notFound.set(false);
     this.errorMessage.set(null);
     this.overview.set(null);
+    this.professionalProfileFormMode.set(null);
+    this.professionalProfileSubmitting.set(false);
+    this.professionalProfileErrorMessage.set(null);
+    this.professionalProfileForm.reset(getProfessionalProfileFormValue(null));
     this.showMakeMemberForm.set(false);
     this.makeMemberSubmitting.set(false);
     this.makeMemberErrorMessage.set(null);
@@ -699,6 +995,16 @@ export class PersonDetailPageComponent {
   }
 }
 
+const CAREER_STAGE_OPTIONS: ReadonlyArray<{ value: ProfessionalProfileCareerStage; label: string }> = [
+  { value: 'STUDENT', label: 'Student' },
+  { value: 'EARLY_CAREER', label: 'Early Career' },
+  { value: 'MID_CAREER', label: 'Mid Career' },
+  { value: 'SENIOR', label: 'Senior' },
+  { value: 'LEADERSHIP', label: 'Leadership' },
+  { value: 'FOUNDER_BUSINESS_OWNER', label: 'Founder / Business Owner' },
+  { value: 'OTHER', label: 'Other' },
+];
+
 function formatDateTime(value: string): string {
   const date = new Date(value);
 
@@ -733,6 +1039,38 @@ function getMembershipSourceLabel(value: PersonMembership['membership_source']):
     case 'OTHER':
       return 'Other';
   }
+}
+
+function getCareerStageLabel(value: ProfessionalProfile['career_stage']): string | null {
+  if (!value) {
+    return null;
+  }
+
+  return (
+    CAREER_STAGE_OPTIONS.find((option) => option.value === value)?.label ?? value
+  );
+}
+
+function getProfessionalProfileFormValue(profile: ProfessionalProfile | null): ProfessionalProfileFormValue {
+  return {
+    job_title: profile?.job_title ?? '',
+    company: profile?.company ?? '',
+    industry: profile?.industry ? String(profile.industry.id) : '',
+    career_stage: profile?.career_stage ?? '',
+    linkedin_url: profile?.linkedin_url ?? '',
+  };
+}
+
+function buildProfessionalProfileWriteRequest(
+  value: ProfessionalProfileFormValue,
+): ProfessionalProfileWriteRequest {
+  return {
+    job_title: value.job_title,
+    company: value.company,
+    industry: value.industry ? Number(value.industry) : null,
+    career_stage: value.career_stage ? (value.career_stage as ProfessionalProfileCareerStage) : '',
+    linkedin_url: value.linkedin_url,
+  };
 }
 
 function getLocalTodayDateInputValue(): string {
@@ -791,6 +1129,34 @@ function formatEndMembershipError(error: HttpErrorResponse): string {
   return 'Membership could not be ended right now. Try again.';
 }
 
+function formatProfessionalProfileError(error: HttpErrorResponse): string {
+  if (error.status === 400 && error.error && typeof error.error === 'object' && !Array.isArray(error.error)) {
+    const entries = Object.entries(error.error as Record<string, unknown>)
+      .filter(([, value]) => Array.isArray(value) && value.length > 0)
+      .map(([field, value]) => `${getProfessionalProfileFieldLabel(field)}: ${String((value as unknown[])[0])}`);
+
+    if (entries.length > 0) {
+      return entries.join(' ');
+    }
+
+    return 'Professional Profile details need to be corrected before this change can be saved.';
+  }
+
+  if (error.status === 403) {
+    return 'You no longer have permission to change this professional profile.';
+  }
+
+  if (error.status === 404) {
+    return 'This person record is no longer available in the CRM People domain.';
+  }
+
+  if (error.status === 409) {
+    return 'This professional profile could not be saved because the person state changed or a profile already exists.';
+  }
+
+  return 'Professional Profile could not be saved right now. Try again.';
+}
+
 function getMakeMemberFieldLabel(field: string): string {
   switch (field) {
     case 'joined_at':
@@ -808,5 +1174,22 @@ function getEndMembershipFieldLabel(field: string): string {
       return 'End date';
     default:
       return 'Membership';
+  }
+}
+
+function getProfessionalProfileFieldLabel(field: string): string {
+  switch (field) {
+    case 'job_title':
+      return 'Job title';
+    case 'company':
+      return 'Company';
+    case 'industry':
+      return 'Industry';
+    case 'career_stage':
+      return 'Career stage';
+    case 'linkedin_url':
+      return 'LinkedIn URL';
+    default:
+      return 'Professional Profile';
   }
 }

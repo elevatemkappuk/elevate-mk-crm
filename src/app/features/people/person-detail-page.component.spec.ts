@@ -84,6 +84,7 @@ const contactOverview = {
     label: 'Contact',
   },
   membership: null,
+  professional_profile: null,
 };
 
 const activeMemberOverview = {
@@ -110,6 +111,20 @@ const activeMemberOverview = {
     joined_at: '2024-04-12',
     ended_at: null,
     membership_source: 'WEBSITE_FORM',
+    created_at: '2026-08-01T08:00:00Z',
+    updated_at: '2026-08-28T10:45:00Z',
+  },
+  professional_profile: {
+    id: 21,
+    job_title: 'Operations Lead',
+    company: 'Elevate MK',
+    industry: {
+      id: 1,
+      name: 'Technology',
+      slug: 'technology',
+    },
+    career_stage: 'LEADERSHIP',
+    linkedin_url: 'https://www.linkedin.com/in/kwame-mensah',
     created_at: '2026-08-01T08:00:00Z',
     updated_at: '2026-08-28T10:45:00Z',
   },
@@ -141,6 +156,21 @@ const formerMemberOverview = {
     membership_source: 'COMMUNITY_PLATFORM',
     created_at: '2026-08-01T08:00:00Z',
     updated_at: '2026-08-28T10:45:00Z',
+  },
+  professional_profile: null,
+};
+
+const contactOverviewWithProfile = {
+  ...contactOverview,
+  professional_profile: {
+    id: 31,
+    job_title: '',
+    company: '',
+    industry: null,
+    career_stage: 'EARLY_CAREER',
+    linkedin_url: '',
+    created_at: '2026-08-30T09:30:00Z',
+    updated_at: '2026-08-30T09:45:00Z',
   },
 };
 
@@ -228,6 +258,10 @@ describe('PersonDetailPageComponent', () => {
     return host?.querySelector('.membership-form') as HTMLFormElement | null;
   }
 
+  function professionalProfileForm(host: Element | null): HTMLFormElement | null {
+    return host?.querySelector('.professional-profile-form') as HTMLFormElement | null;
+  }
+
   function routeComponent(harness: RouterTestingHarness): PersonDetailPageComponent {
     return harness.fixture.debugElement.query(By.directive(PersonDetailPageComponent)).componentInstance as PersonDetailPageComponent;
   }
@@ -241,6 +275,18 @@ describe('PersonDetailPageComponent', () => {
   function endMembershipButton(host: Element | null): HTMLButtonElement | undefined {
     return Array.from(host?.querySelectorAll('button') ?? []).find((button) =>
       button.textContent?.includes('End Membership'),
+    ) as HTMLButtonElement | undefined;
+  }
+
+  function addProfessionalProfileButton(host: Element | null): HTMLButtonElement | undefined {
+    return Array.from(host?.querySelectorAll('button') ?? []).find((button) =>
+      button.textContent?.includes('Add Professional Profile'),
+    ) as HTMLButtonElement | undefined;
+  }
+
+  function editProfessionalProfileButton(host: Element | null): HTMLButtonElement | undefined {
+    return Array.from(host?.querySelectorAll('button') ?? []).find((button) =>
+      button.textContent?.trim() === 'Edit',
     ) as HTMLButtonElement | undefined;
   }
 
@@ -291,6 +337,52 @@ describe('PersonDetailPageComponent', () => {
     expect(text).not.toContain('Joined');
   });
 
+  it('shows a no-profile state when professional profile is null', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('Professional Profile');
+    expect(text).toContain('No professional profile recorded.');
+  });
+
+  it('renders professional profile values with a human-readable career stage and safe LinkedIn link', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    const linkedInLink = Array.from(harness.routeNativeElement?.querySelectorAll('a') ?? []).find((anchor) =>
+      anchor.textContent?.includes('View profile'),
+    ) as HTMLAnchorElement | undefined;
+
+    expect(text).toContain('Operations Lead');
+    expect(text).toContain('Elevate MK');
+    expect(text).toContain('Technology');
+    expect(text).toContain('Leadership');
+    expect(linkedInLink?.href).toBe('https://www.linkedin.com/in/kwame-mensah');
+    expect(linkedInLink?.target).toBe('_blank');
+    expect(linkedInLink?.rel).toContain('noopener');
+    expect(linkedInLink?.rel).toContain('noreferrer');
+  });
+
+  it('shows Not provided for missing optional professional profile values', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverviewWithProfile);
+    await stabilize(harness);
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('Early Career');
+    expect(text).toContain('Not provided');
+  });
+
   it('shows make member for CRM admin contact', async () => {
     auth.setCurrentUser(adminUser);
     const harness = await RouterTestingHarness.create();
@@ -333,6 +425,318 @@ describe('PersonDetailPageComponent', () => {
     await stabilize(harness);
 
     expect(makeMemberButton(harness.routeNativeElement)).toBeUndefined();
+  });
+
+  it('shows add professional profile for CRM admin on a non-archived person', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    expect(addProfessionalProfileButton(harness.routeNativeElement)?.textContent).toContain('Add Professional Profile');
+  });
+
+  it('shows edit professional profile for CRM manager on a non-archived person', async () => {
+    auth.setCurrentUser(managerUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    expect(editProfessionalProfileButton(harness.routeNativeElement)?.textContent).toContain('Edit');
+  });
+
+  it('does not show professional profile write actions for CRM viewer', async () => {
+    auth.setCurrentUser(viewerUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    expect(addProfessionalProfileButton(harness.routeNativeElement)).toBeUndefined();
+    expect(editProfessionalProfileButton(harness.routeNativeElement)).toBeUndefined();
+  });
+
+  it('does not show professional profile write actions for archived people', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/13');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/13/overview/`).flush({
+      ...formerMemberOverview,
+      professional_profile: {
+        id: 41,
+        job_title: 'Analyst',
+        company: 'Elevate MK',
+        industry: {
+          id: 2,
+          name: 'Engineering',
+          slug: 'engineering',
+        },
+        career_stage: 'SENIOR',
+        linkedin_url: '',
+        created_at: '2026-08-01T08:00:00Z',
+        updated_at: '2026-08-28T10:45:00Z',
+      },
+    });
+    await stabilize(harness);
+
+    expect(addProfessionalProfileButton(harness.routeNativeElement)).toBeUndefined();
+    expect(editProfessionalProfileButton(harness.routeNativeElement)).toBeUndefined();
+  });
+
+  it('loads industry options and opens the create professional profile form', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    addProfessionalProfileButton(harness.routeNativeElement)?.click();
+
+    const industriesRequest = httpTesting.expectOne(`${apiBaseUrl}/industries/`);
+    expect(industriesRequest.request.method).toBe('GET');
+    industriesRequest.flush([
+      { id: 1, name: 'Technology', slug: 'technology' },
+      { id: 2, name: 'Engineering', slug: 'engineering' },
+    ]);
+    await stabilize(harness);
+
+    const form = professionalProfileForm(harness.routeNativeElement);
+    const options = Array.from(form?.querySelectorAll('option') ?? []).map((option) => option.textContent?.trim());
+
+    expect(form?.textContent).toContain('Job title');
+    expect(form?.textContent).toContain('Company');
+    expect(form?.textContent).toContain('Industry');
+    expect(form?.textContent).toContain('Career stage');
+    expect(form?.textContent).toContain('LinkedIn URL');
+    expect(options).toContain('No industry');
+    expect(options).toContain('Technology');
+    expect(options).toContain('Engineering');
+  });
+
+  it('shows an inline industry loading error and does not submit with stale options', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    addProfessionalProfileButton(harness.routeNativeElement)?.click();
+    httpTesting.expectOne(`${apiBaseUrl}/industries/`).flush({}, { status: 500, statusText: 'Server Error' });
+    await stabilize(harness);
+
+    professionalProfileForm(harness.routeNativeElement)?.dispatchEvent(new Event('submit'));
+    await stabilize(harness);
+
+    httpTesting.expectNone(`${apiBaseUrl}/people/11/professional-profile/`);
+    expect(harness.routeNativeElement?.textContent).toContain('Industry options could not be loaded right now. Try again.');
+  });
+
+  it('creates a professional profile then reloads the overview', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    addProfessionalProfileButton(harness.routeNativeElement)?.click();
+    httpTesting.expectOne(`${apiBaseUrl}/industries/`).flush([
+      { id: 1, name: 'Technology', slug: 'technology' },
+    ]);
+    await stabilize(harness);
+
+    const component = routeComponent(harness);
+    component.professionalProfileForm.setValue({
+      job_title: 'Engineer',
+      company: 'Elevate MK',
+      industry: '1',
+      career_stage: 'MID_CAREER',
+      linkedin_url: 'https://www.linkedin.com/in/example',
+    });
+
+    professionalProfileForm(harness.routeNativeElement)?.dispatchEvent(new Event('submit'));
+
+    const createRequest = httpTesting.expectOne(`${apiBaseUrl}/people/11/professional-profile/`);
+    expect(createRequest.request.method).toBe('POST');
+    expect(createRequest.request.body).toEqual({
+      job_title: 'Engineer',
+      company: 'Elevate MK',
+      industry: 1,
+      career_stage: 'MID_CAREER',
+      linkedin_url: 'https://www.linkedin.com/in/example',
+    });
+
+    createRequest.flush(
+      {
+        id: 71,
+        job_title: 'Engineer',
+        company: 'Elevate MK',
+        industry: { id: 1, name: 'Technology', slug: 'technology' },
+        career_stage: 'MID_CAREER',
+        linkedin_url: 'https://www.linkedin.com/in/example',
+        created_at: '2026-08-30T12:00:00Z',
+        updated_at: '2026-08-30T12:00:00Z',
+      },
+      { status: 201, statusText: 'Created' },
+    );
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush({
+      ...contactOverview,
+      professional_profile: {
+        id: 71,
+        job_title: 'Engineer',
+        company: 'Elevate MK',
+        industry: { id: 1, name: 'Technology', slug: 'technology' },
+        career_stage: 'MID_CAREER',
+        linkedin_url: 'https://www.linkedin.com/in/example',
+        created_at: '2026-08-30T12:00:00Z',
+        updated_at: '2026-08-30T12:00:00Z',
+      },
+    });
+    await stabilize(harness);
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('Engineer');
+    expect(text).toContain('Mid Career');
+    expect(text).not.toContain('No professional profile recorded.');
+    expect(professionalProfileForm(harness.routeNativeElement)).toBeNull();
+  });
+
+  it('pre-populates the edit form and converts industry objects to ids for PATCH', async () => {
+    auth.setCurrentUser(managerUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    editProfessionalProfileButton(harness.routeNativeElement)?.click();
+    httpTesting.expectOne(`${apiBaseUrl}/industries/`).flush([
+      { id: 1, name: 'Technology', slug: 'technology' },
+      { id: 2, name: 'Engineering', slug: 'engineering' },
+    ]);
+    await stabilize(harness);
+
+    const component = routeComponent(harness);
+    expect(component.professionalProfileForm.getRawValue()).toEqual({
+      job_title: 'Operations Lead',
+      company: 'Elevate MK',
+      industry: '1',
+      career_stage: 'LEADERSHIP',
+      linkedin_url: 'https://www.linkedin.com/in/kwame-mensah',
+    });
+
+    component.professionalProfileForm.setValue({
+      job_title: '',
+      company: '',
+      industry: '',
+      career_stage: '',
+      linkedin_url: '',
+    });
+
+    professionalProfileForm(harness.routeNativeElement)?.dispatchEvent(new Event('submit'));
+
+    const patchRequest = httpTesting.expectOne(`${apiBaseUrl}/people/12/professional-profile/`);
+    expect(patchRequest.request.method).toBe('PATCH');
+    expect(patchRequest.request.body).toEqual({
+      job_title: '',
+      company: '',
+      industry: null,
+      career_stage: '',
+      linkedin_url: '',
+    });
+
+    patchRequest.flush(
+      {
+        id: 21,
+        job_title: '',
+        company: '',
+        industry: null,
+        career_stage: '',
+        linkedin_url: '',
+        created_at: '2026-08-01T08:00:00Z',
+        updated_at: '2026-08-30T12:00:00Z',
+      },
+      { status: 200, statusText: 'OK' },
+    );
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush({
+      ...activeMemberOverview,
+      professional_profile: {
+        id: 21,
+        job_title: '',
+        company: '',
+        industry: null,
+        career_stage: '',
+        linkedin_url: '',
+        created_at: '2026-08-01T08:00:00Z',
+        updated_at: '2026-08-30T12:00:00Z',
+      },
+    });
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent).toContain('Not provided');
+  });
+
+  it('cancel discards unsaved professional profile edits', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    editProfessionalProfileButton(harness.routeNativeElement)?.click();
+    httpTesting.expectOne(`${apiBaseUrl}/industries/`).flush([
+      { id: 1, name: 'Technology', slug: 'technology' },
+    ]);
+    await stabilize(harness);
+
+    const component = routeComponent(harness);
+    component.professionalProfileForm.controls.job_title.setValue('Changed title');
+
+    cancelButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    expect(professionalProfileForm(harness.routeNativeElement)).toBeNull();
+    expect(harness.routeNativeElement?.textContent).toContain('Operations Lead');
+    expect(harness.routeNativeElement?.textContent).not.toContain('Changed title');
+  });
+
+  it('shows inline validation details for 400 professional profile errors', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    addProfessionalProfileButton(harness.routeNativeElement)?.click();
+    httpTesting.expectOne(`${apiBaseUrl}/industries/`).flush([
+      { id: 1, name: 'Technology', slug: 'technology' },
+    ]);
+    await stabilize(harness);
+
+    professionalProfileForm(harness.routeNativeElement)?.dispatchEvent(new Event('submit'));
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/professional-profile/`).flush(
+      {
+        linkedin_url: ['Enter a valid URL.'],
+      },
+      { status: 400, statusText: 'Bad Request' },
+    );
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent).toContain('LinkedIn URL: Enter a valid URL.');
+    expect(harness.routeNativeElement?.textContent).toContain('Ama Amoah');
   });
 
   it('renders active membership from the overview response', async () => {
