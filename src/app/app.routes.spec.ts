@@ -104,6 +104,11 @@ describe('app routes', () => {
     httpTesting.verify();
   });
 
+  async function stabilize(harness: RouterTestingHarness) {
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+  }
+
   function expectDefaultPeopleRequest() {
     return httpTesting.expectOne((request) => {
       return (
@@ -115,6 +120,10 @@ describe('app routes', () => {
         request.params.get('page_size') === '25'
       );
     });
+  }
+
+  function expectPersonDetailRequest(personId: number) {
+    return httpTesting.expectOne(`http://localhost:8000/api/v1/people/${personId}/`);
   }
 
   it('redirects the CRM root to people for authenticated staff', async () => {
@@ -165,17 +174,31 @@ describe('app routes', () => {
     expect(harness.routeNativeElement?.textContent).toContain('Search');
   });
 
-  it('allows CRM staff to reach the person detail placeholder route', async () => {
+  it('allows CRM staff to reach the person detail route', async () => {
     auth.setUser(viewerUser);
 
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/people/44');
 
+    expectPersonDetailRequest(44).flush({
+      id: 44,
+      first_name: 'Ama',
+      last_name: 'Amoah',
+      primary_email: 'ama@example.com',
+      mobile: '0991000001',
+      location: 'Lilongwe',
+      age_range: '',
+      gender: '',
+      archived_at: null,
+      created_at: '2026-08-30T09:00:00Z',
+      updated_at: '2026-08-30T09:15:00Z',
+    });
+    await stabilize(harness);
+
     expect(router.url).toBe('/people/44');
-    expect(harness.routeNativeElement?.textContent).toContain('Person 44');
-    expect(harness.routeNativeElement?.textContent).toContain(
-      'The 360-degree person profile will be implemented next.',
-    );
+    expect(harness.routeNativeElement?.textContent).toContain('Ama Amoah');
+    expect(harness.routeNativeElement?.textContent).toContain('Back to People');
+    expect(harness.routeNativeElement?.textContent).toContain('Personal details');
   });
 
   it('blocks direct administration navigation for non-admin staff', async () => {

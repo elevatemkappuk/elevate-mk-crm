@@ -28,6 +28,10 @@ export class PeopleService {
     });
   }
 
+  getPerson(personId: number): Observable<PersonListItem> {
+    return this.http.get<PersonListItem>(this.buildUrl(`/people/${personId}/`));
+  }
+
   private buildUrl(path: string): string {
     return `${this.apiConfig.apiBaseUrl}${path}`;
   }

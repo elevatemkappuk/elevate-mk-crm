@@ -52,4 +52,27 @@ describe('PeopleService', () => {
 
     request.flush({ count: 0, next: null, previous: null, results: [] });
   });
+
+  it('sends the backend person detail request contract', () => {
+    service.getPerson(44).subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/');
+
+    expect(request.request.method).toBe('GET');
+    expect(request.request.withCredentials).toBe(true);
+
+    request.flush({
+      id: 44,
+      first_name: 'Ama',
+      last_name: 'Amoah',
+      primary_email: 'ama@example.com',
+      mobile: '0991000001',
+      location: 'Lilongwe',
+      age_range: '',
+      gender: '',
+      archived_at: null,
+      created_at: '2026-08-30T09:00:00Z',
+      updated_at: '2026-08-30T09:15:00Z',
+    });
+  });
 });

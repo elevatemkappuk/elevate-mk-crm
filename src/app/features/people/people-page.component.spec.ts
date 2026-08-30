@@ -385,7 +385,7 @@ describe('PeoplePageComponent', () => {
     expect(harness.routeNativeElement?.textContent).toContain('People could not be loaded right now.');
   });
 
-  it('routes row links to the person placeholder detail page', async () => {
+  it('routes row links to the person detail page', async () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/people');
 
@@ -409,10 +409,11 @@ describe('PeoplePageComponent', () => {
 
     await harness.navigateByUrl(link.getAttribute('href') ?? '/people/11');
 
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/`).flush(firstPerson);
+    await stabilize(harness);
+
     expect(router.url).toBe('/people/11');
-    expect(harness.routeNativeElement?.textContent).toContain('Person 11');
-    expect(harness.routeNativeElement?.textContent).toContain(
-      'The 360-degree person profile will be implemented next.',
-    );
+    expect(harness.routeNativeElement?.textContent).toContain('Amina Zulu');
+    expect(harness.routeNativeElement?.textContent).toContain('Personal details');
   });
 });

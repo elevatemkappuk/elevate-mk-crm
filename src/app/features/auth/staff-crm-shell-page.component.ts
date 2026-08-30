@@ -295,6 +295,10 @@ export class StaffCrmShellPageComponent {
       return 'Administration';
     }
 
+    if (this.router.url.startsWith('/people/')) {
+      return 'Person';
+    }
+
     return 'People';
   }
 
