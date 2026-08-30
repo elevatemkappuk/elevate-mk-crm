@@ -227,9 +227,19 @@ describe('PersonDetailPageComponent', () => {
     return host?.querySelector('.membership-form') as HTMLFormElement | null;
   }
 
+  function routeComponent(harness: RouterTestingHarness): PersonDetailPageComponent {
+    return harness.routeDebugElement!.componentInstance as PersonDetailPageComponent;
+  }
+
   function makeMemberButton(host: Element | null): HTMLButtonElement | undefined {
     return Array.from(host?.querySelectorAll('button') ?? []).find((button) =>
       button.textContent?.includes('Make Member'),
+    ) as HTMLButtonElement | undefined;
+  }
+
+  function endMembershipButton(host: Element | null): HTMLButtonElement | undefined {
+    return Array.from(host?.querySelectorAll('button') ?? []).find((button) =>
+      button.textContent?.includes('End Membership'),
     ) as HTMLButtonElement | undefined;
   }
 
@@ -339,6 +349,7 @@ describe('PersonDetailPageComponent', () => {
     expect(text).toContain('Website Form');
     expect(text).not.toContain('/membership/');
     expect(makeMemberButton(harness.routeNativeElement)).toBeUndefined();
+    expect(endMembershipButton(harness.routeNativeElement)).toBeUndefined();
   });
 
   it('renders former membership including the ended date', async () => {
@@ -378,6 +389,62 @@ describe('PersonDetailPageComponent', () => {
     expect(text).toContain('Archived');
     expect(text).toContain('Archived on');
     expect(makeMemberButton(harness.routeNativeElement)).toBeUndefined();
+    expect(endMembershipButton(harness.routeNativeElement)).toBeUndefined();
+  });
+
+  it('shows end membership for CRM admin active member', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    expect(endMembershipButton(harness.routeNativeElement)?.textContent).toContain('End Membership');
+  });
+
+  it('shows end membership for CRM manager active member', async () => {
+    auth.setCurrentUser(managerUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    expect(endMembershipButton(harness.routeNativeElement)?.textContent).toContain('End Membership');
+  });
+
+  it('does not show end membership for CRM viewer active member', async () => {
+    auth.setCurrentUser(viewerUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    expect(endMembershipButton(harness.routeNativeElement)).toBeUndefined();
+  });
+
+  it('does not show end membership for contact', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    expect(endMembershipButton(harness.routeNativeElement)).toBeUndefined();
+  });
+
+  it('does not show end membership for former member', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/13');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/13/overview/`).flush(formerMemberOverview);
+    await stabilize(harness);
+
+    expect(endMembershipButton(harness.routeNativeElement)).toBeUndefined();
   });
 
   it('opens the make member form with local today and STAFF defaults', async () => {
@@ -416,6 +483,43 @@ describe('PersonDetailPageComponent', () => {
     expect(makeMemberButton(harness.routeNativeElement)?.textContent).toContain('Make Member');
   });
 
+  it('opens the end membership form with local today and confirmation copy', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    endMembershipButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    const form = membershipForm(harness.routeNativeElement);
+    const endedInput = form?.querySelector('input[type="date"]') as HTMLInputElement;
+
+    expect(endedInput.value).toBe(getLocalTodayDateInputValue());
+    expect(endedInput.min).toBe(activeMemberOverview.membership.joined_at);
+    expect(form?.textContent).toContain('End date');
+    expect(form?.textContent).toContain('This person will become a Former Member.');
+  });
+
+  it('cancel closes the end membership form', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    endMembershipButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+    cancelButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    expect(membershipForm(harness.routeNativeElement)).toBeNull();
+    expect(endMembershipButton(harness.routeNativeElement)?.textContent).toContain('End Membership');
+  });
+
   it('required fields prevent invalid submission', async () => {
     auth.setCurrentUser(adminUser);
     const harness = await RouterTestingHarness.create();
@@ -438,6 +542,48 @@ describe('PersonDetailPageComponent', () => {
 
     httpTesting.expectNone(`${apiBaseUrl}/people/11/membership/`);
     expect(harness.routeNativeElement?.textContent).toContain('Join date is required.');
+  });
+
+  it('required end date prevents invalid submission', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    endMembershipButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    const form = membershipForm(harness.routeNativeElement);
+    routeComponent(harness).endMembershipForm.controls.ended_at.setValue('');
+
+    form?.dispatchEvent(new Event('submit'));
+    await stabilize(harness);
+
+    httpTesting.expectNone(`${apiBaseUrl}/people/12/membership/end/`);
+    expect(harness.routeNativeElement?.textContent).toContain('End date is required.');
+  });
+
+  it('prevents end membership submission before joined date', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    endMembershipButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    const form = membershipForm(harness.routeNativeElement);
+    routeComponent(harness).endMembershipForm.controls.ended_at.setValue('2024-04-11');
+
+    form?.dispatchEvent(new Event('submit'));
+    await stabilize(harness);
+
+    httpTesting.expectNone(`${apiBaseUrl}/people/12/membership/end/`);
+    expect(harness.routeNativeElement?.textContent).toContain('End date cannot be before the membership join date.');
   });
 
   it('submits the selected join date with STAFF then reloads overview', async () => {
@@ -524,6 +670,89 @@ describe('PersonDetailPageComponent', () => {
     expect(requests.length).toBe(1);
 
     requests[0].flush({}, { status: 409, statusText: 'Conflict' });
+    await stabilize(harness);
+  });
+
+  it('submits end membership then reloads the overview', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    endMembershipButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    const form = membershipForm(harness.routeNativeElement);
+    const endedInput = form?.querySelector('input[type="date"]') as HTMLInputElement;
+    endedInput.value = '2026-08-30';
+    endedInput.dispatchEvent(new Event('input'));
+    endedInput.dispatchEvent(new Event('change'));
+
+    form?.dispatchEvent(new Event('submit'));
+
+    const endRequest = httpTesting.expectOne(`${apiBaseUrl}/people/12/membership/end/`);
+    expect(endRequest.request.method).toBe('POST');
+    expect(endRequest.request.body).toEqual({
+      ended_at: '2026-08-30',
+    });
+
+    endRequest.flush(
+      {
+        id: 5,
+        status: 'FORMER',
+        joined_at: '2024-04-12',
+        ended_at: '2026-08-30',
+        membership_source: 'WEBSITE_FORM',
+        created_at: '2026-08-01T08:00:00Z',
+        updated_at: '2026-08-30T12:00:00Z',
+      },
+      { status: 200, statusText: 'OK' },
+    );
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush({
+      ...activeMemberOverview,
+      relationship: {
+        type: 'FORMER_MEMBER',
+        label: 'Former Member',
+      },
+      membership: {
+        ...activeMemberOverview.membership,
+        status: 'FORMER',
+        ended_at: '2026-08-30',
+        updated_at: '2026-08-30T12:00:00Z',
+      },
+    });
+    await stabilize(harness);
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('Former Member');
+    expect(text).toContain('Former');
+    expect(text).toContain(formatBusinessDate('2026-08-30'));
+    expect(endMembershipButton(harness.routeNativeElement)).toBeUndefined();
+    expect(membershipForm(harness.routeNativeElement)).toBeNull();
+  });
+
+  it('prevents duplicate submissions while end membership is pending', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    endMembershipButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    const form = membershipForm(harness.routeNativeElement);
+    form?.dispatchEvent(new Event('submit'));
+    form?.dispatchEvent(new Event('submit'));
+
+    const requests = httpTesting.match(`${apiBaseUrl}/people/12/membership/end/`);
+    expect(requests.length).toBe(1);
+
+    requests[0].flush({ detail: 'Conflict' }, { status: 409, statusText: 'Conflict' });
     await stabilize(harness);
   });
 
@@ -621,6 +850,102 @@ describe('PersonDetailPageComponent', () => {
     const text = harness.routeNativeElement?.textContent ?? '';
     expect(text).toContain('Membership could not be created right now. Try again.');
     expect(text).toContain('Ama Amoah');
+  });
+
+  it('shows inline validation details for 400 end membership errors', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    endMembershipButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    membershipForm(harness.routeNativeElement)?.dispatchEvent(new Event('submit'));
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/membership/end/`).flush(
+      {
+        ended_at: ['End date cannot be before joined date.'],
+      },
+      { status: 400, statusText: 'Bad Request' },
+    );
+    await stabilize(harness);
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('End date: End date cannot be before joined date.');
+    expect(text).toContain('Kwame Mensah');
+  });
+
+  it('shows an inline permission message for 403 end membership errors', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    endMembershipButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    membershipForm(harness.routeNativeElement)?.dispatchEvent(new Event('submit'));
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/membership/end/`).flush(
+      { detail: 'Forbidden' },
+      { status: 403, statusText: 'Forbidden' },
+    );
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent).toContain('You no longer have permission to end this membership.');
+  });
+
+  it('shows an inline conflict message for 409 end membership errors', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    endMembershipButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    membershipForm(harness.routeNativeElement)?.dispatchEvent(new Event('submit'));
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/membership/end/`).flush(
+      { detail: 'Conflict' },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await stabilize(harness);
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('This membership can no longer be ended from the current person state.');
+    expect(text).toContain('Kwame Mensah');
+  });
+
+  it('shows a generic inline message for unexpected end membership failures', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    endMembershipButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    membershipForm(harness.routeNativeElement)?.dispatchEvent(new Event('submit'));
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/membership/end/`).flush(
+      { detail: 'Server error' },
+      { status: 500, statusText: 'Server Error' },
+    );
+    await stabilize(harness);
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('Membership could not be ended right now. Try again.');
+    expect(text).toContain('Kwame Mensah');
   });
 
   it('renders record dates in a human-readable format', async () => {

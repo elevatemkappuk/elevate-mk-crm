@@ -10,7 +10,13 @@ import { distinctUntilChanged, map } from 'rxjs/operators';
 import { AuthService } from '../../core/auth/auth.service';
 import { hasStaffRole } from '../../core/auth/auth-access';
 import { PeopleService } from '../../core/people/people.service';
-import { MakeMembershipRequest, PersonListItem, PersonMembership, PersonOverview } from '../../core/people/people.types';
+import {
+  EndMembershipRequest,
+  MakeMembershipRequest,
+  PersonListItem,
+  PersonMembership,
+  PersonOverview,
+} from '../../core/people/people.types';
 import { CrmSectionCardComponent } from '../../shared/ui/crm-section-card.component';
 import { DetailListComponent, DetailListItem } from '../../shared/ui/detail-list.component';
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
@@ -86,6 +92,46 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
           <app-crm-section-card title="Membership">
             @if (membershipDetails().length) {
               <app-detail-list [items]="membershipDetails()" />
+
+              @if (canEndMembership()) {
+                <div class="membership-actions">
+                  @if (showEndMembershipForm()) {
+                    <form class="membership-form" [formGroup]="endMembershipForm" (ngSubmit)="submitEndMembership()">
+                      <label>
+                        <span>End date</span>
+                        <input type="date" formControlName="ended_at" [attr.min]="membership()?.joined_at ?? null" />
+                      </label>
+
+                      <p class="membership-form-note">This person will become a Former Member.</p>
+
+                      @if (showEndMembershipRequiredError()) {
+                        <p class="membership-form-error">End date is required.</p>
+                      }
+
+                      @if (showEndMembershipBeforeJoinedError()) {
+                        <p class="membership-form-error">
+                          End date cannot be before the membership join date.
+                        </p>
+                      }
+
+                      @if (endMembershipErrorMessage()) {
+                        <p class="membership-form-error">{{ endMembershipErrorMessage() }}</p>
+                      }
+
+                      <div class="membership-form-actions">
+                        <button type="submit" [disabled]="endMembershipSubmitting()">
+                          {{ endMembershipSubmitting() ? 'Ending membership...' : 'End Membership' }}
+                        </button>
+                        <button type="button" class="button-secondary" [disabled]="endMembershipSubmitting()" (click)="cancelEndMembership()">
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  } @else {
+                    <button type="button" class="button-primary" (click)="openEndMembershipForm()">End Membership</button>
+                  }
+                </div>
+              }
             } @else {
               <div class="membership-empty-state">
                 <p class="empty-section-copy">No membership record</p>
@@ -237,6 +283,10 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
       align-items: start;
     }
 
+    .membership-actions {
+      margin-top: 0.9rem;
+    }
+
     .membership-form {
       display: grid;
       gap: 0.85rem;
@@ -259,6 +309,12 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
       font: inherit;
       background: #fdfefe;
       color: #203a4c;
+    }
+
+    .membership-form-note {
+      margin: 0;
+      color: #4f697b;
+      line-height: 1.5;
     }
 
     .membership-form-actions {
@@ -330,6 +386,9 @@ export class PersonDetailPageComponent {
   readonly showMakeMemberForm = signal(false);
   readonly makeMemberSubmitting = signal(false);
   readonly makeMemberErrorMessage = signal<string | null>(null);
+  readonly showEndMembershipForm = signal(false);
+  readonly endMembershipSubmitting = signal(false);
+  readonly endMembershipErrorMessage = signal<string | null>(null);
   readonly person = computed<PersonListItem | null>(() => this.overview()?.person ?? null);
   readonly membership = computed<PersonMembership | null>(() => this.overview()?.membership ?? null);
   readonly relationshipLabel = computed(() => this.overview()?.relationship.label ?? 'Contact');
@@ -344,9 +403,43 @@ export class PersonDetailPageComponent {
 
     return hasStaffRole(currentUser, 'CRM_ADMIN') || hasStaffRole(currentUser, 'CRM_MANAGER');
   });
+  readonly canEndMembership = computed(() => {
+    const overview = this.overview();
+    const person = overview?.person;
+    const membership = overview?.membership ?? null;
+    const currentUser = this.auth.currentUser();
+
+    if (
+      !overview ||
+      !person ||
+      person.archived_at ||
+      overview.relationship.type !== 'ACTIVE_MEMBER' ||
+      membership === null ||
+      membership.status !== 'ACTIVE'
+    ) {
+      return false;
+    }
+
+    return hasStaffRole(currentUser, 'CRM_ADMIN') || hasStaffRole(currentUser, 'CRM_MANAGER');
+  });
 
   readonly makeMemberForm = this.fb.nonNullable.group({
     joined_at: [getLocalTodayDateInputValue(), Validators.required],
+  });
+  readonly endMembershipForm = this.fb.nonNullable.group({
+    ended_at: [getLocalTodayDateInputValue(), Validators.required],
+  });
+  readonly showEndMembershipRequiredError = computed(
+    () => this.endMembershipForm.controls.ended_at.hasError('required') && this.endMembershipForm.touched,
+  );
+  readonly showEndMembershipBeforeJoinedError = computed(() => {
+    if (!this.endMembershipForm.touched) {
+      return false;
+    }
+
+    const membership = this.membership();
+    const endedAt = this.endMembershipForm.controls.ended_at.value;
+    return Boolean(membership && endedAt && endedAt < membership.joined_at);
   });
 
   readonly fullName = computed(() => {
@@ -394,12 +487,13 @@ export class PersonDetailPageComponent {
     const items: DetailListItem[] = [
       { label: 'Status', value: membership.status === 'ACTIVE' ? 'Active' : 'Former' },
       { label: 'Joined', value: formatBusinessDate(membership.joined_at) },
-      { label: 'Source', value: getMembershipSourceLabel(membership.membership_source) },
     ];
 
     if (membership.ended_at) {
       items.push({ label: 'Ended', value: formatBusinessDate(membership.ended_at) });
     }
+
+    items.push({ label: 'Source', value: getMembershipSourceLabel(membership.membership_source) });
 
     return items;
   });
@@ -445,6 +539,8 @@ export class PersonDetailPageComponent {
   openMakeMemberForm(): void {
     this.showMakeMemberForm.set(true);
     this.makeMemberErrorMessage.set(null);
+    this.showEndMembershipForm.set(false);
+    this.endMembershipErrorMessage.set(null);
     this.makeMemberForm.reset({
       joined_at: getLocalTodayDateInputValue(),
     });
@@ -456,6 +552,25 @@ export class PersonDetailPageComponent {
     this.makeMemberSubmitting.set(false);
     this.makeMemberForm.reset({
       joined_at: getLocalTodayDateInputValue(),
+    });
+  }
+
+  openEndMembershipForm(): void {
+    this.showEndMembershipForm.set(true);
+    this.endMembershipErrorMessage.set(null);
+    this.showMakeMemberForm.set(false);
+    this.makeMemberErrorMessage.set(null);
+    this.endMembershipForm.reset({
+      ended_at: getLocalTodayDateInputValue(),
+    });
+  }
+
+  cancelEndMembership(): void {
+    this.showEndMembershipForm.set(false);
+    this.endMembershipErrorMessage.set(null);
+    this.endMembershipSubmitting.set(false);
+    this.endMembershipForm.reset({
+      ended_at: getLocalTodayDateInputValue(),
     });
   }
 
@@ -496,6 +611,50 @@ export class PersonDetailPageComponent {
       });
   }
 
+  submitEndMembership(): void {
+    const person = this.person();
+    const membership = this.membership();
+
+    if (!person || !membership || !this.canEndMembership() || this.endMembershipSubmitting()) {
+      return;
+    }
+
+    if (this.endMembershipForm.invalid) {
+      this.endMembershipForm.markAllAsTouched();
+      return;
+    }
+
+    const payload: EndMembershipRequest = {
+      ended_at: this.endMembershipForm.getRawValue().ended_at,
+    };
+
+    if (payload.ended_at < membership.joined_at) {
+      this.endMembershipForm.markAllAsTouched();
+      this.endMembershipErrorMessage.set(null);
+      return;
+    }
+
+    this.endMembershipSubmitting.set(true);
+    this.endMembershipErrorMessage.set(null);
+
+    this.peopleService
+      .endMembership(person.id, payload)
+      .pipe(switchMap(() => this.peopleService.getPersonOverview(person.id)), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (overview) => {
+          this.overview.set(overview);
+          this.showEndMembershipForm.set(false);
+        },
+        error: (error: HttpErrorResponse) => {
+          this.endMembershipErrorMessage.set(formatEndMembershipError(error));
+          this.endMembershipSubmitting.set(false);
+        },
+        complete: () => {
+          this.endMembershipSubmitting.set(false);
+        },
+      });
+  }
+
   private loadOverview(personId: number): void {
     this.loading.set(true);
     this.notFound.set(false);
@@ -504,6 +663,9 @@ export class PersonDetailPageComponent {
     this.showMakeMemberForm.set(false);
     this.makeMemberSubmitting.set(false);
     this.makeMemberErrorMessage.set(null);
+    this.showEndMembershipForm.set(false);
+    this.endMembershipSubmitting.set(false);
+    this.endMembershipErrorMessage.set(null);
 
     this.peopleService
       .getPersonOverview(personId)
@@ -603,12 +765,45 @@ function formatMakeMemberError(error: HttpErrorResponse): string {
   return 'Membership could not be created right now. Try again.';
 }
 
+function formatEndMembershipError(error: HttpErrorResponse): string {
+  if (error.status === 400 && error.error && typeof error.error === 'object' && !Array.isArray(error.error)) {
+    const entries = Object.entries(error.error as Record<string, unknown>)
+      .filter(([, value]) => Array.isArray(value) && value.length > 0)
+      .map(([field, value]) => `${getEndMembershipFieldLabel(field)}: ${String((value as unknown[])[0])}`);
+
+    if (entries.length > 0) {
+      return entries.join(' ');
+    }
+
+    return 'Membership end details need to be corrected before this change can be saved.';
+  }
+
+  if (error.status === 403) {
+    return 'You no longer have permission to end this membership.';
+  }
+
+  if (error.status === 409) {
+    return 'This membership can no longer be ended from the current person state.';
+  }
+
+  return 'Membership could not be ended right now. Try again.';
+}
+
 function getMakeMemberFieldLabel(field: string): string {
   switch (field) {
     case 'joined_at':
       return 'Join date';
     case 'membership_source':
       return 'Membership source';
+    default:
+      return 'Membership';
+  }
+}
+
+function getEndMembershipFieldLabel(field: string): string {
+  switch (field) {
+    case 'ended_at':
+      return 'End date';
     default:
       return 'Membership';
   }

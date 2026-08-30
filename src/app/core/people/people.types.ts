@@ -46,6 +46,10 @@ export interface MakeMembershipRequest {
   membership_source: 'STAFF';
 }
 
+export interface EndMembershipRequest {
+  ended_at: string;
+}
+
 export interface PersonOverview {
   person: PersonListItem;
   relationship: PersonRelationship;

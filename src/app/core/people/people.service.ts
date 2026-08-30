@@ -3,7 +3,15 @@ import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { API_CONFIG } from '../http/api-config';
-import { MakeMembershipRequest, PaginatedResponse, PersonListItem, PersonOverview, PeopleListQueryState } from './people.types';
+import {
+  EndMembershipRequest,
+  MakeMembershipRequest,
+  PaginatedResponse,
+  PersonListItem,
+  PersonMembership,
+  PersonOverview,
+  PeopleListQueryState,
+} from './people.types';
 
 @Injectable({ providedIn: 'root' })
 export class PeopleService {
@@ -38,6 +46,10 @@ export class PeopleService {
 
   makeMember(personId: number, payload: MakeMembershipRequest): Observable<void> {
     return this.http.post<void>(this.buildUrl(`/people/${personId}/membership/`), payload);
+  }
+
+  endMembership(personId: number, payload: EndMembershipRequest): Observable<PersonMembership> {
+    return this.http.post<PersonMembership>(this.buildUrl(`/people/${personId}/membership/end/`), payload);
   }
 
   private buildUrl(path: string): string {

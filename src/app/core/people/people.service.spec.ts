@@ -134,4 +134,34 @@ describe('PeopleService', () => {
 
     request.flush(null, { status: 201, statusText: 'Created' });
   });
+
+  it('sends only ended_at for end membership', () => {
+    service
+      .endMembership(44, {
+        ended_at: '2026-08-30',
+      })
+      .subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/membership/end/');
+
+    expect(request.request.method).toBe('POST');
+    expect(request.request.withCredentials).toBe(true);
+    expect(request.request.body).toEqual({
+      ended_at: '2026-08-30',
+    });
+    expect(Object.keys(request.request.body)).toEqual(['ended_at']);
+
+    request.flush(
+      {
+        id: 9,
+        status: 'FORMER',
+        joined_at: '2024-04-12',
+        ended_at: '2026-08-30',
+        membership_source: 'STAFF',
+        created_at: '2026-08-30T10:00:00Z',
+        updated_at: '2026-08-30T11:00:00Z',
+      },
+      { status: 200, statusText: 'OK' },
+    );
+  });
 });
