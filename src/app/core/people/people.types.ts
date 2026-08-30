@@ -41,6 +41,11 @@ export interface PersonMembership {
   updated_at: string;
 }
 
+export interface MakeMembershipRequest {
+  joined_at: string;
+  membership_source: 'STAFF';
+}
+
 export interface PersonOverview {
   person: PersonListItem;
   relationship: PersonRelationship;

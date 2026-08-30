@@ -25,6 +25,45 @@ const viewerUser: AuthenticatedUser = {
   staff_roles: ['CRM_VIEWER'],
 };
 
+const adminUser: AuthenticatedUser = {
+  ...viewerUser,
+  id: 1,
+  email: 'admin@example.com',
+  person: {
+    ...viewerUser.person,
+    id: 7,
+    first_name: 'Admin',
+    primary_email: 'admin@example.com',
+  },
+  staff_roles: ['CRM_ADMIN'],
+};
+
+const managerUser: AuthenticatedUser = {
+  ...viewerUser,
+  id: 2,
+  email: 'manager@example.com',
+  person: {
+    ...viewerUser.person,
+    id: 8,
+    first_name: 'Manager',
+    primary_email: 'manager@example.com',
+  },
+  staff_roles: ['CRM_MANAGER'],
+};
+
+const nonStaffUser: AuthenticatedUser = {
+  ...viewerUser,
+  id: 4,
+  email: 'member@example.com',
+  person: {
+    ...viewerUser.person,
+    id: 10,
+    first_name: 'Member',
+    primary_email: 'member@example.com',
+  },
+  staff_roles: [],
+};
+
 const contactOverview = {
   person: {
     id: 11,
@@ -106,7 +145,12 @@ const formerMemberOverview = {
 
 class MockAuthService {
   readonly authInitialized = signal(true).asReadonly();
-  readonly currentUser = signal<AuthenticatedUser | null>(viewerUser).asReadonly();
+  private readonly currentUserState = signal<AuthenticatedUser | null>(viewerUser);
+  readonly currentUser = this.currentUserState.asReadonly();
+
+  setCurrentUser(user: AuthenticatedUser | null): void {
+    this.currentUserState.set(user);
+  }
 }
 
 @Component({
@@ -118,6 +162,7 @@ class DummyShellComponent {}
 describe('PersonDetailPageComponent', () => {
   let httpTesting: HttpTestingController;
   let router: Router;
+  let auth: MockAuthService;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -138,6 +183,7 @@ describe('PersonDetailPageComponent', () => {
 
     httpTesting = TestBed.inject(HttpTestingController);
     router = TestBed.inject(Router);
+    auth = TestBed.inject(AuthService) as unknown as MockAuthService;
   });
 
   afterEach(() => {
@@ -167,6 +213,30 @@ describe('PersonDetailPageComponent', () => {
       month: 'short',
       year: 'numeric',
     }).format(new Date(year, month - 1, day));
+  }
+
+  function getLocalTodayDateInputValue(): string {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  function membershipForm(host: Element | null): HTMLFormElement | null {
+    return host?.querySelector('.membership-form') as HTMLFormElement | null;
+  }
+
+  function makeMemberButton(host: Element | null): HTMLButtonElement | undefined {
+    return Array.from(host?.querySelectorAll('button') ?? []).find((button) =>
+      button.textContent?.includes('Make Member'),
+    ) as HTMLButtonElement | undefined;
+  }
+
+  function cancelButton(host: Element | null): HTMLButtonElement | undefined {
+    return Array.from(host?.querySelectorAll('button') ?? []).find((button) =>
+      button.textContent?.includes('Cancel'),
+    ) as HTMLButtonElement | undefined;
   }
 
   it('loads a person overview from the route id and renders person fields', async () => {
@@ -210,6 +280,50 @@ describe('PersonDetailPageComponent', () => {
     expect(text).not.toContain('Joined');
   });
 
+  it('shows make member for CRM admin contact', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    expect(makeMemberButton(harness.routeNativeElement)?.textContent).toContain('Make Member');
+  });
+
+  it('shows make member for CRM manager contact', async () => {
+    auth.setCurrentUser(managerUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    expect(makeMemberButton(harness.routeNativeElement)?.textContent).toContain('Make Member');
+  });
+
+  it('does not show make member for CRM viewer contact', async () => {
+    auth.setCurrentUser(viewerUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    expect(makeMemberButton(harness.routeNativeElement)).toBeUndefined();
+  });
+
+  it('does not show make member for authenticated user without write role', async () => {
+    auth.setCurrentUser(nonStaffUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    expect(makeMemberButton(harness.routeNativeElement)).toBeUndefined();
+  });
+
   it('renders active membership from the overview response', async () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/people/12');
@@ -224,6 +338,7 @@ describe('PersonDetailPageComponent', () => {
     expect(text).toContain(formatBusinessDate(activeMemberOverview.membership.joined_at));
     expect(text).toContain('Website Form');
     expect(text).not.toContain('/membership/');
+    expect(makeMemberButton(harness.routeNativeElement)).toBeUndefined();
   });
 
   it('renders former membership including the ended date', async () => {
@@ -238,6 +353,7 @@ describe('PersonDetailPageComponent', () => {
     expect(text).toContain(formatBusinessDate(formerMemberOverview.membership.joined_at));
     expect(text).toContain(formatBusinessDate(formerMemberOverview.membership.ended_at!));
     expect(text).toContain('Community Platform');
+    expect(makeMemberButton(harness.routeNativeElement)).toBeUndefined();
   });
 
   it('shows consistent fallback text for missing optional person values', async () => {
@@ -261,6 +377,250 @@ describe('PersonDetailPageComponent', () => {
     const text = harness.routeNativeElement?.textContent ?? '';
     expect(text).toContain('Archived');
     expect(text).toContain('Archived on');
+    expect(makeMemberButton(harness.routeNativeElement)).toBeUndefined();
+  });
+
+  it('opens the make member form with local today and STAFF defaults', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    makeMemberButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    const form = membershipForm(harness.routeNativeElement);
+    const joinedInput = form?.querySelector('input[type="date"]') as HTMLInputElement;
+
+    expect(joinedInput.value).toBe(getLocalTodayDateInputValue());
+    expect(form?.textContent).toContain('Join date');
+    expect(form?.querySelector('select')).toBeNull();
+  });
+
+  it('cancel closes the make member form', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    makeMemberButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+    cancelButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    expect(membershipForm(harness.routeNativeElement)).toBeNull();
+    expect(makeMemberButton(harness.routeNativeElement)?.textContent).toContain('Make Member');
+  });
+
+  it('required fields prevent invalid submission', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    makeMemberButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    const form = membershipForm(harness.routeNativeElement);
+    const joinedInput = form?.querySelector('input[type="date"]') as HTMLInputElement;
+    joinedInput.value = '';
+    joinedInput.dispatchEvent(new Event('input'));
+    joinedInput.dispatchEvent(new Event('change'));
+
+    form?.dispatchEvent(new Event('submit'));
+    await stabilize(harness);
+
+    httpTesting.expectNone(`${apiBaseUrl}/people/11/membership/`);
+    expect(harness.routeNativeElement?.textContent).toContain('Join date is required.');
+  });
+
+  it('submits the selected join date with STAFF then reloads overview', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    makeMemberButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    const form = membershipForm(harness.routeNativeElement);
+    const joinedInput = form?.querySelector('input[type="date"]') as HTMLInputElement;
+    joinedInput.value = '2024-04-12';
+    joinedInput.dispatchEvent(new Event('input'));
+    joinedInput.dispatchEvent(new Event('change'));
+
+    form?.dispatchEvent(new Event('submit'));
+
+    const createRequest = httpTesting.expectOne(`${apiBaseUrl}/people/11/membership/`);
+    expect(createRequest.request.method).toBe('POST');
+    expect(createRequest.request.body).toEqual({
+      joined_at: '2024-04-12',
+      membership_source: 'STAFF',
+    });
+
+    createRequest.flush(
+      {
+        id: 15,
+        status: 'ACTIVE',
+        joined_at: '2024-04-12',
+        ended_at: null,
+        membership_source: 'STAFF',
+        created_at: '2026-08-30T12:00:00Z',
+        updated_at: '2026-08-30T12:00:00Z',
+      },
+      { status: 201, statusText: 'Created' },
+    );
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush({
+      ...contactOverview,
+      relationship: {
+        type: 'ACTIVE_MEMBER',
+        label: 'Active Member',
+      },
+      membership: {
+        id: 15,
+        status: 'ACTIVE',
+        joined_at: '2024-04-12',
+        ended_at: null,
+        membership_source: 'STAFF',
+        created_at: '2026-08-30T12:00:00Z',
+        updated_at: '2026-08-30T12:00:00Z',
+      },
+    });
+    await stabilize(harness);
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('Active Member');
+    expect(text).toContain('Staff');
+    expect(text).not.toContain('No membership record');
+    expect(makeMemberButton(harness.routeNativeElement)).toBeUndefined();
+    expect(membershipForm(harness.routeNativeElement)).toBeNull();
+  });
+
+  it('prevents duplicate submissions while make member is pending', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    makeMemberButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    const form = membershipForm(harness.routeNativeElement);
+    form?.dispatchEvent(new Event('submit'));
+    form?.dispatchEvent(new Event('submit'));
+
+    const requests = httpTesting.match(`${apiBaseUrl}/people/11/membership/`);
+    expect(requests.length).toBe(1);
+
+    requests[0].flush({}, { status: 409, statusText: 'Conflict' });
+    await stabilize(harness);
+  });
+
+  it('shows inline validation details for 400 make member errors', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    makeMemberButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    membershipForm(harness.routeNativeElement)?.dispatchEvent(new Event('submit'));
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/membership/`).flush(
+      {
+        joined_at: ['Enter a valid date.'],
+      },
+      { status: 400, statusText: 'Bad Request' },
+    );
+    await stabilize(harness);
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('Join date: Enter a valid date.');
+    expect(text).toContain('Ama Amoah');
+  });
+
+  it('shows an inline permission message for 403 make member errors', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    makeMemberButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    membershipForm(harness.routeNativeElement)?.dispatchEvent(new Event('submit'));
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/membership/`).flush(
+      { detail: 'Forbidden' },
+      { status: 403, statusText: 'Forbidden' },
+    );
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent).toContain('You no longer have permission to make this person a member.');
+  });
+
+  it('shows an inline conflict message for 409 make member errors', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    makeMemberButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    membershipForm(harness.routeNativeElement)?.dispatchEvent(new Event('submit'));
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/membership/`).flush(
+      { detail: 'Conflict' },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await stabilize(harness);
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('This membership could not be created because the person is no longer eligible for Make Member.');
+    expect(text).toContain('No membership record');
+  });
+
+  it('shows a generic inline message for unexpected make member failures', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    makeMemberButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    membershipForm(harness.routeNativeElement)?.dispatchEvent(new Event('submit'));
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/membership/`).flush(
+      { detail: 'Server error' },
+      { status: 500, statusText: 'Server Error' },
+    );
+    await stabilize(harness);
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('Membership could not be created right now. Try again.');
+    expect(text).toContain('Ama Amoah');
   });
 
   it('renders record dates in a human-readable format', async () => {

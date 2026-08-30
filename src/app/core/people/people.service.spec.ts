@@ -113,4 +113,25 @@ describe('PeopleService', () => {
       },
     });
   });
+
+  it('sends only joined_at and membership_source for make member', () => {
+    service
+      .makeMember(44, {
+        joined_at: '2026-08-30',
+        membership_source: 'STAFF',
+      })
+      .subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/membership/');
+
+    expect(request.request.method).toBe('POST');
+    expect(request.request.withCredentials).toBe(true);
+    expect(request.request.body).toEqual({
+      joined_at: '2026-08-30',
+      membership_source: 'STAFF',
+    });
+    expect(Object.keys(request.request.body)).toEqual(['joined_at', 'membership_source']);
+
+    request.flush(null, { status: 201, statusText: 'Created' });
+  });
 });

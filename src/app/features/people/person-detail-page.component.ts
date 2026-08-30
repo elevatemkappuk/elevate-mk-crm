@@ -2,11 +2,15 @@ import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { switchMap } from 'rxjs';
 import { distinctUntilChanged, map } from 'rxjs/operators';
 
+import { AuthService } from '../../core/auth/auth.service';
+import { hasStaffRole } from '../../core/auth/auth-access';
 import { PeopleService } from '../../core/people/people.service';
-import { PersonListItem, PersonMembership, PersonOverview } from '../../core/people/people.types';
+import { MakeMembershipRequest, PersonListItem, PersonMembership, PersonOverview } from '../../core/people/people.types';
 import { CrmSectionCardComponent } from '../../shared/ui/crm-section-card.component';
 import { DetailListComponent, DetailListItem } from '../../shared/ui/detail-list.component';
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
@@ -16,6 +20,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
   selector: 'app-person-detail-page',
   imports: [
     CommonModule,
+    ReactiveFormsModule,
     RouterLink,
     CrmSectionCardComponent,
     DetailListComponent,
@@ -82,7 +87,39 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
             @if (membershipDetails().length) {
               <app-detail-list [items]="membershipDetails()" />
             } @else {
-              <p class="empty-section-copy">No membership record</p>
+              <div class="membership-empty-state">
+                <p class="empty-section-copy">No membership record</p>
+
+                @if (canMakeMember()) {
+                  @if (showMakeMemberForm()) {
+                    <form class="membership-form" [formGroup]="makeMemberForm" (ngSubmit)="submitMakeMember()">
+                      <label>
+                        <span>Join date</span>
+                        <input type="date" formControlName="joined_at" />
+                      </label>
+
+                      @if (makeMemberForm.invalid && makeMemberForm.touched) {
+                        <p class="membership-form-error">Join date is required.</p>
+                      }
+
+                      @if (makeMemberErrorMessage()) {
+                        <p class="membership-form-error">{{ makeMemberErrorMessage() }}</p>
+                      }
+
+                      <div class="membership-form-actions">
+                        <button type="submit" [disabled]="makeMemberSubmitting()">
+                          {{ makeMemberSubmitting() ? 'Making member...' : 'Make Member' }}
+                        </button>
+                        <button type="button" class="button-secondary" [disabled]="makeMemberSubmitting()" (click)="cancelMakeMember()">
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  } @else {
+                    <button type="button" class="button-primary" (click)="openMakeMemberForm()">Make Member</button>
+                  }
+                }
+              </div>
             }
           </app-crm-section-card>
         </div>
@@ -194,6 +231,80 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
       line-height: 1.5;
     }
 
+    .membership-empty-state {
+      display: grid;
+      gap: 0.9rem;
+      align-items: start;
+    }
+
+    .membership-form {
+      display: grid;
+      gap: 0.85rem;
+      width: min(100%, 26rem);
+    }
+
+    .membership-form label {
+      display: grid;
+      gap: 0.4rem;
+      color: #1c3344;
+      font-weight: 600;
+    }
+
+    .membership-form input,
+    .membership-form select {
+      width: 100%;
+      border: 1px solid #b7c7d4;
+      border-radius: 0.85rem;
+      padding: 0.8rem 0.95rem;
+      font: inherit;
+      background: #fdfefe;
+      color: #203a4c;
+    }
+
+    .membership-form-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.7rem;
+    }
+
+    .button-primary,
+    .button-secondary,
+    .membership-form button {
+      width: fit-content;
+      border-radius: 999px;
+      padding: 0.75rem 1.1rem;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .button-primary,
+    .membership-form button[type='submit'] {
+      border: 0;
+      color: #fff;
+      background: linear-gradient(135deg, #16354a, #2f6f84);
+    }
+
+    .button-secondary {
+      border: 1px solid #b7c7d4;
+      color: #203a4c;
+      background: #fff;
+    }
+
+    .button-primary:disabled,
+    .button-secondary:disabled,
+    .membership-form button:disabled {
+      cursor: wait;
+      opacity: 0.7;
+    }
+
+    .membership-form-error {
+      margin: 0;
+      color: #9b1c1c;
+      font-weight: 600;
+      line-height: 1.5;
+    }
+
     @media (max-width: 680px) {
       .identity-badges {
         justify-content: start;
@@ -206,7 +317,9 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
   `,
 })
 export class PersonDetailPageComponent {
+  private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
+  private readonly auth = inject(AuthService);
   private readonly peopleService = inject(PeopleService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -214,9 +327,27 @@ export class PersonDetailPageComponent {
   readonly notFound = signal(false);
   readonly errorMessage = signal<string | null>(null);
   readonly overview = signal<PersonOverview | null>(null);
+  readonly showMakeMemberForm = signal(false);
+  readonly makeMemberSubmitting = signal(false);
+  readonly makeMemberErrorMessage = signal<string | null>(null);
   readonly person = computed<PersonListItem | null>(() => this.overview()?.person ?? null);
   readonly membership = computed<PersonMembership | null>(() => this.overview()?.membership ?? null);
   readonly relationshipLabel = computed(() => this.overview()?.relationship.label ?? 'Contact');
+  readonly canMakeMember = computed(() => {
+    const overview = this.overview();
+    const person = overview?.person;
+    const currentUser = this.auth.currentUser();
+
+    if (!overview || !person || person.archived_at || overview.membership !== null || overview.relationship.type !== 'CONTACT') {
+      return false;
+    }
+
+    return hasStaffRole(currentUser, 'CRM_ADMIN') || hasStaffRole(currentUser, 'CRM_MANAGER');
+  });
+
+  readonly makeMemberForm = this.fb.nonNullable.group({
+    joined_at: [getLocalTodayDateInputValue(), Validators.required],
+  });
 
   readonly fullName = computed(() => {
     const person = this.person();
@@ -311,11 +442,68 @@ export class PersonDetailPageComponent {
     return value && value.trim() ? value : 'Not provided';
   }
 
+  openMakeMemberForm(): void {
+    this.showMakeMemberForm.set(true);
+    this.makeMemberErrorMessage.set(null);
+    this.makeMemberForm.reset({
+      joined_at: getLocalTodayDateInputValue(),
+    });
+  }
+
+  cancelMakeMember(): void {
+    this.showMakeMemberForm.set(false);
+    this.makeMemberErrorMessage.set(null);
+    this.makeMemberSubmitting.set(false);
+    this.makeMemberForm.reset({
+      joined_at: getLocalTodayDateInputValue(),
+    });
+  }
+
+  submitMakeMember(): void {
+    const person = this.person();
+    if (!person || !this.canMakeMember() || this.makeMemberSubmitting()) {
+      return;
+    }
+
+    if (this.makeMemberForm.invalid) {
+      this.makeMemberForm.markAllAsTouched();
+      return;
+    }
+
+    this.makeMemberSubmitting.set(true);
+    this.makeMemberErrorMessage.set(null);
+
+    const payload: MakeMembershipRequest = {
+      joined_at: this.makeMemberForm.getRawValue().joined_at,
+      membership_source: 'STAFF',
+    };
+
+    this.peopleService
+      .makeMember(person.id, payload)
+      .pipe(switchMap(() => this.peopleService.getPersonOverview(person.id)), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (overview) => {
+          this.overview.set(overview);
+          this.showMakeMemberForm.set(false);
+        },
+        error: (error: HttpErrorResponse) => {
+          this.makeMemberErrorMessage.set(formatMakeMemberError(error));
+          this.makeMemberSubmitting.set(false);
+        },
+        complete: () => {
+          this.makeMemberSubmitting.set(false);
+        },
+      });
+  }
+
   private loadOverview(personId: number): void {
     this.loading.set(true);
     this.notFound.set(false);
     this.errorMessage.set(null);
     this.overview.set(null);
+    this.showMakeMemberForm.set(false);
+    this.makeMemberSubmitting.set(false);
+    this.makeMemberErrorMessage.set(null);
 
     this.peopleService
       .getPersonOverview(personId)
@@ -380,5 +568,48 @@ function getMembershipSourceLabel(value: PersonMembership['membership_source']):
       return 'Community Platform';
     case 'OTHER':
       return 'Other';
+  }
+}
+
+function getLocalTodayDateInputValue(): string {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatMakeMemberError(error: HttpErrorResponse): string {
+  if (error.status === 400 && error.error && typeof error.error === 'object' && !Array.isArray(error.error)) {
+    const entries = Object.entries(error.error as Record<string, unknown>)
+      .filter(([, value]) => Array.isArray(value) && value.length > 0)
+      .map(([field, value]) => `${getMakeMemberFieldLabel(field)}: ${String((value as unknown[])[0])}`);
+
+    if (entries.length > 0) {
+      return entries.join(' ');
+    }
+
+    return 'Membership details need to be corrected before this person can be made a member.';
+  }
+
+  if (error.status === 403) {
+    return 'You no longer have permission to make this person a member.';
+  }
+
+  if (error.status === 409) {
+    return 'This membership could not be created because the person is no longer eligible for Make Member.';
+  }
+
+  return 'Membership could not be created right now. Try again.';
+}
+
+function getMakeMemberFieldLabel(field: string): string {
+  switch (field) {
+    case 'joined_at':
+      return 'Join date';
+    case 'membership_source':
+      return 'Membership source';
+    default:
+      return 'Membership';
   }
 }
