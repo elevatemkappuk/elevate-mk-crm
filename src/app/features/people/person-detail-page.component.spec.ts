@@ -2,6 +2,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { provideRouter, Router, RouterOutlet } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 
@@ -228,7 +229,7 @@ describe('PersonDetailPageComponent', () => {
   }
 
   function routeComponent(harness: RouterTestingHarness): PersonDetailPageComponent {
-    return harness.routeDebugElement!.componentInstance as PersonDetailPageComponent;
+    return harness.fixture.debugElement.query(By.directive(PersonDetailPageComponent)).componentInstance as PersonDetailPageComponent;
   }
 
   function makeMemberButton(host: Element | null): HTMLButtonElement | undefined {
@@ -556,9 +557,10 @@ describe('PersonDetailPageComponent', () => {
     await stabilize(harness);
 
     const form = membershipForm(harness.routeNativeElement);
-    routeComponent(harness).endMembershipForm.controls.ended_at.setValue('');
+    const component = routeComponent(harness);
+    component.endMembershipForm.controls.ended_at.setValue('');
 
-    form?.dispatchEvent(new Event('submit'));
+    component.submitEndMembership();
     await stabilize(harness);
 
     httpTesting.expectNone(`${apiBaseUrl}/people/12/membership/end/`);
@@ -577,9 +579,10 @@ describe('PersonDetailPageComponent', () => {
     await stabilize(harness);
 
     const form = membershipForm(harness.routeNativeElement);
-    routeComponent(harness).endMembershipForm.controls.ended_at.setValue('2024-04-11');
+    const component = routeComponent(harness);
+    component.endMembershipForm.controls.ended_at.setValue('2024-04-11');
 
-    form?.dispatchEvent(new Event('submit'));
+    component.submitEndMembership();
     await stabilize(harness);
 
     httpTesting.expectNone(`${apiBaseUrl}/people/12/membership/end/`);

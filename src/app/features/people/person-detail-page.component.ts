@@ -429,18 +429,6 @@ export class PersonDetailPageComponent {
   readonly endMembershipForm = this.fb.nonNullable.group({
     ended_at: [getLocalTodayDateInputValue(), Validators.required],
   });
-  readonly showEndMembershipRequiredError = computed(
-    () => this.endMembershipForm.controls.ended_at.hasError('required') && this.endMembershipForm.touched,
-  );
-  readonly showEndMembershipBeforeJoinedError = computed(() => {
-    if (!this.endMembershipForm.touched) {
-      return false;
-    }
-
-    const membership = this.membership();
-    const endedAt = this.endMembershipForm.controls.ended_at.value;
-    return Boolean(membership && endedAt && endedAt < membership.joined_at);
-  });
 
   readonly fullName = computed(() => {
     const person = this.person();
@@ -572,6 +560,20 @@ export class PersonDetailPageComponent {
     this.endMembershipForm.reset({
       ended_at: getLocalTodayDateInputValue(),
     });
+  }
+
+  showEndMembershipRequiredError(): boolean {
+    return this.endMembershipForm.controls.ended_at.hasError('required') && this.endMembershipForm.touched;
+  }
+
+  showEndMembershipBeforeJoinedError(): boolean {
+    if (!this.endMembershipForm.touched) {
+      return false;
+    }
+
+    const membership = this.membership();
+    const endedAt = this.endMembershipForm.controls.ended_at.value;
+    return Boolean(membership && endedAt && endedAt < membership.joined_at);
   }
 
   submitMakeMember(): void {
