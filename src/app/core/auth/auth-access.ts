@@ -2,6 +2,7 @@ import { AuthenticatedUser } from './auth.types';
 
 export const CRM_STAFF_ROLE_CODES = ['CRM_ADMIN', 'CRM_MANAGER', 'CRM_VIEWER'] as const;
 export const CRM_ADMIN_ROLE_CODE = 'CRM_ADMIN' as const;
+export const CRM_MANAGER_ROLE_CODE = 'CRM_MANAGER' as const;
 
 export function getStaffRoles(user: AuthenticatedUser | null): string[] {
   if (!user || !Array.isArray(user.staff_roles)) {
@@ -23,4 +24,8 @@ export function hasStaffRole(user: AuthenticatedUser | null, roleCode: string): 
 
 export function isCrmAdmin(user: AuthenticatedUser | null): boolean {
   return hasStaffRole(user, CRM_ADMIN_ROLE_CODE);
+}
+
+export function canManagePeople(user: AuthenticatedUser | null): boolean {
+  return hasStaffRole(user, CRM_ADMIN_ROLE_CODE) || hasStaffRole(user, CRM_MANAGER_ROLE_CODE);
 }

@@ -7,6 +7,8 @@ import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 
 import { PeopleService } from '../../core/people/people.service';
+import { canManagePeople } from '../../core/auth/auth-access';
+import { AuthService } from '../../core/auth/auth.service';
 import {
   PaginatedResponse,
   PersonListItem,
@@ -47,6 +49,12 @@ interface OrderingOption {
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
   template: `
     <section class="page">
+      @if (canManagePeople()) {
+        <div class="page-actions">
+          <a routerLink="/people/new/member" class="button-primary">Add Member</a>
+          <a routerLink="/people/new/contact" class="button-secondary">Add Contact</a>
+        </div>
+      }
       <form class="controls" [formGroup]="filters" aria-label="People list controls">
         <label class="search-field">
           <span>Search</span>
@@ -162,6 +170,10 @@ interface OrderingOption {
       display: grid;
       gap: 0.9rem;
     }
+
+    .page-actions { display:flex; justify-content:flex-end; gap:.7rem; flex-wrap:wrap; }
+    .button-primary,.button-secondary { border-radius:999px; padding:.72rem 1.05rem; font-weight:700; text-decoration:none; }
+    .button-primary { background:#1d6077; color:#fff; } .button-secondary { background:#edf3f6; color:#234257; }
 
     .controls,
     .results-card,
@@ -431,6 +443,7 @@ export class PeoplePageComponent {
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
   private readonly peopleService = inject(PeopleService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -450,6 +463,7 @@ export class PeoplePageComponent {
   readonly errorMessage = signal<string | null>(null);
   readonly peopleResponse = signal<PaginatedResponse<PersonListItem> | null>(null);
   readonly queryState = signal<PeopleListQueryState>(DEFAULT_QUERY_STATE);
+  readonly canManagePeople = computed(() => canManagePeople(this.auth.currentUser()));
 
   readonly filters = this.fb.nonNullable.group({
     q: DEFAULT_QUERY_STATE.q,

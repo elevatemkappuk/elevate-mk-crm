@@ -3,11 +3,11 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { switchMap } from 'rxjs';
 import { distinctUntilChanged, map } from 'rxjs/operators';
 
-import { hasStaffCrmAccess, hasStaffRole } from '../../core/auth/auth-access';
+import { canManagePeople, hasStaffCrmAccess, hasStaffRole } from '../../core/auth/auth-access';
 import { AuthService } from '../../core/auth/auth.service';
 import { PeopleService } from '../../core/people/people.service';
 import {
@@ -30,6 +30,7 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 import { PersonAuditHistorySectionComponent } from './person-audit-history-section.component';
 import { PersonNotesSectionComponent } from './person-notes-section.component';
+import { PersonLifecycleActionsComponent } from './person-lifecycle-actions.component';
 
 type ProfessionalProfileFormMode = 'create' | 'edit' | null;
 type SkillRemovalState = number | null;
@@ -60,6 +61,7 @@ interface AssignSkillFormValue {
     StatusBadgeComponent,
     PersonAuditHistorySectionComponent,
     PersonNotesSectionComponent,
+    PersonLifecycleActionsComponent,
   ],
   template: `
     <section class="detail-page">
@@ -107,6 +109,10 @@ interface AssignSkillFormValue {
               <p><span>Mobile</span>{{ displayValue(person()!.mobile) }}</p>
               <p><span>Location</span>{{ displayValue(person()!.location) }}</p>
             </div>
+
+            @if (canManagePeople()) {
+              <app-person-lifecycle-actions [person]="person()!" [submitting]="personLifecycleSubmitting()" [errorMessage]="personLifecycleErrorMessage()" (archive)="archivePerson()" (restore)="restorePerson()" />
+            }
           </section>
 
           <app-crm-section-card title="Personal details">
@@ -761,6 +767,7 @@ interface AssignSkillFormValue {
       gap: 0.18rem;
     }
 
+
     .identity-meta span,
     .detail-label {
       font-size: 0.8rem;
@@ -940,6 +947,7 @@ interface AssignSkillFormValue {
       background: #fff;
     }
 
+
     .button-primary:disabled,
     .button-secondary:disabled,
     .membership-form button:disabled,
@@ -974,6 +982,7 @@ export class PersonDetailPageComponent {
 
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
   private readonly peopleService = inject(PeopleService);
   private readonly destroyRef = inject(DestroyRef);
@@ -988,6 +997,8 @@ export class PersonDetailPageComponent {
   readonly showEndMembershipForm = signal(false);
   readonly endMembershipSubmitting = signal(false);
   readonly endMembershipErrorMessage = signal<string | null>(null);
+  readonly personLifecycleSubmitting = signal(false);
+  readonly personLifecycleErrorMessage = signal<string | null>(null);
   readonly industries = signal<Industry[]>([]);
   readonly industriesLoaded = signal(false);
   readonly industriesLoading = signal(false);
@@ -1023,6 +1034,7 @@ export class PersonDetailPageComponent {
   readonly confirmingTagRemovalId = signal<TagRemovalState>(null);
   readonly removingTagId = signal<TagRemovalState>(null);
   readonly person = computed<PersonListItem | null>(() => this.overview()?.person ?? null);
+  readonly canManagePeople = computed(() => canManagePeople(this.auth.currentUser()));
   readonly membership = computed<PersonMembership | null>(() => this.overview()?.membership ?? null);
   readonly professionalProfile = computed<ProfessionalProfile | null>(() => this.overview()?.professional_profile ?? null);
   readonly skills = computed<SkillSummary[]>(() => this.overview()?.skills ?? []);
@@ -1462,6 +1474,39 @@ export class PersonDetailPageComponent {
     this.endMembershipForm.reset({
       ended_at: getLocalTodayDateInputValue(),
     });
+  }
+
+  archivePerson(): void {
+    const person = this.person();
+    if (!person || person.archived_at || !this.canManagePeople() || this.personLifecycleSubmitting()) { return; }
+    this.personLifecycleSubmitting.set(true);
+    this.personLifecycleErrorMessage.set(null);
+    this.peopleService.archivePerson(person.id).pipe(switchMap(() => this.peopleService.getPersonOverview(person.id)), takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (overview) => { this.overview.set(overview); this.personLifecycleSubmitting.set(false); },
+      error: (error: HttpErrorResponse) => { this.handlePersonLifecycleError(error, person.id); },
+    });
+  }
+
+  restorePerson(): void {
+    const person = this.person();
+    if (!person || !person.archived_at || !this.canManagePeople() || this.personLifecycleSubmitting()) { return; }
+    this.personLifecycleSubmitting.set(true);
+    this.personLifecycleErrorMessage.set(null);
+    this.peopleService.restorePerson(person.id).pipe(switchMap(() => this.peopleService.getPersonOverview(person.id)), takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (overview) => { this.overview.set(overview); this.personLifecycleSubmitting.set(false); },
+      error: (error: HttpErrorResponse) => { this.handlePersonLifecycleError(error, person.id); },
+    });
+  }
+
+  private handlePersonLifecycleError(error: HttpErrorResponse, personId: number): void {
+    this.personLifecycleSubmitting.set(false);
+    if (error.status === 404) { void this.router.navigate(['/people']); return; }
+    if (error.status === 409) {
+      this.personLifecycleErrorMessage.set('This Person lifecycle state changed. The record has been refreshed.');
+      this.loadOverview(personId);
+      return;
+    }
+    this.personLifecycleErrorMessage.set(error.status === 403 ? 'You no longer have permission to manage this Person.' : 'The Person lifecycle change could not be completed right now. Try again.');
   }
 
   showEndMembershipRequiredError(): boolean {

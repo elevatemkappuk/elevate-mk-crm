@@ -138,6 +138,40 @@ export interface MakeMembershipRequest {
   membership_source: 'STAFF';
 }
 
+export interface PersonWriteFields {
+  first_name: string;
+  last_name: string;
+  primary_email?: string | null;
+  mobile?: string;
+  location?: string;
+  age_range?: string;
+  gender?: string;
+}
+
+export interface CreateContactRequest extends PersonWriteFields {}
+
+export interface CreateMemberRequest extends PersonWriteFields {
+  joined_at: string;
+  membership_source: 'STAFF';
+}
+
+export interface UpdatePersonRequest extends Partial<PersonWriteFields> {}
+
+export interface DuplicatePersonMatch {
+  id: number;
+  first_name: string;
+  last_name: string;
+  primary_email: string | null;
+  mobile: string;
+  archived_at: string | null;
+}
+
+export interface DuplicatePersonConflict {
+  detail: string;
+  code: 'duplicate_person';
+  matches: DuplicatePersonMatch[];
+}
+
 export interface EndMembershipRequest {
   ended_at: string;
 }

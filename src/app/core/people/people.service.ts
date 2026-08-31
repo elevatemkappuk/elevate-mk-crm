@@ -9,6 +9,8 @@ import {
   AssignInterestRequest,
   AssignSkillRequest,
   CreateInternalNoteRequest,
+  CreateContactRequest,
+  CreateMemberRequest,
   EndMembershipRequest,
   InternalNote,
   InterestSummary,
@@ -26,6 +28,7 @@ import {
   SkillSummary,
   TagSummary,
   UpdateInternalNoteRequest,
+  UpdatePersonRequest,
 } from './people.types';
 
 @Injectable({ providedIn: 'root' })
@@ -57,6 +60,26 @@ export class PeopleService {
 
   getPersonOverview(personId: number): Observable<PersonOverview> {
     return this.http.get<PersonOverview>(this.buildUrl(`/people/${personId}/overview/`));
+  }
+
+  createContact(payload: CreateContactRequest): Observable<PersonListItem> {
+    return this.http.post<PersonListItem>(this.buildUrl('/people/'), payload);
+  }
+
+  createMember(payload: CreateMemberRequest): Observable<PersonListItem> {
+    return this.http.post<PersonListItem>(this.buildUrl('/people/members/'), payload);
+  }
+
+  updatePerson(personId: number, payload: UpdatePersonRequest): Observable<PersonListItem> {
+    return this.http.patch<PersonListItem>(this.buildUrl(`/people/${personId}/`), payload);
+  }
+
+  archivePerson(personId: number): Observable<PersonListItem> {
+    return this.http.post<PersonListItem>(this.buildUrl(`/people/${personId}/archive/`), {});
+  }
+
+  restorePerson(personId: number): Observable<PersonListItem> {
+    return this.http.post<PersonListItem>(this.buildUrl(`/people/${personId}/restore/`), {});
   }
 
   getPersonNotes(personId: number, query: NotesListQuery): Observable<PaginatedResponse<InternalNote>> {

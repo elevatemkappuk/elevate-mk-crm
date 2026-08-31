@@ -295,6 +295,18 @@ export class StaffCrmShellPageComponent {
       return 'Administration';
     }
 
+    if (this.router.url.startsWith('/people/new/member')) {
+      return 'Add Member';
+    }
+
+    if (this.router.url.startsWith('/people/new/contact')) {
+      return 'Add Contact';
+    }
+
+    if (this.router.url.endsWith('/edit')) {
+      return 'Edit Person';
+    }
+
     if (this.router.url.startsWith('/people/')) {
       return 'Person';
     }

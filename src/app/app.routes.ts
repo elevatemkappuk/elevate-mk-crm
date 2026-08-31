@@ -12,6 +12,7 @@ import { StaffCrmShellPageComponent } from './features/auth/staff-crm-shell-page
 import { AdministrationPageComponent } from './features/administration/administration-page.component';
 import { PersonDetailPageComponent } from './features/people/person-detail-page.component';
 import { PeoplePageComponent } from './features/people/people-page.component';
+import { PersonWritePageComponent } from './features/people/person-write-page.component';
 
 export const routes: Routes = [
   {
@@ -37,6 +38,21 @@ export const routes: Routes = [
       {
         path: 'people',
         component: PeoplePageComponent,
+      },
+      {
+        path: 'people/new/member',
+        component: PersonWritePageComponent,
+        data: { mode: 'member' },
+      },
+      {
+        path: 'people/new/contact',
+        component: PersonWritePageComponent,
+        data: { mode: 'contact' },
+      },
+      {
+        path: 'people/:id/edit',
+        component: PersonWritePageComponent,
+        data: { mode: 'edit' },
       },
       {
         path: 'people/:id',

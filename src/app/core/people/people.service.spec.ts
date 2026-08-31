@@ -76,6 +76,39 @@ describe('PeopleService', () => {
     });
   });
 
+  it('sends Person write lifecycle requests to their authoritative endpoints', () => {
+    const person = { first_name: 'Ama', last_name: 'Amoah', primary_email: null, mobile: '', location: '', age_range: '', gender: '' };
+    service.createContact(person).subscribe();
+    let request = httpTesting.expectOne('http://localhost:8000/api/v1/people/');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual(person);
+    request.flush({ id: 44, ...person, archived_at: null, created_at: '2026-08-31T00:00:00Z', updated_at: '2026-08-31T00:00:00Z' });
+
+    service.createMember({ ...person, joined_at: '2026-08-31', membership_source: 'STAFF' }).subscribe();
+    request = httpTesting.expectOne('http://localhost:8000/api/v1/people/members/');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ ...person, joined_at: '2026-08-31', membership_source: 'STAFF' });
+    request.flush({ id: 45, ...person, archived_at: null, created_at: '2026-08-31T00:00:00Z', updated_at: '2026-08-31T00:00:00Z' });
+
+    service.updatePerson(44, { location: 'Lilongwe' }).subscribe();
+    request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/');
+    expect(request.request.method).toBe('PATCH');
+    expect(request.request.body).toEqual({ location: 'Lilongwe' });
+    request.flush({ id: 44, ...person, location: 'Lilongwe', archived_at: null, created_at: '2026-08-31T00:00:00Z', updated_at: '2026-08-31T00:00:00Z' });
+
+    service.archivePerson(44).subscribe();
+    request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/archive/');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({});
+    request.flush({});
+
+    service.restorePerson(44).subscribe();
+    request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/restore/');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({});
+    request.flush({});
+  });
+
   it('sends the backend person overview request contract', () => {
     service.getPersonOverview(44).subscribe();
 
