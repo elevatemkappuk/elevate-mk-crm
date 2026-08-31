@@ -266,8 +266,20 @@ describe('PersonDetailPageComponent', () => {
   });
 
   async function stabilize(harness: RouterTestingHarness) {
+    flushPendingAuditHistoryRequests();
     await harness.fixture.whenStable();
     harness.detectChanges();
+  }
+
+  function flushPendingAuditHistoryRequests() {
+    for (const request of httpTesting.match((candidate) => candidate.url.includes('/audit-history/'))) {
+      request.flush({
+        count: 0,
+        next: null,
+        previous: null,
+        results: [],
+      });
+    }
   }
 
   function formatDateTime(value: string): string {
@@ -655,6 +667,12 @@ describe('PersonDetailPageComponent', () => {
           },
         ],
       });
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/audit-history/`).flush({
+      count: 0,
+      next: null,
+      previous: null,
+      results: [],
+    });
     await stabilize(harness);
 
     const text = harness.routeNativeElement?.textContent ?? '';
@@ -694,9 +712,142 @@ describe('PersonDetailPageComponent', () => {
 
     httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
     httpTesting.expectNone(`${apiBaseUrl}/people/12/notes/?record_state=active&page=1&page_size=25`);
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/audit-history/`).flush({
+      count: 0,
+      next: null,
+      previous: null,
+      results: [],
+    });
     await stabilize(harness);
 
     expect(harness.routeNativeElement?.textContent ?? '').not.toContain('Internal Notes');
+  });
+
+  it('renders audit history for CRM admin', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/notes/?record_state=active&page=1&page_size=25`).flush({
+      count: 0,
+      next: null,
+      previous: null,
+      results: [],
+    });
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/audit-history/`).flush({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: 901,
+          action: 'PROFESSIONAL_PROFILE_UPDATED',
+          description: 'Professional profile updated',
+          actor: { id: 1, email: 'admin@example.com' },
+          occurred_at: '2026-08-31T18:42:00Z',
+          entity_type: 'ProfessionalProfile',
+          changes: {},
+        },
+      ],
+    });
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent ?? '').toContain('Audit History');
+    expect(harness.routeNativeElement?.textContent ?? '').toContain('Professional profile updated');
+  });
+
+  it('renders audit history for CRM manager', async () => {
+    auth.setCurrentUser(managerUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/notes/?record_state=active&page=1&page_size=25`).flush({
+      count: 0,
+      next: null,
+      previous: null,
+      results: [],
+    });
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/audit-history/`).flush({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: 902,
+          action: 'INTERNAL_NOTE_UPDATED',
+          description: 'Internal note updated',
+          actor: { id: 2, email: 'manager@example.com' },
+          occurred_at: '2026-08-31T18:45:00Z',
+          entity_type: 'InternalNote',
+          changes: {},
+        },
+      ],
+    });
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent ?? '').toContain('Audit History');
+    expect(harness.routeNativeElement?.textContent ?? '').toContain('Internal note updated');
+  });
+
+  it('renders audit history for CRM viewer while notes remain hidden', async () => {
+    auth.setCurrentUser(viewerUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    httpTesting.expectNone(`${apiBaseUrl}/people/12/notes/?record_state=active&page=1&page_size=25`);
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/audit-history/`).flush({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: 903,
+          action: 'TAG_ASSIGNED',
+          description: 'Tag assigned',
+          actor: { id: 1, email: 'admin@example.com' },
+          occurred_at: '2026-08-31T18:35:00Z',
+          entity_type: 'PersonTag',
+          changes: {},
+        },
+      ],
+    });
+    await stabilize(harness);
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('Audit History');
+    expect(text).toContain('Tag assigned');
+    expect(text).not.toContain('Internal Notes');
+  });
+
+  it('renders audit history for archived people', async () => {
+    auth.setCurrentUser(viewerUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/13');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/13/overview/`).flush(formerMemberOverview);
+    httpTesting.expectOne(`${apiBaseUrl}/people/13/audit-history/`).flush({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: 904,
+          action: 'MEMBERSHIP_ENDED',
+          description: 'Membership ended',
+          actor: null,
+          occurred_at: '2026-08-31T17:15:00Z',
+          entity_type: 'Membership',
+          changes: {},
+        },
+      ],
+    });
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent ?? '').toContain('Audit History');
+    expect(harness.routeNativeElement?.textContent ?? '').toContain('Membership ended');
   });
 
   it('does not show tag write controls for archived people', async () => {

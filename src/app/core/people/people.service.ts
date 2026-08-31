@@ -16,6 +16,7 @@ import {
   MakeMembershipRequest,
   NotesListQuery,
   PaginatedResponse,
+  PaginatedPersonAuditHistoryResponse,
   PersonListItem,
   PersonMembership,
   PersonOverview,
@@ -68,6 +69,18 @@ export class PeopleService {
     });
 
     return this.http.get<PaginatedResponse<InternalNote>>(this.buildUrl(`/people/${personId}/notes/`), {
+      params,
+    });
+  }
+
+  getPersonAuditHistory(personId: number, page?: number): Observable<PaginatedPersonAuditHistoryResponse> {
+    let params = new HttpParams();
+
+    if (page && page > 1) {
+      params = params.set('page', String(page));
+    }
+
+    return this.http.get<PaginatedPersonAuditHistoryResponse>(this.buildUrl(`/people/${personId}/audit-history/`), {
       params,
     });
   }

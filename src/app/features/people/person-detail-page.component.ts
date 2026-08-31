@@ -7,7 +7,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { switchMap } from 'rxjs';
 import { distinctUntilChanged, map } from 'rxjs/operators';
 
-import { hasStaffRole } from '../../core/auth/auth-access';
+import { hasStaffCrmAccess, hasStaffRole } from '../../core/auth/auth-access';
 import { AuthService } from '../../core/auth/auth.service';
 import { PeopleService } from '../../core/people/people.service';
 import {
@@ -28,6 +28,7 @@ import { CrmSectionCardComponent } from '../../shared/ui/crm-section-card.compon
 import { DetailListComponent, DetailListItem } from '../../shared/ui/detail-list.component';
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
+import { PersonAuditHistorySectionComponent } from './person-audit-history-section.component';
 import { PersonNotesSectionComponent } from './person-notes-section.component';
 
 type ProfessionalProfileFormMode = 'create' | 'edit' | null;
@@ -57,6 +58,7 @@ interface AssignSkillFormValue {
     DetailListComponent,
     StateMessageComponent,
     StatusBadgeComponent,
+    PersonAuditHistorySectionComponent,
     PersonNotesSectionComponent,
   ],
   template: `
@@ -652,6 +654,10 @@ interface AssignSkillFormValue {
               [canMutateInternalNotes]="canMutateInternalNotes()"
             />
           }
+
+          @if (canAccessAuditHistory()) {
+            <app-person-audit-history-section [personId]="person()!.id" />
+          }
         </div>
       }
     </section>
@@ -1106,6 +1112,7 @@ export class PersonDetailPageComponent {
 
     return Boolean(person && !person.archived_at && this.canAccessInternalNotes());
   });
+  readonly canAccessAuditHistory = computed(() => hasStaffCrmAccess(this.auth.currentUser()));
   readonly availableSkills = computed<SkillSummary[]>(() => {
     const assignedSkillIds = new Set(this.skills().map((skill) => skill.id));
     return this.skillsCatalog().filter((skill) => !assignedSkillIds.has(skill.id));

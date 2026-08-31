@@ -169,6 +169,70 @@ describe('PeopleService', () => {
     });
   });
 
+  it('sends the backend person audit history first-page request contract without unnecessary query parameters', () => {
+    service.getPersonAuditHistory(44).subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/audit-history/');
+
+    expect(request.request.method).toBe('GET');
+    expect(request.request.withCredentials).toBe(true);
+    expect(request.request.params.keys().length).toBe(0);
+
+    request.flush({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: 12,
+          action: 'TAG_ASSIGNED',
+          description: 'Tag assigned',
+          actor: { id: 1, email: 'admin@example.com' },
+          occurred_at: '2026-08-31T18:35:00Z',
+          entity_type: 'PersonTag',
+          changes: {
+            is_active: {
+              from: null,
+              to: true,
+            },
+          },
+        },
+      ],
+    });
+  });
+
+  it('sends the backend person audit history requested page contract', () => {
+    service.getPersonAuditHistory(44, 2).subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/audit-history/?page=2');
+
+    expect(request.request.method).toBe('GET');
+    expect(request.request.withCredentials).toBe(true);
+    expect(request.request.params.get('page')).toBe('2');
+
+    request.flush({
+      count: 26,
+      next: null,
+      previous: 'http://localhost:8000/api/v1/people/44/audit-history/',
+      results: [
+        {
+          id: 7,
+          action: 'MEMBERSHIP_CREATED',
+          description: 'Membership created',
+          actor: null,
+          occurred_at: '2026-08-30T12:00:00Z',
+          entity_type: 'Membership',
+          changes: {
+            status: {
+              from: null,
+              to: 'ACTIVE',
+            },
+          },
+        },
+      ],
+    });
+  });
+
   it('sends the industries request contract', () => {
     service.getIndustries().subscribe();
 

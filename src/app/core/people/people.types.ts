@@ -82,6 +82,29 @@ export interface InternalNote {
   archive_reason: string;
 }
 
+export interface PersonAuditActor {
+  id: number;
+  email: string;
+}
+
+export type PersonAuditChangeValue = string | number | boolean | null;
+
+export interface PersonAuditFieldChange {
+  from?: PersonAuditChangeValue;
+  to?: PersonAuditChangeValue;
+  changed?: boolean;
+}
+
+export interface PersonAuditHistoryEvent {
+  id: number;
+  action: string;
+  description: string;
+  actor: PersonAuditActor | null;
+  occurred_at: string;
+  entity_type: string;
+  changes: Record<string, PersonAuditFieldChange | unknown>;
+}
+
 export type ProfessionalProfileCareerStage =
   | 'STUDENT'
   | 'EARLY_CAREER'
@@ -173,3 +196,5 @@ export interface PeopleListQueryState {
   page: number;
   page_size: PeoplePageSize;
 }
+
+export type PaginatedPersonAuditHistoryResponse = PaginatedResponse<PersonAuditHistoryEvent>;
