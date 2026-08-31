@@ -47,6 +47,12 @@ export interface Industry {
   slug: string;
 }
 
+export interface SkillSummary {
+  id: number;
+  name: string;
+  slug: string;
+}
+
 export type ProfessionalProfileCareerStage =
   | 'STUDENT'
   | 'EARLY_CAREER'
@@ -84,11 +90,16 @@ export interface EndMembershipRequest {
   ended_at: string;
 }
 
+export interface AssignSkillRequest {
+  skill: number;
+}
+
 export interface PersonOverview {
   person: PersonListItem;
   relationship: PersonRelationship;
   membership: PersonMembership | null;
   professional_profile: ProfessionalProfile | null;
+  skills: SkillSummary[];
 }
 
 export interface PaginatedResponse<T> {

@@ -85,6 +85,7 @@ const contactOverview = {
   },
   membership: null,
   professional_profile: null,
+  skills: [],
 };
 
 const activeMemberOverview = {
@@ -128,6 +129,18 @@ const activeMemberOverview = {
     created_at: '2026-08-01T08:00:00Z',
     updated_at: '2026-08-28T10:45:00Z',
   },
+  skills: [
+    {
+      id: 16,
+      name: 'Project Management',
+      slug: 'project-management',
+    },
+    {
+      id: 21,
+      name: 'Software Development',
+      slug: 'software-development',
+    },
+  ],
 };
 
 const formerMemberOverview = {
@@ -158,6 +171,7 @@ const formerMemberOverview = {
     updated_at: '2026-08-28T10:45:00Z',
   },
   professional_profile: null,
+  skills: [],
 };
 
 const contactOverviewWithProfile = {
@@ -172,6 +186,7 @@ const contactOverviewWithProfile = {
     created_at: '2026-08-30T09:30:00Z',
     updated_at: '2026-08-30T09:45:00Z',
   },
+  skills: [],
 };
 
 class MockAuthService {
@@ -262,6 +277,10 @@ describe('PersonDetailPageComponent', () => {
     return host?.querySelector('.professional-profile-form') as HTMLFormElement | null;
   }
 
+  function skillsForm(host: Element | null): HTMLFormElement | null {
+    return host?.querySelector('.skills-form') as HTMLFormElement | null;
+  }
+
   function routeComponent(harness: RouterTestingHarness): PersonDetailPageComponent {
     return harness.fixture.debugElement.query(By.directive(PersonDetailPageComponent)).componentInstance as PersonDetailPageComponent;
   }
@@ -287,6 +306,18 @@ describe('PersonDetailPageComponent', () => {
   function editProfessionalProfileButton(host: Element | null): HTMLButtonElement | undefined {
     return Array.from(host?.querySelectorAll('button') ?? []).find((button) =>
       button.textContent?.trim() === 'Edit',
+    ) as HTMLButtonElement | undefined;
+  }
+
+  function addSkillButton(host: Element | null): HTMLButtonElement | undefined {
+    return Array.from(host?.querySelectorAll('button') ?? []).find((button) =>
+      button.textContent?.trim() === 'Add Skill',
+    ) as HTMLButtonElement | undefined;
+  }
+
+  function removeSkillButton(host: Element | null, skillName: string): HTMLButtonElement | undefined {
+    return Array.from(host?.querySelectorAll('button') ?? []).find((button) =>
+      button.getAttribute('aria-label') === `Remove ${skillName}`,
     ) as HTMLButtonElement | undefined;
   }
 
@@ -347,6 +378,31 @@ describe('PersonDetailPageComponent', () => {
     const text = harness.routeNativeElement?.textContent ?? '';
     expect(text).toContain('Professional Profile');
     expect(text).toContain('No professional profile recorded.');
+  });
+
+  it('renders skills from the overview without showing slug metadata', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('Skills');
+    expect(text).toContain('Project Management');
+    expect(text).toContain('Software Development');
+    expect(text).not.toContain('project-management');
+    expect(text).not.toContain('software-development');
+  });
+
+  it('shows a no-skills state when the overview contains no skills', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent).toContain('No skills recorded.');
   });
 
   it('renders professional profile values with a human-readable career stage and safe LinkedIn link', async () => {
@@ -487,6 +543,268 @@ describe('PersonDetailPageComponent', () => {
 
     expect(addProfessionalProfileButton(harness.routeNativeElement)).toBeUndefined();
     expect(editProfessionalProfileButton(harness.routeNativeElement)).toBeUndefined();
+  });
+
+  it('shows add skill for CRM admin on a non-archived person', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    expect(addSkillButton(harness.routeNativeElement)?.textContent).toContain('Add Skill');
+  });
+
+  it('shows remove skill actions for CRM manager', async () => {
+    auth.setCurrentUser(managerUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    expect(removeSkillButton(harness.routeNativeElement, 'Project Management')?.getAttribute('aria-label')).toBe(
+      'Remove Project Management',
+    );
+  });
+
+  it('does not show skill write actions for CRM viewer', async () => {
+    auth.setCurrentUser(viewerUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    expect(addSkillButton(harness.routeNativeElement)).toBeUndefined();
+    expect(removeSkillButton(harness.routeNativeElement, 'Project Management')).toBeUndefined();
+  });
+
+  it('does not show skill write actions for archived people', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/13');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/13/overview/`).flush({
+      ...formerMemberOverview,
+      skills: [{ id: 16, name: 'Project Management', slug: 'project-management' }],
+    });
+    await stabilize(harness);
+
+    expect(addSkillButton(harness.routeNativeElement)).toBeUndefined();
+    expect(removeSkillButton(harness.routeNativeElement, 'Project Management')).toBeUndefined();
+  });
+
+  it('loads canonical skill options on demand and excludes already assigned skills', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    addSkillButton(harness.routeNativeElement)?.click();
+
+    const skillsRequest = httpTesting.expectOne(`${apiBaseUrl}/skills/`);
+    expect(skillsRequest.request.method).toBe('GET');
+    skillsRequest.flush([
+      { id: 16, name: 'Project Management', slug: 'project-management' },
+      { id: 21, name: 'Software Development', slug: 'software-development' },
+      { id: 22, name: 'Strategy', slug: 'strategy' },
+    ]);
+    await stabilize(harness);
+
+    const options = Array.from(skillsForm(harness.routeNativeElement)?.querySelectorAll('option') ?? []).map((option) =>
+      option.textContent?.trim(),
+    );
+
+    expect(options).toContain('Select a skill...');
+    expect(options).toContain('Strategy');
+    expect(options).not.toContain('Project Management');
+    expect(options).not.toContain('Software Development');
+  });
+
+  it('shows all-assigned state when no canonical skills remain selectable', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    addSkillButton(harness.routeNativeElement)?.click();
+    httpTesting.expectOne(`${apiBaseUrl}/skills/`).flush([
+      { id: 16, name: 'Project Management', slug: 'project-management' },
+      { id: 21, name: 'Software Development', slug: 'software-development' },
+    ]);
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent).toContain('All available skills are already assigned.');
+  });
+
+  it('shows inline skill taxonomy load error and prevents assignment submit', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    addSkillButton(harness.routeNativeElement)?.click();
+    httpTesting.expectOne(`${apiBaseUrl}/skills/`).flush({}, { status: 500, statusText: 'Server Error' });
+    await stabilize(harness);
+
+    skillsForm(harness.routeNativeElement)?.dispatchEvent(new Event('submit'));
+    await stabilize(harness);
+
+    httpTesting.expectNone(`${apiBaseUrl}/people/11/skills/`);
+    expect(harness.routeNativeElement?.textContent).toContain('Skill options could not be loaded right now. Try again.');
+  });
+
+  it('assigns a selected skill then refreshes overview and closes the form', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    addSkillButton(harness.routeNativeElement)?.click();
+    httpTesting.expectOne(`${apiBaseUrl}/skills/`).flush([
+      { id: 16, name: 'Project Management', slug: 'project-management' },
+      { id: 22, name: 'Strategy', slug: 'strategy' },
+    ]);
+    await stabilize(harness);
+
+    const component = routeComponent(harness);
+    component.assignSkillForm.setValue({ skill: '22' });
+
+    skillsForm(harness.routeNativeElement)?.dispatchEvent(new Event('submit'));
+
+    const assignRequest = httpTesting.expectOne(`${apiBaseUrl}/people/11/skills/`);
+    expect(assignRequest.request.method).toBe('POST');
+    expect(assignRequest.request.body).toEqual({ skill: 22 });
+    expect(Object.keys(assignRequest.request.body)).toEqual(['skill']);
+
+    assignRequest.flush({ id: 22, name: 'Strategy', slug: 'strategy' }, { status: 201, statusText: 'Created' });
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush({
+      ...contactOverview,
+      skills: [{ id: 22, name: 'Strategy', slug: 'strategy' }],
+    });
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent).toContain('Strategy');
+    expect(skillsForm(harness.routeNativeElement)).toBeNull();
+  });
+
+  it('prevents duplicate skill assignment submission while pending', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    addSkillButton(harness.routeNativeElement)?.click();
+    httpTesting.expectOne(`${apiBaseUrl}/skills/`).flush([
+      { id: 22, name: 'Strategy', slug: 'strategy' },
+    ]);
+    await stabilize(harness);
+
+    const component = routeComponent(harness);
+    component.assignSkillForm.setValue({ skill: '22' });
+
+    const form = skillsForm(harness.routeNativeElement);
+    form?.dispatchEvent(new Event('submit'));
+    form?.dispatchEvent(new Event('submit'));
+
+    expect(httpTesting.match(`${apiBaseUrl}/people/11/skills/`).length).toBe(1);
+  });
+
+  it('shows inline duplicate assignment conflict message', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    addSkillButton(harness.routeNativeElement)?.click();
+    httpTesting.expectOne(`${apiBaseUrl}/skills/`).flush([
+      { id: 22, name: 'Strategy', slug: 'strategy' },
+    ]);
+    await stabilize(harness);
+
+    const component = routeComponent(harness);
+    component.assignSkillForm.setValue({ skill: '22' });
+    skillsForm(harness.routeNativeElement)?.dispatchEvent(new Event('submit'));
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/skills/`).flush(
+      { detail: 'Conflict' },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent).toContain('This skill is already assigned.');
+  });
+
+  it('opens a skill removal confirmation and removes the selected skill after refresh', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    removeSkillButton(harness.routeNativeElement, 'Project Management')?.click();
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent).toContain('Remove Project Management?');
+
+    const removeConfirmButton = Array.from(harness.routeNativeElement?.querySelectorAll('button') ?? []).find((button) =>
+      button.textContent?.trim() === 'Remove',
+    ) as HTMLButtonElement | undefined;
+    removeConfirmButton?.click();
+
+    const deleteRequest = httpTesting.expectOne(`${apiBaseUrl}/people/12/skills/16/`);
+    expect(deleteRequest.request.method).toBe('DELETE');
+    deleteRequest.flush(null, { status: 204, statusText: 'No Content' });
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush({
+      ...activeMemberOverview,
+      skills: [{ id: 21, name: 'Software Development', slug: 'software-development' }],
+    });
+    await stabilize(harness);
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('Software Development');
+    expect(text).not.toContain('Project Management');
+  });
+
+  it('shows inline removal not-found message when the skill assignment is gone', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    removeSkillButton(harness.routeNativeElement, 'Project Management')?.click();
+    await stabilize(harness);
+
+    const removeConfirmButton = Array.from(harness.routeNativeElement?.querySelectorAll('button') ?? []).find((button) =>
+      button.textContent?.trim() === 'Remove',
+    ) as HTMLButtonElement | undefined;
+    removeConfirmButton?.click();
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/skills/16/`).flush(
+      { detail: 'Not found.' },
+      { status: 404, statusText: 'Not Found' },
+    );
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent).toContain('This skill assignment is no longer available.');
   });
 
   it('loads industry options and opens the create professional profile form', async () => {
@@ -1431,5 +1749,7 @@ describe('PersonDetailPageComponent', () => {
 
     httpTesting.expectNone(`${apiBaseUrl}/people/12/`);
     httpTesting.expectNone(`${apiBaseUrl}/people/12/membership/`);
+    httpTesting.expectNone(`${apiBaseUrl}/people/12/skills/`);
+    httpTesting.expectNone(`${apiBaseUrl}/skills/`);
   });
 });

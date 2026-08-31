@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 
 import { API_CONFIG } from '../http/api-config';
 import {
+  AssignSkillRequest,
   EndMembershipRequest,
   Industry,
   MakeMembershipRequest,
@@ -14,6 +15,7 @@ import {
   PeopleListQueryState,
   ProfessionalProfile,
   ProfessionalProfileWriteRequest,
+  SkillSummary,
 } from './people.types';
 
 @Injectable({ providedIn: 'root' })
@@ -51,6 +53,10 @@ export class PeopleService {
     return this.http.get<Industry[]>(this.buildUrl('/industries/'));
   }
 
+  getSkills(): Observable<SkillSummary[]> {
+    return this.http.get<SkillSummary[]>(this.buildUrl('/skills/'));
+  }
+
   createProfessionalProfile(
     personId: number,
     payload: ProfessionalProfileWriteRequest,
@@ -71,6 +77,15 @@ export class PeopleService {
 
   endMembership(personId: number, payload: EndMembershipRequest): Observable<PersonMembership> {
     return this.http.post<PersonMembership>(this.buildUrl(`/people/${personId}/membership/end/`), payload);
+  }
+
+  assignSkill(personId: number, skillId: number): Observable<SkillSummary> {
+    const payload: AssignSkillRequest = { skill: skillId };
+    return this.http.post<SkillSummary>(this.buildUrl(`/people/${personId}/skills/`), payload);
+  }
+
+  removeSkill(personId: number, skillId: number): Observable<void> {
+    return this.http.delete<void>(this.buildUrl(`/people/${personId}/skills/${skillId}/`));
   }
 
   private buildUrl(path: string): string {

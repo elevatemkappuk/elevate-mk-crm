@@ -112,6 +112,13 @@ describe('PeopleService', () => {
         updated_at: '2026-08-30T10:00:00Z',
       },
       professional_profile: null,
+      skills: [
+        {
+          id: 21,
+          name: 'Software Development',
+          slug: 'software-development',
+        },
+      ],
     });
   });
 
@@ -126,6 +133,20 @@ describe('PeopleService', () => {
     request.flush([
       { id: 1, name: 'Technology', slug: 'technology' },
       { id: 2, name: 'Engineering', slug: 'engineering' },
+    ]);
+  });
+
+  it('sends the skills request contract', () => {
+    service.getSkills().subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/skills/');
+
+    expect(request.request.method).toBe('GET');
+    expect(request.request.withCredentials).toBe(true);
+
+    request.flush([
+      { id: 16, name: 'Project Management', slug: 'project-management' },
+      { id: 21, name: 'Software Development', slug: 'software-development' },
     ]);
   });
 
@@ -238,6 +259,40 @@ describe('PeopleService', () => {
     expect(Object.keys(request.request.body)).toEqual(['joined_at', 'membership_source']);
 
     request.flush(null, { status: 201, statusText: 'Created' });
+  });
+
+  it('sends only skill for assign skill', () => {
+    service.assignSkill(44, 16).subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/skills/');
+
+    expect(request.request.method).toBe('POST');
+    expect(request.request.withCredentials).toBe(true);
+    expect(request.request.body).toEqual({
+      skill: 16,
+    });
+    expect(Object.keys(request.request.body)).toEqual(['skill']);
+
+    request.flush(
+      {
+        id: 16,
+        name: 'Project Management',
+        slug: 'project-management',
+      },
+      { status: 201, statusText: 'Created' },
+    );
+  });
+
+  it('sends the delete skill assignment request contract', () => {
+    service.removeSkill(44, 16).subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/skills/16/');
+
+    expect(request.request.method).toBe('DELETE');
+    expect(request.request.withCredentials).toBe(true);
+    expect(request.request.body).toBeNull();
+
+    request.flush(null, { status: 204, statusText: 'No Content' });
   });
 
   it('sends only ended_at for end membership', () => {

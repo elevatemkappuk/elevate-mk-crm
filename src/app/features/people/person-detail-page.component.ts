@@ -20,6 +20,7 @@ import {
   ProfessionalProfile,
   ProfessionalProfileCareerStage,
   ProfessionalProfileWriteRequest,
+  SkillSummary,
 } from '../../core/people/people.types';
 import { CrmSectionCardComponent } from '../../shared/ui/crm-section-card.component';
 import { DetailListComponent, DetailListItem } from '../../shared/ui/detail-list.component';
@@ -27,6 +28,7 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 
 type ProfessionalProfileFormMode = 'create' | 'edit' | null;
+type SkillRemovalState = number | null;
 
 interface ProfessionalProfileFormValue {
   job_title: string;
@@ -34,6 +36,10 @@ interface ProfessionalProfileFormValue {
   industry: string;
   career_stage: string;
   linkedin_url: string;
+}
+
+interface AssignSkillFormValue {
+  skill: string;
 }
 
 @Component({
@@ -211,6 +217,116 @@ interface ProfessionalProfileFormValue {
                   </button>
                 </div>
               </form>
+            }
+          </app-crm-section-card>
+
+          <app-crm-section-card title="Skills">
+            @if (skills().length) {
+              <div class="skills-list">
+                @for (skill of skills(); track skill.id) {
+                  <div class="skill-chip-row">
+                    <span class="skill-chip">{{ skill.name }}</span>
+
+                    @if (canManageSkills()) {
+                      <button
+                        type="button"
+                        class="skill-remove-button"
+                        [attr.aria-label]="'Remove ' + skill.name"
+                        [disabled]="removingSkillId() === skill.id"
+                        (click)="openSkillRemovalConfirmation(skill.id)"
+                      >
+                        Remove
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+
+              @if (pendingSkillRemoval()) {
+                <div class="inline-confirmation">
+                  <p class="form-note">Remove {{ pendingSkillRemoval()!.name }}?</p>
+                  <div class="form-actions">
+                    <button
+                      type="button"
+                      [disabled]="removingSkillId() === pendingSkillRemoval()!.id"
+                      (click)="confirmSkillRemoval()"
+                    >
+                      {{ removingSkillId() === pendingSkillRemoval()!.id ? 'Removing...' : 'Remove' }}
+                    </button>
+                    <button
+                      type="button"
+                      class="button-secondary"
+                      [disabled]="removingSkillId() === pendingSkillRemoval()!.id"
+                      (click)="cancelSkillRemoval()"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              }
+            } @else {
+              <div class="skills-empty-state">
+                <p class="empty-section-copy">No skills recorded.</p>
+              </div>
+            }
+
+            @if (showAddSkillForm()) {
+              <form class="skills-form" [formGroup]="assignSkillForm" (ngSubmit)="submitAssignSkill()">
+                @if (availableSkills().length) {
+                  <label>
+                    <span>Skill</span>
+                    <select formControlName="skill" [disabled]="skillsCatalogLoading() || !!skillsCatalogErrorMessage()">
+                      <option value="">Select a skill...</option>
+                      @for (skill of availableSkills(); track skill.id) {
+                        <option [value]="skill.id">{{ skill.name }}</option>
+                      }
+                    </select>
+                  </label>
+                } @else if (!skillsCatalogLoading() && !skillsCatalogErrorMessage()) {
+                  <p class="form-note">All available skills are already assigned.</p>
+                }
+
+                @if (skillsCatalogLoading()) {
+                  <p class="form-note">Loading skill options.</p>
+                }
+
+                @if (skillsCatalogErrorMessage()) {
+                  <p class="form-error">{{ skillsCatalogErrorMessage() }}</p>
+                }
+
+                @if (showAssignSkillRequiredError()) {
+                  <p class="form-error">Skill is required.</p>
+                }
+
+                @if (skillWriteErrorMessage()) {
+                  <p class="form-error">{{ skillWriteErrorMessage() }}</p>
+                }
+
+                <div class="form-actions">
+                  <button
+                    type="submit"
+                    [disabled]="
+                      assigningSkill() ||
+                      skillsCatalogLoading() ||
+                      !!skillsCatalogErrorMessage() ||
+                      !availableSkills().length
+                    "
+                  >
+                    {{ assigningSkill() ? 'Saving...' : 'Save' }}
+                  </button>
+                  <button type="button" class="button-secondary" [disabled]="assigningSkill()" (click)="cancelAddSkillForm()">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            } @else if (canManageSkills()) {
+              <div class="section-actions">
+                <button type="button" class="button-primary" (click)="openAddSkillForm()">Add Skill</button>
+              </div>
+            }
+
+            @if (skillWriteErrorMessage() && !showAddSkillForm()) {
+              <p class="form-error skills-inline-error">{{ skillWriteErrorMessage() }}</p>
             }
           </app-crm-section-card>
 
@@ -410,6 +526,7 @@ interface ProfessionalProfileFormValue {
     }
 
     .membership-empty-state,
+    .skills-empty-state,
     .professional-profile-empty-state {
       display: grid;
       gap: 0.9rem;
@@ -427,8 +544,65 @@ interface ProfessionalProfileFormValue {
       margin-top: 0.9rem;
     }
 
+    .skills-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+    }
+
+    .skill-chip-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .skill-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 2.1rem;
+      padding: 0.3rem 0.8rem;
+      border-radius: 999px;
+      background: #edf4f7;
+      border: 1px solid #cddbe4;
+      color: #1d3a4d;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+
+    .skill-remove-button {
+      border: 0;
+      background: transparent;
+      color: #1b546b;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0.2rem 0.1rem;
+    }
+
+    .skill-remove-button:disabled {
+      cursor: wait;
+      opacity: 0.7;
+    }
+
+    .skill-remove-button:hover,
+    .skill-remove-button:focus-visible {
+      text-decoration: underline;
+      outline: none;
+    }
+
+    .inline-confirmation {
+      display: grid;
+      gap: 0.8rem;
+      margin-top: 0.9rem;
+    }
+
+    .skills-inline-error {
+      margin-top: 0.9rem;
+    }
+
     .membership-form,
-    .professional-profile-form {
+    .professional-profile-form,
+    .skills-form {
       display: grid;
       gap: 0.85rem;
       width: min(100%, 32rem);
@@ -436,7 +610,8 @@ interface ProfessionalProfileFormValue {
     }
 
     .membership-form label,
-    .professional-profile-form label {
+    .professional-profile-form label,
+    .skills-form label {
       display: grid;
       gap: 0.4rem;
       color: #1c3344;
@@ -446,7 +621,9 @@ interface ProfessionalProfileFormValue {
     .membership-form input,
     .membership-form select,
     .professional-profile-form input,
-    .professional-profile-form select {
+    .professional-profile-form select,
+    .skills-form input,
+    .skills-form select {
       width: 100%;
       border: 1px solid #b7c7d4;
       border-radius: 0.85rem;
@@ -471,7 +648,8 @@ interface ProfessionalProfileFormValue {
     .button-primary,
     .button-secondary,
     .membership-form button,
-    .professional-profile-form button {
+    .professional-profile-form button,
+    .skills-form button {
       width: fit-content;
       border-radius: 999px;
       padding: 0.75rem 1.1rem;
@@ -482,7 +660,8 @@ interface ProfessionalProfileFormValue {
 
     .button-primary,
     .membership-form button[type='submit'],
-    .professional-profile-form button[type='submit'] {
+    .professional-profile-form button[type='submit'],
+    .skills-form button[type='submit'] {
       border: 0;
       color: #fff;
       background: linear-gradient(135deg, #16354a, #2f6f84);
@@ -497,7 +676,8 @@ interface ProfessionalProfileFormValue {
     .button-primary:disabled,
     .button-secondary:disabled,
     .membership-form button:disabled,
-    .professional-profile-form button:disabled {
+    .professional-profile-form button:disabled,
+    .skills-form button:disabled {
       cursor: wait;
       opacity: 0.7;
     }
@@ -546,9 +726,19 @@ export class PersonDetailPageComponent {
   readonly professionalProfileFormMode = signal<ProfessionalProfileFormMode>(null);
   readonly professionalProfileSubmitting = signal(false);
   readonly professionalProfileErrorMessage = signal<string | null>(null);
+  readonly skillsCatalog = signal<SkillSummary[]>([]);
+  readonly skillsCatalogLoaded = signal(false);
+  readonly skillsCatalogLoading = signal(false);
+  readonly skillsCatalogErrorMessage = signal<string | null>(null);
+  readonly showAddSkillForm = signal(false);
+  readonly assigningSkill = signal(false);
+  readonly skillWriteErrorMessage = signal<string | null>(null);
+  readonly confirmingSkillRemovalId = signal<SkillRemovalState>(null);
+  readonly removingSkillId = signal<SkillRemovalState>(null);
   readonly person = computed<PersonListItem | null>(() => this.overview()?.person ?? null);
   readonly membership = computed<PersonMembership | null>(() => this.overview()?.membership ?? null);
   readonly professionalProfile = computed<ProfessionalProfile | null>(() => this.overview()?.professional_profile ?? null);
+  readonly skills = computed<SkillSummary[]>(() => this.overview()?.skills ?? []);
   readonly relationshipLabel = computed(() => this.overview()?.relationship.label ?? 'Contact');
   readonly canMakeMember = computed(() => {
     const overview = this.overview();
@@ -593,6 +783,28 @@ export class PersonDetailPageComponent {
   readonly canAddProfessionalProfile = computed(() => this.canManageProfessionalProfile() && this.professionalProfile() === null);
   readonly canEditProfessionalProfile = computed(() => this.canManageProfessionalProfile() && this.professionalProfile() !== null);
   readonly showProfessionalProfileForm = computed(() => this.professionalProfileFormMode() !== null);
+  readonly canManageSkills = computed(() => {
+    const person = this.person();
+    const currentUser = this.auth.currentUser();
+
+    if (!person || person.archived_at) {
+      return false;
+    }
+
+    return hasStaffRole(currentUser, 'CRM_ADMIN') || hasStaffRole(currentUser, 'CRM_MANAGER');
+  });
+  readonly availableSkills = computed<SkillSummary[]>(() => {
+    const assignedSkillIds = new Set(this.skills().map((skill) => skill.id));
+    return this.skillsCatalog().filter((skill) => !assignedSkillIds.has(skill.id));
+  });
+  readonly pendingSkillRemoval = computed<SkillSummary | null>(() => {
+    const skillId = this.confirmingSkillRemovalId();
+    if (skillId === null) {
+      return null;
+    }
+
+    return this.skills().find((skill) => skill.id === skillId) ?? null;
+  });
   readonly professionalProfileLinkedInUrl = computed(() => {
     const value = this.professionalProfile()?.linkedin_url ?? '';
     return value.trim() ? value : null;
@@ -610,6 +822,9 @@ export class PersonDetailPageComponent {
     industry: [''],
     career_stage: [''],
     linkedin_url: [''],
+  });
+  readonly assignSkillForm = this.fb.nonNullable.group({
+    skill: ['', Validators.required],
   });
 
   readonly fullName = computed(() => {
@@ -750,6 +965,43 @@ export class PersonDetailPageComponent {
     this.professionalProfileForm.reset(getProfessionalProfileFormValue(this.professionalProfile()));
   }
 
+  openAddSkillForm(): void {
+    if (!this.canManageSkills()) {
+      return;
+    }
+
+    this.showAddSkillForm.set(true);
+    this.skillWriteErrorMessage.set(null);
+    this.confirmingSkillRemovalId.set(null);
+    this.assignSkillForm.reset({ skill: '' });
+    this.ensureSkillsCatalogLoaded();
+  }
+
+  cancelAddSkillForm(): void {
+    this.showAddSkillForm.set(false);
+    this.assigningSkill.set(false);
+    this.skillWriteErrorMessage.set(null);
+    this.assignSkillForm.reset({ skill: '' });
+  }
+
+  openSkillRemovalConfirmation(skillId: number): void {
+    if (!this.canManageSkills()) {
+      return;
+    }
+
+    this.showAddSkillForm.set(false);
+    this.assigningSkill.set(false);
+    this.skillWriteErrorMessage.set(null);
+    this.assignSkillForm.reset({ skill: '' });
+    this.confirmingSkillRemovalId.set(skillId);
+  }
+
+  cancelSkillRemoval(): void {
+    this.confirmingSkillRemovalId.set(null);
+    this.removingSkillId.set(null);
+    this.skillWriteErrorMessage.set(null);
+  }
+
   openMakeMemberForm(): void {
     this.showMakeMemberForm.set(true);
     this.makeMemberErrorMessage.set(null);
@@ -800,6 +1052,99 @@ export class PersonDetailPageComponent {
     const membership = this.membership();
     const endedAt = this.endMembershipForm.controls.ended_at.value;
     return Boolean(membership && endedAt && endedAt < membership.joined_at);
+  }
+
+  showAssignSkillRequiredError(): boolean {
+    return this.assignSkillForm.controls.skill.hasError('required') && this.assignSkillForm.touched;
+  }
+
+  submitAssignSkill(): void {
+    const person = this.person();
+    if (
+      !person ||
+      !this.canManageSkills() ||
+      !this.showAddSkillForm() ||
+      this.assigningSkill() ||
+      this.skillsCatalogLoading() ||
+      this.skillsCatalogErrorMessage()
+    ) {
+      return;
+    }
+
+    if (this.assignSkillForm.invalid) {
+      this.assignSkillForm.markAllAsTouched();
+      return;
+    }
+
+    const skillId = Number(this.assignSkillForm.getRawValue().skill);
+    if (!Number.isInteger(skillId) || skillId <= 0) {
+      this.assignSkillForm.markAllAsTouched();
+      return;
+    }
+
+    this.assigningSkill.set(true);
+    this.skillWriteErrorMessage.set(null);
+
+    let writeSucceeded = false;
+    this.peopleService
+      .assignSkill(person.id, skillId)
+      .pipe(
+        switchMap(() => {
+          writeSucceeded = true;
+          return this.peopleService.getPersonOverview(person.id);
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (overview) => {
+          this.overview.set(overview);
+          this.showAddSkillForm.set(false);
+          this.assignSkillForm.reset({ skill: '' });
+        },
+        error: (error: HttpErrorResponse) => {
+          this.skillWriteErrorMessage.set(formatAssignSkillError(error, writeSucceeded));
+          this.assigningSkill.set(false);
+        },
+        complete: () => {
+          this.assigningSkill.set(false);
+        },
+      });
+  }
+
+  confirmSkillRemoval(): void {
+    const person = this.person();
+    const skill = this.pendingSkillRemoval();
+
+    if (!person || !skill || !this.canManageSkills() || this.removingSkillId() === skill.id) {
+      return;
+    }
+
+    this.removingSkillId.set(skill.id);
+    this.skillWriteErrorMessage.set(null);
+
+    let writeSucceeded = false;
+    this.peopleService
+      .removeSkill(person.id, skill.id)
+      .pipe(
+        switchMap(() => {
+          writeSucceeded = true;
+          return this.peopleService.getPersonOverview(person.id);
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (overview) => {
+          this.overview.set(overview);
+          this.confirmingSkillRemovalId.set(null);
+        },
+        error: (error: HttpErrorResponse) => {
+          this.skillWriteErrorMessage.set(formatRemoveSkillError(error, writeSucceeded));
+          this.removingSkillId.set(null);
+        },
+        complete: () => {
+          this.removingSkillId.set(null);
+        },
+      });
   }
 
   submitProfessionalProfile(): void {
@@ -949,6 +1294,32 @@ export class PersonDetailPageComponent {
       });
   }
 
+  private ensureSkillsCatalogLoaded(): void {
+    if (this.skillsCatalogLoaded() || this.skillsCatalogLoading()) {
+      return;
+    }
+
+    this.skillsCatalogLoading.set(true);
+    this.skillsCatalogErrorMessage.set(null);
+
+    this.peopleService
+      .getSkills()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (skills) => {
+          this.skillsCatalog.set(skills);
+          this.skillsCatalogLoaded.set(true);
+        },
+        error: () => {
+          this.skillsCatalogLoading.set(false);
+          this.skillsCatalogErrorMessage.set('Skill options could not be loaded right now. Try again.');
+        },
+        complete: () => {
+          this.skillsCatalogLoading.set(false);
+        },
+      });
+  }
+
   private loadOverview(personId: number): void {
     this.loading.set(true);
     this.notFound.set(false);
@@ -958,6 +1329,12 @@ export class PersonDetailPageComponent {
     this.professionalProfileSubmitting.set(false);
     this.professionalProfileErrorMessage.set(null);
     this.professionalProfileForm.reset(getProfessionalProfileFormValue(null));
+    this.showAddSkillForm.set(false);
+    this.assigningSkill.set(false);
+    this.skillWriteErrorMessage.set(null);
+    this.confirmingSkillRemovalId.set(null);
+    this.removingSkillId.set(null);
+    this.assignSkillForm.reset({ skill: '' });
     this.showMakeMemberForm.set(false);
     this.makeMemberSubmitting.set(false);
     this.makeMemberErrorMessage.set(null);
@@ -1157,6 +1534,58 @@ function formatProfessionalProfileError(error: HttpErrorResponse): string {
   return 'Professional Profile could not be saved right now. Try again.';
 }
 
+function formatAssignSkillError(error: HttpErrorResponse, refreshFailedAfterSuccess: boolean): string {
+  if (refreshFailedAfterSuccess) {
+    return 'The skill change was saved, but the refreshed overview could not be loaded right now.';
+  }
+
+  if (error.status === 400 && error.error && typeof error.error === 'object' && !Array.isArray(error.error)) {
+    const entries = Object.entries(error.error as Record<string, unknown>)
+      .filter(([, value]) => Array.isArray(value) && value.length > 0)
+      .map(([field, value]) => `${getAssignSkillFieldLabel(field)}: ${String((value as unknown[])[0])}`);
+
+    if (entries.length > 0) {
+      return entries.join(' ');
+    }
+
+    return 'Skill details need to be corrected before this change can be saved.';
+  }
+
+  if (error.status === 403) {
+    return 'You no longer have permission to assign skills.';
+  }
+
+  if (error.status === 404) {
+    return 'This person record is no longer available in the CRM People domain.';
+  }
+
+  if (error.status === 409) {
+    return 'This skill is already assigned.';
+  }
+
+  return 'Skill could not be assigned right now. Try again.';
+}
+
+function formatRemoveSkillError(error: HttpErrorResponse, refreshFailedAfterSuccess: boolean): string {
+  if (refreshFailedAfterSuccess) {
+    return 'The skill change was saved, but the refreshed overview could not be loaded right now.';
+  }
+
+  if (error.status === 403) {
+    return 'You no longer have permission to remove skills.';
+  }
+
+  if (error.status === 404) {
+    return 'This skill assignment is no longer available.';
+  }
+
+  if (error.status === 409) {
+    return 'This person can no longer receive skill changes.';
+  }
+
+  return 'Skill could not be removed right now. Try again.';
+}
+
 function getMakeMemberFieldLabel(field: string): string {
   switch (field) {
     case 'joined_at':
@@ -1191,5 +1620,14 @@ function getProfessionalProfileFieldLabel(field: string): string {
       return 'LinkedIn URL';
     default:
       return 'Professional Profile';
+  }
+}
+
+function getAssignSkillFieldLabel(field: string): string {
+  switch (field) {
+    case 'skill':
+      return 'Skill';
+    default:
+      return 'Skill';
   }
 }
