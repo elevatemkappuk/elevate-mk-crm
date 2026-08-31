@@ -630,6 +630,39 @@ describe('PersonDetailPageComponent', () => {
     expect(removeTagButton(harness.routeNativeElement, 'VIP')?.textContent).toContain('Remove');
   });
 
+  it('renders internal notes for CRM admin and loads them separately from overview', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    httpTesting
+      .expectOne(`${apiBaseUrl}/people/12/notes/?record_state=active&page=1&page_size=25`)
+      .flush({
+        count: 1,
+        next: null,
+        previous: null,
+        results: [
+          {
+            id: 41,
+            body: 'Sensitive context for staff only.',
+            created_by: { id: 1, email: 'admin@example.com' },
+            created_at: '2026-08-31T10:00:00Z',
+            updated_at: '2026-08-31T10:30:00Z',
+            archived_at: null,
+            archived_by: null,
+            archive_reason: '',
+          },
+        ],
+      });
+    await stabilize(harness);
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('Internal Notes');
+    expect(text).toContain('Visible to CRM Admins and Managers only.');
+    expect(text).toContain('Sensitive context for staff only.');
+  });
+
   it('shows add and remove tag controls for CRM manager on a non-archived person', async () => {
     auth.setCurrentUser(managerUser);
     const harness = await RouterTestingHarness.create();
@@ -652,6 +685,18 @@ describe('PersonDetailPageComponent', () => {
 
     expect(addTagButton(harness.routeNativeElement)).toBeUndefined();
     expect(removeTagButton(harness.routeNativeElement, 'VIP')).toBeUndefined();
+  });
+
+  it('does not render internal notes or request notes data for CRM viewer', async () => {
+    auth.setCurrentUser(viewerUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    httpTesting.expectNone(`${apiBaseUrl}/people/12/notes/?record_state=active&page=1&page_size=25`);
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent ?? '').not.toContain('Internal Notes');
   });
 
   it('does not show tag write controls for archived people', async () => {

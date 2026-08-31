@@ -1,4 +1,5 @@
 export type PersonRecordState = 'active' | 'archived' | 'all';
+export type NoteRecordState = 'active' | 'archived' | 'all';
 
 export type PeopleOrdering =
   | 'first_name'
@@ -65,6 +66,22 @@ export interface TagSummary {
   slug: string;
 }
 
+export interface InternalNoteUserSummary {
+  id: number;
+  email: string;
+}
+
+export interface InternalNote {
+  id: number;
+  body: string;
+  created_by: InternalNoteUserSummary;
+  created_at: string;
+  updated_at: string;
+  archived_at: string | null;
+  archived_by: InternalNoteUserSummary | null;
+  archive_reason: string;
+}
+
 export type ProfessionalProfileCareerStage =
   | 'STUDENT'
   | 'EARLY_CAREER'
@@ -112,6 +129,24 @@ export interface AssignInterestRequest {
 
 export interface AssignTagRequest {
   tag: number;
+}
+
+export interface NotesListQuery {
+  page: number;
+  page_size: 25 | 50 | 100;
+  record_state: NoteRecordState;
+}
+
+export interface CreateInternalNoteRequest {
+  body: string;
+}
+
+export interface UpdateInternalNoteRequest {
+  body: string;
+}
+
+export interface ArchiveInternalNoteRequest {
+  archive_reason: string;
 }
 
 export interface PersonOverview {

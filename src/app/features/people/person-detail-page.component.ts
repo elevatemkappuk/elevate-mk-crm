@@ -28,6 +28,7 @@ import { CrmSectionCardComponent } from '../../shared/ui/crm-section-card.compon
 import { DetailListComponent, DetailListItem } from '../../shared/ui/detail-list.component';
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
+import { PersonNotesSectionComponent } from './person-notes-section.component';
 
 type ProfessionalProfileFormMode = 'create' | 'edit' | null;
 type SkillRemovalState = number | null;
@@ -56,6 +57,7 @@ interface AssignSkillFormValue {
     DetailListComponent,
     StateMessageComponent,
     StatusBadgeComponent,
+    PersonNotesSectionComponent,
   ],
   template: `
     <section class="detail-page">
@@ -643,6 +645,13 @@ interface AssignSkillFormValue {
               </div>
             }
           </app-crm-section-card>
+
+          @if (canAccessInternalNotes()) {
+            <app-person-notes-section
+              [personId]="person()!.id"
+              [canMutateInternalNotes]="canMutateInternalNotes()"
+            />
+          }
         </div>
       }
     </section>
@@ -1086,6 +1095,16 @@ export class PersonDetailPageComponent {
     }
 
     return hasStaffRole(currentUser, 'CRM_ADMIN') || hasStaffRole(currentUser, 'CRM_MANAGER');
+  });
+  readonly canAccessInternalNotes = computed(() => {
+    const currentUser = this.auth.currentUser();
+
+    return hasStaffRole(currentUser, 'CRM_ADMIN') || hasStaffRole(currentUser, 'CRM_MANAGER');
+  });
+  readonly canMutateInternalNotes = computed(() => {
+    const person = this.person();
+
+    return Boolean(person && !person.archived_at && this.canAccessInternalNotes());
   });
   readonly availableSkills = computed<SkillSummary[]>(() => {
     const assignedSkillIds = new Set(this.skills().map((skill) => skill.id));

@@ -4,13 +4,17 @@ import { Observable } from 'rxjs';
 
 import { API_CONFIG } from '../http/api-config';
 import {
+  ArchiveInternalNoteRequest,
   AssignTagRequest,
   AssignInterestRequest,
   AssignSkillRequest,
+  CreateInternalNoteRequest,
   EndMembershipRequest,
+  InternalNote,
   InterestSummary,
   Industry,
   MakeMembershipRequest,
+  NotesListQuery,
   PaginatedResponse,
   PersonListItem,
   PersonMembership,
@@ -20,6 +24,7 @@ import {
   ProfessionalProfileWriteRequest,
   SkillSummary,
   TagSummary,
+  UpdateInternalNoteRequest,
 } from './people.types';
 
 @Injectable({ providedIn: 'root' })
@@ -53,6 +58,20 @@ export class PeopleService {
     return this.http.get<PersonOverview>(this.buildUrl(`/people/${personId}/overview/`));
   }
 
+  getPersonNotes(personId: number, query: NotesListQuery): Observable<PaginatedResponse<InternalNote>> {
+    const params = new HttpParams({
+      fromObject: {
+        record_state: query.record_state,
+        page: String(query.page),
+        page_size: String(query.page_size),
+      },
+    });
+
+    return this.http.get<PaginatedResponse<InternalNote>>(this.buildUrl(`/people/${personId}/notes/`), {
+      params,
+    });
+  }
+
   getIndustries(): Observable<Industry[]> {
     return this.http.get<Industry[]>(this.buildUrl('/industries/'));
   }
@@ -81,6 +100,22 @@ export class PeopleService {
     payload: ProfessionalProfileWriteRequest,
   ): Observable<ProfessionalProfile> {
     return this.http.patch<ProfessionalProfile>(this.buildUrl(`/people/${personId}/professional-profile/`), payload);
+  }
+
+  createPersonNote(personId: number, payload: CreateInternalNoteRequest): Observable<InternalNote> {
+    return this.http.post<InternalNote>(this.buildUrl(`/people/${personId}/notes/`), payload);
+  }
+
+  updatePersonNote(personId: number, noteId: number, payload: UpdateInternalNoteRequest): Observable<InternalNote> {
+    return this.http.patch<InternalNote>(this.buildUrl(`/people/${personId}/notes/${noteId}/`), payload);
+  }
+
+  archivePersonNote(personId: number, noteId: number, payload: ArchiveInternalNoteRequest): Observable<InternalNote> {
+    return this.http.post<InternalNote>(this.buildUrl(`/people/${personId}/notes/${noteId}/archive/`), payload);
+  }
+
+  restorePersonNote(personId: number, noteId: number): Observable<InternalNote> {
+    return this.http.post<InternalNote>(this.buildUrl(`/people/${personId}/notes/${noteId}/restore/`), {});
   }
 
   makeMember(personId: number, payload: MakeMembershipRequest): Observable<void> {

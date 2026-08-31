@@ -136,6 +136,39 @@ describe('PeopleService', () => {
     });
   });
 
+  it('sends the backend notes list request contract', () => {
+    service
+      .getPersonNotes(44, {
+        record_state: 'archived',
+        page: 2,
+        page_size: 25,
+      })
+      .subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/notes/?record_state=archived&page=2&page_size=25');
+
+    expect(request.request.method).toBe('GET');
+    expect(request.request.withCredentials).toBe(true);
+
+    request.flush({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: 9,
+          body: 'Archived note',
+          created_by: { id: 1, email: 'admin@example.com' },
+          created_at: '2026-08-30T10:00:00Z',
+          updated_at: '2026-08-30T10:00:00Z',
+          archived_at: '2026-08-31T10:00:00Z',
+          archived_by: { id: 2, email: 'manager@example.com' },
+          archive_reason: 'Resolved',
+        },
+      ],
+    });
+  });
+
   it('sends the industries request contract', () => {
     service.getIndustries().subscribe();
 
@@ -301,6 +334,97 @@ describe('PeopleService', () => {
     expect(Object.keys(request.request.body)).toEqual(['joined_at', 'membership_source']);
 
     request.flush(null, { status: 201, statusText: 'Created' });
+  });
+
+  it('sends only body for create person note', () => {
+    service.createPersonNote(44, { body: 'Sensitive context.' }).subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/notes/');
+
+    expect(request.request.method).toBe('POST');
+    expect(request.request.withCredentials).toBe(true);
+    expect(request.request.body).toEqual({ body: 'Sensitive context.' });
+    expect(Object.keys(request.request.body)).toEqual(['body']);
+
+    request.flush(
+      {
+        id: 9,
+        body: 'Sensitive context.',
+        created_by: { id: 1, email: 'admin@example.com' },
+        created_at: '2026-08-31T10:00:00Z',
+        updated_at: '2026-08-31T10:00:00Z',
+        archived_at: null,
+        archived_by: null,
+        archive_reason: '',
+      },
+      { status: 201, statusText: 'Created' },
+    );
+  });
+
+  it('sends only body for update person note', () => {
+    service.updatePersonNote(44, 9, { body: 'Updated context.' }).subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/notes/9/');
+
+    expect(request.request.method).toBe('PATCH');
+    expect(request.request.withCredentials).toBe(true);
+    expect(request.request.body).toEqual({ body: 'Updated context.' });
+    expect(Object.keys(request.request.body)).toEqual(['body']);
+
+    request.flush({
+      id: 9,
+      body: 'Updated context.',
+      created_by: { id: 1, email: 'admin@example.com' },
+      created_at: '2026-08-31T10:00:00Z',
+      updated_at: '2026-08-31T10:30:00Z',
+      archived_at: null,
+      archived_by: null,
+      archive_reason: '',
+    });
+  });
+
+  it('sends archive_reason for archive person note', () => {
+    service.archivePersonNote(44, 9, { archive_reason: 'Superseded' }).subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/notes/9/archive/');
+
+    expect(request.request.method).toBe('POST');
+    expect(request.request.withCredentials).toBe(true);
+    expect(request.request.body).toEqual({ archive_reason: 'Superseded' });
+    expect(Object.keys(request.request.body)).toEqual(['archive_reason']);
+
+    request.flush({
+      id: 9,
+      body: 'Updated context.',
+      created_by: { id: 1, email: 'admin@example.com' },
+      created_at: '2026-08-31T10:00:00Z',
+      updated_at: '2026-08-31T11:00:00Z',
+      archived_at: '2026-08-31T11:00:00Z',
+      archived_by: { id: 2, email: 'manager@example.com' },
+      archive_reason: 'Superseded',
+    });
+  });
+
+  it('sends an empty payload for restore person note', () => {
+    service.restorePersonNote(44, 9).subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/notes/9/restore/');
+
+    expect(request.request.method).toBe('POST');
+    expect(request.request.withCredentials).toBe(true);
+    expect(request.request.body).toEqual({});
+    expect(Object.keys(request.request.body)).toEqual([]);
+
+    request.flush({
+      id: 9,
+      body: 'Updated context.',
+      created_by: { id: 1, email: 'admin@example.com' },
+      created_at: '2026-08-31T10:00:00Z',
+      updated_at: '2026-08-31T11:15:00Z',
+      archived_at: null,
+      archived_by: null,
+      archive_reason: '',
+    });
   });
 
   it('sends only skill for assign skill', () => {
