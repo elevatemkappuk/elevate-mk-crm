@@ -12,6 +12,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { PeopleService } from '../../core/people/people.service';
 import {
   EndMembershipRequest,
+  InterestSummary,
   Industry,
   MakeMembershipRequest,
   PersonListItem,
@@ -29,6 +30,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 
 type ProfessionalProfileFormMode = 'create' | 'edit' | null;
 type SkillRemovalState = number | null;
+type InterestRemovalState = number | null;
 
 interface ProfessionalProfileFormValue {
   job_title: string;
@@ -330,6 +332,124 @@ interface AssignSkillFormValue {
             }
           </app-crm-section-card>
 
+          <app-crm-section-card title="Interests">
+            @if (interests().length) {
+              <div class="skills-list">
+                @for (interest of interests(); track interest.id) {
+                  <div class="skill-chip-row">
+                    <span class="skill-chip">{{ interest.name }}</span>
+
+                    @if (canManageInterests()) {
+                      <button
+                        type="button"
+                        class="skill-remove-button"
+                        [attr.aria-label]="'Remove ' + interest.name"
+                        [disabled]="removingInterestId() === interest.id"
+                        (click)="openInterestRemovalConfirmation(interest.id)"
+                      >
+                        Remove
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+
+              @if (pendingInterestRemoval()) {
+                <div class="inline-confirmation">
+                  <p class="form-note">Remove {{ pendingInterestRemoval()!.name }}?</p>
+                  <div class="form-actions">
+                    <button
+                      type="button"
+                      [disabled]="removingInterestId() === pendingInterestRemoval()!.id"
+                      (click)="confirmInterestRemoval()"
+                    >
+                      {{ removingInterestId() === pendingInterestRemoval()!.id ? 'Removing...' : 'Remove' }}
+                    </button>
+                    <button
+                      type="button"
+                      class="button-secondary"
+                      [disabled]="removingInterestId() === pendingInterestRemoval()!.id"
+                      (click)="cancelInterestRemoval()"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              }
+            } @else {
+              <div class="skills-empty-state">
+                <p class="empty-section-copy">No interests recorded.</p>
+              </div>
+            }
+
+            @if (showAddInterestForm()) {
+              <form class="interests-form" [formGroup]="assignInterestForm" (ngSubmit)="submitAssignInterest()">
+                @if (availableInterests().length) {
+                  <label>
+                    <span>Interest</span>
+                    <select
+                      formControlName="interest"
+                      [disabled]="interestsCatalogLoading() || !!interestsCatalogErrorMessage()"
+                    >
+                      <option value="">Select an interest...</option>
+                      @for (interest of availableInterests(); track interest.id) {
+                        <option [value]="interest.id">{{ interest.name }}</option>
+                      }
+                    </select>
+                  </label>
+                } @else if (!interestsCatalogLoading() && !interestsCatalogErrorMessage()) {
+                  <p class="form-note">All available interests are already assigned.</p>
+                }
+
+                @if (interestsCatalogLoading()) {
+                  <p class="form-note">Loading interest options.</p>
+                }
+
+                @if (interestsCatalogErrorMessage()) {
+                  <p class="form-error">{{ interestsCatalogErrorMessage() }}</p>
+                }
+
+                @if (showAssignInterestRequiredError()) {
+                  <p class="form-error">Interest is required.</p>
+                }
+
+                @if (interestWriteErrorMessage()) {
+                  <p class="form-error">{{ interestWriteErrorMessage() }}</p>
+                }
+
+                <div class="form-actions">
+                  <button
+                    type="submit"
+                    [disabled]="
+                      assigningInterest() ||
+                      interestsCatalogLoading() ||
+                      !!interestsCatalogErrorMessage() ||
+                      !availableInterests().length
+                    "
+                  >
+                    {{ assigningInterest() ? 'Saving...' : 'Save' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="button-secondary"
+                    [disabled]="assigningInterest()"
+                    (click)="cancelAddInterestForm()"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            } @else if (canManageInterests()) {
+              <div class="section-actions">
+                <button type="button" class="button-primary" (click)="openAddInterestForm()">Add Interest</button>
+              </div>
+            }
+
+            @if (interestWriteErrorMessage() && !showAddInterestForm()) {
+              <p class="form-error skills-inline-error">{{ interestWriteErrorMessage() }}</p>
+            }
+          </app-crm-section-card>
+
           <app-crm-section-card title="Membership">
             @if (membershipDetails().length) {
               <app-detail-list [items]="membershipDetails()" />
@@ -602,7 +722,8 @@ interface AssignSkillFormValue {
 
     .membership-form,
     .professional-profile-form,
-    .skills-form {
+    .skills-form,
+    .interests-form {
       display: grid;
       gap: 0.85rem;
       width: min(100%, 32rem);
@@ -611,7 +732,8 @@ interface AssignSkillFormValue {
 
     .membership-form label,
     .professional-profile-form label,
-    .skills-form label {
+    .skills-form label,
+    .interests-form label {
       display: grid;
       gap: 0.4rem;
       color: #1c3344;
@@ -623,7 +745,9 @@ interface AssignSkillFormValue {
     .professional-profile-form input,
     .professional-profile-form select,
     .skills-form input,
-    .skills-form select {
+    .skills-form select,
+    .interests-form input,
+    .interests-form select {
       width: 100%;
       border: 1px solid #b7c7d4;
       border-radius: 0.85rem;
@@ -649,7 +773,8 @@ interface AssignSkillFormValue {
     .button-secondary,
     .membership-form button,
     .professional-profile-form button,
-    .skills-form button {
+    .skills-form button,
+    .interests-form button {
       width: fit-content;
       border-radius: 999px;
       padding: 0.75rem 1.1rem;
@@ -661,7 +786,8 @@ interface AssignSkillFormValue {
     .button-primary,
     .membership-form button[type='submit'],
     .professional-profile-form button[type='submit'],
-    .skills-form button[type='submit'] {
+    .skills-form button[type='submit'],
+    .interests-form button[type='submit'] {
       border: 0;
       color: #fff;
       background: linear-gradient(135deg, #16354a, #2f6f84);
@@ -677,7 +803,8 @@ interface AssignSkillFormValue {
     .button-secondary:disabled,
     .membership-form button:disabled,
     .professional-profile-form button:disabled,
-    .skills-form button:disabled {
+    .skills-form button:disabled,
+    .interests-form button:disabled {
       cursor: wait;
       opacity: 0.7;
     }
@@ -730,15 +857,25 @@ export class PersonDetailPageComponent {
   readonly skillsCatalogLoaded = signal(false);
   readonly skillsCatalogLoading = signal(false);
   readonly skillsCatalogErrorMessage = signal<string | null>(null);
+  readonly interestsCatalog = signal<InterestSummary[]>([]);
+  readonly interestsCatalogLoaded = signal(false);
+  readonly interestsCatalogLoading = signal(false);
+  readonly interestsCatalogErrorMessage = signal<string | null>(null);
   readonly showAddSkillForm = signal(false);
   readonly assigningSkill = signal(false);
   readonly skillWriteErrorMessage = signal<string | null>(null);
   readonly confirmingSkillRemovalId = signal<SkillRemovalState>(null);
   readonly removingSkillId = signal<SkillRemovalState>(null);
+  readonly showAddInterestForm = signal(false);
+  readonly assigningInterest = signal(false);
+  readonly interestWriteErrorMessage = signal<string | null>(null);
+  readonly confirmingInterestRemovalId = signal<InterestRemovalState>(null);
+  readonly removingInterestId = signal<InterestRemovalState>(null);
   readonly person = computed<PersonListItem | null>(() => this.overview()?.person ?? null);
   readonly membership = computed<PersonMembership | null>(() => this.overview()?.membership ?? null);
   readonly professionalProfile = computed<ProfessionalProfile | null>(() => this.overview()?.professional_profile ?? null);
   readonly skills = computed<SkillSummary[]>(() => this.overview()?.skills ?? []);
+  readonly interests = computed<InterestSummary[]>(() => this.overview()?.interests ?? []);
   readonly relationshipLabel = computed(() => this.overview()?.relationship.label ?? 'Contact');
   readonly canMakeMember = computed(() => {
     const overview = this.overview();
@@ -793,9 +930,23 @@ export class PersonDetailPageComponent {
 
     return hasStaffRole(currentUser, 'CRM_ADMIN') || hasStaffRole(currentUser, 'CRM_MANAGER');
   });
+  readonly canManageInterests = computed(() => {
+    const person = this.person();
+    const currentUser = this.auth.currentUser();
+
+    if (!person || person.archived_at) {
+      return false;
+    }
+
+    return hasStaffRole(currentUser, 'CRM_ADMIN') || hasStaffRole(currentUser, 'CRM_MANAGER');
+  });
   readonly availableSkills = computed<SkillSummary[]>(() => {
     const assignedSkillIds = new Set(this.skills().map((skill) => skill.id));
     return this.skillsCatalog().filter((skill) => !assignedSkillIds.has(skill.id));
+  });
+  readonly availableInterests = computed<InterestSummary[]>(() => {
+    const assignedInterestIds = new Set(this.interests().map((interest) => interest.id));
+    return this.interestsCatalog().filter((interest) => !assignedInterestIds.has(interest.id));
   });
   readonly pendingSkillRemoval = computed<SkillSummary | null>(() => {
     const skillId = this.confirmingSkillRemovalId();
@@ -804,6 +955,14 @@ export class PersonDetailPageComponent {
     }
 
     return this.skills().find((skill) => skill.id === skillId) ?? null;
+  });
+  readonly pendingInterestRemoval = computed<InterestSummary | null>(() => {
+    const interestId = this.confirmingInterestRemovalId();
+    if (interestId === null) {
+      return null;
+    }
+
+    return this.interests().find((interest) => interest.id === interestId) ?? null;
   });
   readonly professionalProfileLinkedInUrl = computed(() => {
     const value = this.professionalProfile()?.linkedin_url ?? '';
@@ -825,6 +984,9 @@ export class PersonDetailPageComponent {
   });
   readonly assignSkillForm = this.fb.nonNullable.group({
     skill: ['', Validators.required],
+  });
+  readonly assignInterestForm = this.fb.nonNullable.group({
+    interest: ['', Validators.required],
   });
 
   readonly fullName = computed(() => {
@@ -1002,6 +1164,43 @@ export class PersonDetailPageComponent {
     this.skillWriteErrorMessage.set(null);
   }
 
+  openAddInterestForm(): void {
+    if (!this.canManageInterests()) {
+      return;
+    }
+
+    this.showAddInterestForm.set(true);
+    this.interestWriteErrorMessage.set(null);
+    this.confirmingInterestRemovalId.set(null);
+    this.assignInterestForm.reset({ interest: '' });
+    this.ensureInterestsCatalogLoaded();
+  }
+
+  cancelAddInterestForm(): void {
+    this.showAddInterestForm.set(false);
+    this.assigningInterest.set(false);
+    this.interestWriteErrorMessage.set(null);
+    this.assignInterestForm.reset({ interest: '' });
+  }
+
+  openInterestRemovalConfirmation(interestId: number): void {
+    if (!this.canManageInterests()) {
+      return;
+    }
+
+    this.showAddInterestForm.set(false);
+    this.assigningInterest.set(false);
+    this.interestWriteErrorMessage.set(null);
+    this.assignInterestForm.reset({ interest: '' });
+    this.confirmingInterestRemovalId.set(interestId);
+  }
+
+  cancelInterestRemoval(): void {
+    this.confirmingInterestRemovalId.set(null);
+    this.removingInterestId.set(null);
+    this.interestWriteErrorMessage.set(null);
+  }
+
   openMakeMemberForm(): void {
     this.showMakeMemberForm.set(true);
     this.makeMemberErrorMessage.set(null);
@@ -1056,6 +1255,10 @@ export class PersonDetailPageComponent {
 
   showAssignSkillRequiredError(): boolean {
     return this.assignSkillForm.controls.skill.hasError('required') && this.assignSkillForm.touched;
+  }
+
+  showAssignInterestRequiredError(): boolean {
+    return this.assignInterestForm.controls.interest.hasError('required') && this.assignInterestForm.touched;
   }
 
   submitAssignSkill(): void {
@@ -1143,6 +1346,95 @@ export class PersonDetailPageComponent {
         },
         complete: () => {
           this.removingSkillId.set(null);
+        },
+      });
+  }
+
+  submitAssignInterest(): void {
+    const person = this.person();
+    if (
+      !person ||
+      !this.canManageInterests() ||
+      !this.showAddInterestForm() ||
+      this.assigningInterest() ||
+      this.interestsCatalogLoading() ||
+      this.interestsCatalogErrorMessage()
+    ) {
+      return;
+    }
+
+    if (this.assignInterestForm.invalid) {
+      this.assignInterestForm.markAllAsTouched();
+      return;
+    }
+
+    const interestId = Number(this.assignInterestForm.getRawValue().interest);
+    if (!Number.isInteger(interestId) || interestId <= 0) {
+      this.assignInterestForm.markAllAsTouched();
+      return;
+    }
+
+    this.assigningInterest.set(true);
+    this.interestWriteErrorMessage.set(null);
+
+    let writeSucceeded = false;
+    this.peopleService
+      .assignInterest(person.id, interestId)
+      .pipe(
+        switchMap(() => {
+          writeSucceeded = true;
+          return this.peopleService.getPersonOverview(person.id);
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (overview) => {
+          this.overview.set(overview);
+          this.showAddInterestForm.set(false);
+          this.assignInterestForm.reset({ interest: '' });
+        },
+        error: (error: HttpErrorResponse) => {
+          this.interestWriteErrorMessage.set(formatAssignInterestError(error, writeSucceeded));
+          this.assigningInterest.set(false);
+        },
+        complete: () => {
+          this.assigningInterest.set(false);
+        },
+      });
+  }
+
+  confirmInterestRemoval(): void {
+    const person = this.person();
+    const interest = this.pendingInterestRemoval();
+
+    if (!person || !interest || !this.canManageInterests() || this.removingInterestId() === interest.id) {
+      return;
+    }
+
+    this.removingInterestId.set(interest.id);
+    this.interestWriteErrorMessage.set(null);
+
+    let writeSucceeded = false;
+    this.peopleService
+      .removeInterest(person.id, interest.id)
+      .pipe(
+        switchMap(() => {
+          writeSucceeded = true;
+          return this.peopleService.getPersonOverview(person.id);
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (overview) => {
+          this.overview.set(overview);
+          this.confirmingInterestRemovalId.set(null);
+        },
+        error: (error: HttpErrorResponse) => {
+          this.interestWriteErrorMessage.set(formatRemoveInterestError(error, writeSucceeded));
+          this.removingInterestId.set(null);
+        },
+        complete: () => {
+          this.removingInterestId.set(null);
         },
       });
   }
@@ -1320,6 +1612,32 @@ export class PersonDetailPageComponent {
       });
   }
 
+  private ensureInterestsCatalogLoaded(): void {
+    if (this.interestsCatalogLoaded() || this.interestsCatalogLoading()) {
+      return;
+    }
+
+    this.interestsCatalogLoading.set(true);
+    this.interestsCatalogErrorMessage.set(null);
+
+    this.peopleService
+      .getInterests()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (interests) => {
+          this.interestsCatalog.set(interests);
+          this.interestsCatalogLoaded.set(true);
+        },
+        error: () => {
+          this.interestsCatalogLoading.set(false);
+          this.interestsCatalogErrorMessage.set('Interest options could not be loaded right now. Try again.');
+        },
+        complete: () => {
+          this.interestsCatalogLoading.set(false);
+        },
+      });
+  }
+
   private loadOverview(personId: number): void {
     this.loading.set(true);
     this.notFound.set(false);
@@ -1335,6 +1653,12 @@ export class PersonDetailPageComponent {
     this.confirmingSkillRemovalId.set(null);
     this.removingSkillId.set(null);
     this.assignSkillForm.reset({ skill: '' });
+    this.showAddInterestForm.set(false);
+    this.assigningInterest.set(false);
+    this.interestWriteErrorMessage.set(null);
+    this.confirmingInterestRemovalId.set(null);
+    this.removingInterestId.set(null);
+    this.assignInterestForm.reset({ interest: '' });
     this.showMakeMemberForm.set(false);
     this.makeMemberSubmitting.set(false);
     this.makeMemberErrorMessage.set(null);
@@ -1586,6 +1910,58 @@ function formatRemoveSkillError(error: HttpErrorResponse, refreshFailedAfterSucc
   return 'Skill could not be removed right now. Try again.';
 }
 
+function formatAssignInterestError(error: HttpErrorResponse, refreshFailedAfterSuccess: boolean): string {
+  if (refreshFailedAfterSuccess) {
+    return 'The interest change was saved, but the refreshed overview could not be loaded right now.';
+  }
+
+  if (error.status === 400 && error.error && typeof error.error === 'object' && !Array.isArray(error.error)) {
+    const entries = Object.entries(error.error as Record<string, unknown>)
+      .filter(([, value]) => Array.isArray(value) && value.length > 0)
+      .map(([field, value]) => `${getAssignInterestFieldLabel(field)}: ${String((value as unknown[])[0])}`);
+
+    if (entries.length > 0) {
+      return entries.join(' ');
+    }
+
+    return 'Interest details need to be corrected before this change can be saved.';
+  }
+
+  if (error.status === 403) {
+    return 'You no longer have permission to assign interests.';
+  }
+
+  if (error.status === 404) {
+    return 'This person record is no longer available in the CRM People domain.';
+  }
+
+  if (error.status === 409) {
+    return 'This interest is already assigned.';
+  }
+
+  return 'Interest could not be assigned right now. Try again.';
+}
+
+function formatRemoveInterestError(error: HttpErrorResponse, refreshFailedAfterSuccess: boolean): string {
+  if (refreshFailedAfterSuccess) {
+    return 'The interest change was saved, but the refreshed overview could not be loaded right now.';
+  }
+
+  if (error.status === 403) {
+    return 'You no longer have permission to remove interests.';
+  }
+
+  if (error.status === 404) {
+    return 'This interest assignment is no longer available.';
+  }
+
+  if (error.status === 409) {
+    return 'This person can no longer receive interest changes.';
+  }
+
+  return 'Interest could not be removed right now. Try again.';
+}
+
 function getMakeMemberFieldLabel(field: string): string {
   switch (field) {
     case 'joined_at':
@@ -1629,5 +2005,14 @@ function getAssignSkillFieldLabel(field: string): string {
       return 'Skill';
     default:
       return 'Skill';
+  }
+}
+
+function getAssignInterestFieldLabel(field: string): string {
+  switch (field) {
+    case 'interest':
+      return 'Interest';
+    default:
+      return 'Interest';
   }
 }

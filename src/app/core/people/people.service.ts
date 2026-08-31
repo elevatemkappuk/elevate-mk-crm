@@ -4,8 +4,10 @@ import { Observable } from 'rxjs';
 
 import { API_CONFIG } from '../http/api-config';
 import {
+  AssignInterestRequest,
   AssignSkillRequest,
   EndMembershipRequest,
+  InterestSummary,
   Industry,
   MakeMembershipRequest,
   PaginatedResponse,
@@ -57,6 +59,10 @@ export class PeopleService {
     return this.http.get<SkillSummary[]>(this.buildUrl('/skills/'));
   }
 
+  getInterests(): Observable<InterestSummary[]> {
+    return this.http.get<InterestSummary[]>(this.buildUrl('/interests/'));
+  }
+
   createProfessionalProfile(
     personId: number,
     payload: ProfessionalProfileWriteRequest,
@@ -84,8 +90,17 @@ export class PeopleService {
     return this.http.post<SkillSummary>(this.buildUrl(`/people/${personId}/skills/`), payload);
   }
 
+  assignInterest(personId: number, interestId: number): Observable<InterestSummary> {
+    const payload: AssignInterestRequest = { interest: interestId };
+    return this.http.post<InterestSummary>(this.buildUrl(`/people/${personId}/interests/`), payload);
+  }
+
   removeSkill(personId: number, skillId: number): Observable<void> {
     return this.http.delete<void>(this.buildUrl(`/people/${personId}/skills/${skillId}/`));
+  }
+
+  removeInterest(personId: number, interestId: number): Observable<void> {
+    return this.http.delete<void>(this.buildUrl(`/people/${personId}/interests/${interestId}/`));
   }
 
   private buildUrl(path: string): string {

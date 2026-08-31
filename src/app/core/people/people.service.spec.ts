@@ -119,6 +119,13 @@ describe('PeopleService', () => {
           slug: 'software-development',
         },
       ],
+      interests: [
+        {
+          id: 5,
+          name: 'Technology',
+          slug: 'technology',
+        },
+      ],
     });
   });
 
@@ -147,6 +154,20 @@ describe('PeopleService', () => {
     request.flush([
       { id: 16, name: 'Project Management', slug: 'project-management' },
       { id: 21, name: 'Software Development', slug: 'software-development' },
+    ]);
+  });
+
+  it('sends the interests request contract', () => {
+    service.getInterests().subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/interests/');
+
+    expect(request.request.method).toBe('GET');
+    expect(request.request.withCredentials).toBe(true);
+
+    request.flush([
+      { id: 5, name: 'Technology', slug: 'technology' },
+      { id: 13, name: 'Startups', slug: 'startups' },
     ]);
   });
 
@@ -283,10 +304,44 @@ describe('PeopleService', () => {
     );
   });
 
+  it('sends only interest for assign interest', () => {
+    service.assignInterest(44, 5).subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/interests/');
+
+    expect(request.request.method).toBe('POST');
+    expect(request.request.withCredentials).toBe(true);
+    expect(request.request.body).toEqual({
+      interest: 5,
+    });
+    expect(Object.keys(request.request.body)).toEqual(['interest']);
+
+    request.flush(
+      {
+        id: 5,
+        name: 'Technology',
+        slug: 'technology',
+      },
+      { status: 201, statusText: 'Created' },
+    );
+  });
+
   it('sends the delete skill assignment request contract', () => {
     service.removeSkill(44, 16).subscribe();
 
     const request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/skills/16/');
+
+    expect(request.request.method).toBe('DELETE');
+    expect(request.request.withCredentials).toBe(true);
+    expect(request.request.body).toBeNull();
+
+    request.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
+  it('sends the delete interest assignment request contract', () => {
+    service.removeInterest(44, 5).subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/interests/5/');
 
     expect(request.request.method).toBe('DELETE');
     expect(request.request.withCredentials).toBe(true);

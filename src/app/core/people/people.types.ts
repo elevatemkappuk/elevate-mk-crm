@@ -53,6 +53,12 @@ export interface SkillSummary {
   slug: string;
 }
 
+export interface InterestSummary {
+  id: number;
+  name: string;
+  slug: string;
+}
+
 export type ProfessionalProfileCareerStage =
   | 'STUDENT'
   | 'EARLY_CAREER'
@@ -94,12 +100,17 @@ export interface AssignSkillRequest {
   skill: number;
 }
 
+export interface AssignInterestRequest {
+  interest: number;
+}
+
 export interface PersonOverview {
   person: PersonListItem;
   relationship: PersonRelationship;
   membership: PersonMembership | null;
   professional_profile: ProfessionalProfile | null;
   skills: SkillSummary[];
+  interests: InterestSummary[];
 }
 
 export interface PaginatedResponse<T> {

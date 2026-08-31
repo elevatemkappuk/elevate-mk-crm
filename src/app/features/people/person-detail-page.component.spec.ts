@@ -86,6 +86,7 @@ const contactOverview = {
   membership: null,
   professional_profile: null,
   skills: [],
+  interests: [],
 };
 
 const activeMemberOverview = {
@@ -141,6 +142,18 @@ const activeMemberOverview = {
       slug: 'software-development',
     },
   ],
+  interests: [
+    {
+      id: 5,
+      name: 'Technology',
+      slug: 'technology',
+    },
+    {
+      id: 13,
+      name: 'Startups',
+      slug: 'startups',
+    },
+  ],
 };
 
 const formerMemberOverview = {
@@ -172,6 +185,7 @@ const formerMemberOverview = {
   },
   professional_profile: null,
   skills: [],
+  interests: [],
 };
 
 const contactOverviewWithProfile = {
@@ -187,6 +201,7 @@ const contactOverviewWithProfile = {
     updated_at: '2026-08-30T09:45:00Z',
   },
   skills: [],
+  interests: [],
 };
 
 class MockAuthService {
@@ -281,6 +296,10 @@ describe('PersonDetailPageComponent', () => {
     return host?.querySelector('.skills-form') as HTMLFormElement | null;
   }
 
+  function interestsForm(host: Element | null): HTMLFormElement | null {
+    return host?.querySelector('.interests-form') as HTMLFormElement | null;
+  }
+
   function routeComponent(harness: RouterTestingHarness): PersonDetailPageComponent {
     return harness.fixture.debugElement.query(By.directive(PersonDetailPageComponent)).componentInstance as PersonDetailPageComponent;
   }
@@ -315,9 +334,21 @@ describe('PersonDetailPageComponent', () => {
     ) as HTMLButtonElement | undefined;
   }
 
+  function addInterestButton(host: Element | null): HTMLButtonElement | undefined {
+    return Array.from(host?.querySelectorAll('button') ?? []).find((button) =>
+      button.textContent?.trim() === 'Add Interest',
+    ) as HTMLButtonElement | undefined;
+  }
+
   function removeSkillButton(host: Element | null, skillName: string): HTMLButtonElement | undefined {
     return Array.from(host?.querySelectorAll('button') ?? []).find((button) =>
       button.getAttribute('aria-label') === `Remove ${skillName}`,
+    ) as HTMLButtonElement | undefined;
+  }
+
+  function removeInterestButton(host: Element | null, interestName: string): HTMLButtonElement | undefined {
+    return Array.from(host?.querySelectorAll('button') ?? []).find((button) =>
+      button.getAttribute('aria-label') === `Remove ${interestName}`,
     ) as HTMLButtonElement | undefined;
   }
 
@@ -403,6 +434,31 @@ describe('PersonDetailPageComponent', () => {
     await stabilize(harness);
 
     expect(harness.routeNativeElement?.textContent).toContain('No skills recorded.');
+  });
+
+  it('renders interests from the overview without showing slug metadata', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('Interests');
+    expect(text).toContain('Technology');
+    expect(text).toContain('Startups');
+    expect(text).not.toContain('technology');
+    expect(text).not.toContain('startups');
+  });
+
+  it('shows a no-interests state when the overview contains no interests', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent).toContain('No interests recorded.');
   });
 
   it('renders professional profile values with a human-readable career stage and safe LinkedIn link', async () => {
@@ -596,6 +652,61 @@ describe('PersonDetailPageComponent', () => {
     expect(removeSkillButton(harness.routeNativeElement, 'Project Management')).toBeUndefined();
   });
 
+  it('shows add and remove interest actions for CRM admin on a non-archived person', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    expect(addInterestButton(harness.routeNativeElement)?.textContent).toContain('Add Interest');
+    expect(removeInterestButton(harness.routeNativeElement, 'Technology')?.getAttribute('aria-label')).toBe(
+      'Remove Technology',
+    );
+  });
+
+  it('shows add and remove interest actions for CRM manager on a non-archived person', async () => {
+    auth.setCurrentUser(managerUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    expect(addInterestButton(harness.routeNativeElement)?.textContent).toContain('Add Interest');
+    expect(removeInterestButton(harness.routeNativeElement, 'Technology')?.getAttribute('aria-label')).toBe(
+      'Remove Technology',
+    );
+  });
+
+  it('does not show interest write actions for CRM viewer', async () => {
+    auth.setCurrentUser(viewerUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    expect(addInterestButton(harness.routeNativeElement)).toBeUndefined();
+    expect(removeInterestButton(harness.routeNativeElement, 'Technology')).toBeUndefined();
+  });
+
+  it('does not show interest write actions for archived people', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/13');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/13/overview/`).flush({
+      ...formerMemberOverview,
+      interests: [{ id: 5, name: 'Technology', slug: 'technology' }],
+    });
+    await stabilize(harness);
+
+    expect(addInterestButton(harness.routeNativeElement)).toBeUndefined();
+    expect(removeInterestButton(harness.routeNativeElement, 'Technology')).toBeUndefined();
+  });
+
   it('loads canonical skill options on demand and excludes already assigned skills', async () => {
     auth.setCurrentUser(adminUser);
     const harness = await RouterTestingHarness.create();
@@ -662,6 +773,72 @@ describe('PersonDetailPageComponent', () => {
     expect(harness.routeNativeElement?.textContent).toContain('Skill options could not be loaded right now. Try again.');
   });
 
+  it('loads canonical interest options on demand and excludes already assigned interests', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    addInterestButton(harness.routeNativeElement)?.click();
+
+    const interestsRequest = httpTesting.expectOne(`${apiBaseUrl}/interests/`);
+    expect(interestsRequest.request.method).toBe('GET');
+    interestsRequest.flush([
+      { id: 5, name: 'Technology', slug: 'technology' },
+      { id: 13, name: 'Startups', slug: 'startups' },
+      { id: 18, name: 'Partnerships', slug: 'partnerships' },
+    ]);
+    await stabilize(harness);
+
+    const options = Array.from(interestsForm(harness.routeNativeElement)?.querySelectorAll('option') ?? []).map((option) =>
+      option.textContent?.trim(),
+    );
+
+    expect(options).toContain('Select an interest...');
+    expect(options).toContain('Partnerships');
+    expect(options).not.toContain('Technology');
+    expect(options).not.toContain('Startups');
+  });
+
+  it('shows all-assigned state when no canonical interests remain selectable', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    addInterestButton(harness.routeNativeElement)?.click();
+    httpTesting.expectOne(`${apiBaseUrl}/interests/`).flush([
+      { id: 5, name: 'Technology', slug: 'technology' },
+      { id: 13, name: 'Startups', slug: 'startups' },
+    ]);
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent).toContain('All available interests are already assigned.');
+  });
+
+  it('shows inline interest taxonomy load error and prevents assignment submit', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    addInterestButton(harness.routeNativeElement)?.click();
+    httpTesting.expectOne(`${apiBaseUrl}/interests/`).flush({}, { status: 500, statusText: 'Server Error' });
+    await stabilize(harness);
+
+    interestsForm(harness.routeNativeElement)?.dispatchEvent(new Event('submit'));
+    await stabilize(harness);
+
+    httpTesting.expectNone(`${apiBaseUrl}/people/11/interests/`);
+    expect(harness.routeNativeElement?.textContent).toContain('Interest options could not be loaded right now. Try again.');
+  });
+
   it('assigns a selected skill then refreshes overview and closes the form', async () => {
     auth.setCurrentUser(adminUser);
     const harness = await RouterTestingHarness.create();
@@ -720,6 +897,69 @@ describe('PersonDetailPageComponent', () => {
     form?.dispatchEvent(new Event('submit'));
 
     expect(httpTesting.match(`${apiBaseUrl}/people/11/skills/`).length).toBe(1);
+  });
+
+  it('assigns a selected interest then refreshes overview and closes the form', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    addInterestButton(harness.routeNativeElement)?.click();
+    httpTesting.expectOne(`${apiBaseUrl}/interests/`).flush([
+      { id: 5, name: 'Technology', slug: 'technology' },
+      { id: 18, name: 'Partnerships', slug: 'partnerships' },
+    ]);
+    await stabilize(harness);
+
+    const component = routeComponent(harness);
+    component.assignInterestForm.setValue({ interest: '18' });
+
+    interestsForm(harness.routeNativeElement)?.dispatchEvent(new Event('submit'));
+
+    const assignRequest = httpTesting.expectOne(`${apiBaseUrl}/people/11/interests/`);
+    expect(assignRequest.request.method).toBe('POST');
+    expect(assignRequest.request.body).toEqual({ interest: 18 });
+    expect(Object.keys(assignRequest.request.body)).toEqual(['interest']);
+
+    assignRequest.flush({ id: 18, name: 'Partnerships', slug: 'partnerships' }, { status: 201, statusText: 'Created' });
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush({
+      ...contactOverview,
+      interests: [{ id: 18, name: 'Partnerships', slug: 'partnerships' }],
+    });
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent).toContain('Partnerships');
+    expect(interestsForm(harness.routeNativeElement)).toBeNull();
+  });
+
+  it('shows a useful duplicate message for 409 interest assignment errors', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    addInterestButton(harness.routeNativeElement)?.click();
+    httpTesting.expectOne(`${apiBaseUrl}/interests/`).flush([
+      { id: 5, name: 'Technology', slug: 'technology' },
+    ]);
+    await stabilize(harness);
+
+    const component = routeComponent(harness);
+    component.assignInterestForm.setValue({ interest: '5' });
+    interestsForm(harness.routeNativeElement)?.dispatchEvent(new Event('submit'));
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/interests/`).flush(
+      { detail: 'Conflict' },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent).toContain('This interest is already assigned.');
   });
 
   it('shows inline duplicate assignment conflict message', async () => {
@@ -805,6 +1045,64 @@ describe('PersonDetailPageComponent', () => {
     await stabilize(harness);
 
     expect(harness.routeNativeElement?.textContent).toContain('This skill assignment is no longer available.');
+  });
+
+  it('opens an interest removal confirmation and removes the selected interest after refresh', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    removeInterestButton(harness.routeNativeElement, 'Technology')?.click();
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent).toContain('Remove Technology?');
+
+    const removeConfirmButton = Array.from(harness.routeNativeElement?.querySelectorAll('button') ?? []).find((button) =>
+      button.textContent?.trim() === 'Remove',
+    ) as HTMLButtonElement | undefined;
+    removeConfirmButton?.click();
+
+    const deleteRequest = httpTesting.expectOne(`${apiBaseUrl}/people/12/interests/5/`);
+    expect(deleteRequest.request.method).toBe('DELETE');
+    deleteRequest.flush(null, { status: 204, statusText: 'No Content' });
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush({
+      ...activeMemberOverview,
+      interests: [{ id: 13, name: 'Startups', slug: 'startups' }],
+    });
+    await stabilize(harness);
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('Startups');
+    expect(text).not.toContain('Remove Technology?');
+  });
+
+  it('shows inline removal not-found message when the interest assignment is gone', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    removeInterestButton(harness.routeNativeElement, 'Technology')?.click();
+    await stabilize(harness);
+
+    const removeConfirmButton = Array.from(harness.routeNativeElement?.querySelectorAll('button') ?? []).find((button) =>
+      button.textContent?.trim() === 'Remove',
+    ) as HTMLButtonElement | undefined;
+    removeConfirmButton?.click();
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/interests/5/`).flush(
+      { detail: 'Not found.' },
+      { status: 404, statusText: 'Not Found' },
+    );
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent).toContain('This interest assignment is no longer available.');
   });
 
   it('loads industry options and opens the create professional profile form', async () => {
@@ -1751,5 +2049,7 @@ describe('PersonDetailPageComponent', () => {
     httpTesting.expectNone(`${apiBaseUrl}/people/12/membership/`);
     httpTesting.expectNone(`${apiBaseUrl}/people/12/skills/`);
     httpTesting.expectNone(`${apiBaseUrl}/skills/`);
+    httpTesting.expectNone(`${apiBaseUrl}/people/12/interests/`);
+    httpTesting.expectNone(`${apiBaseUrl}/interests/`);
   });
 });
