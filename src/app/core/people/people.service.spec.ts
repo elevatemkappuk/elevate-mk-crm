@@ -126,6 +126,13 @@ describe('PeopleService', () => {
           slug: 'technology',
         },
       ],
+      tags: [
+        {
+          id: 8,
+          name: 'VIP',
+          slug: 'vip',
+        },
+      ],
     });
   });
 
@@ -168,6 +175,20 @@ describe('PeopleService', () => {
     request.flush([
       { id: 5, name: 'Technology', slug: 'technology' },
       { id: 13, name: 'Startups', slug: 'startups' },
+    ]);
+  });
+
+  it('sends the tags request contract', () => {
+    service.getTags().subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/tags/');
+
+    expect(request.request.method).toBe('GET');
+    expect(request.request.withCredentials).toBe(true);
+
+    request.flush([
+      { id: 8, name: 'VIP', slug: 'vip' },
+      { id: 6, name: 'Follow-up Required', slug: 'follow-up-required' },
     ]);
   });
 
@@ -326,6 +347,28 @@ describe('PeopleService', () => {
     );
   });
 
+  it('sends only tag for assign tag', () => {
+    service.assignTag(44, 8).subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/tags/');
+
+    expect(request.request.method).toBe('POST');
+    expect(request.request.withCredentials).toBe(true);
+    expect(request.request.body).toEqual({
+      tag: 8,
+    });
+    expect(Object.keys(request.request.body)).toEqual(['tag']);
+
+    request.flush(
+      {
+        id: 8,
+        name: 'VIP',
+        slug: 'vip',
+      },
+      { status: 201, statusText: 'Created' },
+    );
+  });
+
   it('sends the delete skill assignment request contract', () => {
     service.removeSkill(44, 16).subscribe();
 
@@ -344,6 +387,18 @@ describe('PeopleService', () => {
     const request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/interests/5/');
 
     expect(request.request.method).toBe('DELETE');
+    expect(request.request.withCredentials).toBe(true);
+    expect(request.request.body).toBeNull();
+
+    request.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
+  it('sends the lifecycle-aware remove tag request contract', () => {
+    service.removeTag(44, 8).subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/tags/8/remove/');
+
+    expect(request.request.method).toBe('POST');
     expect(request.request.withCredentials).toBe(true);
     expect(request.request.body).toBeNull();
 

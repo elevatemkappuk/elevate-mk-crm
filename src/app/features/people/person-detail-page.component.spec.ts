@@ -87,6 +87,7 @@ const contactOverview = {
   professional_profile: null,
   skills: [],
   interests: [],
+  tags: [],
 };
 
 const activeMemberOverview = {
@@ -154,6 +155,18 @@ const activeMemberOverview = {
       slug: 'startups',
     },
   ],
+  tags: [
+    {
+      id: 8,
+      name: 'VIP',
+      slug: 'vip',
+    },
+    {
+      id: 6,
+      name: 'Follow-up Required',
+      slug: 'follow-up-required',
+    },
+  ],
 };
 
 const formerMemberOverview = {
@@ -186,6 +199,7 @@ const formerMemberOverview = {
   professional_profile: null,
   skills: [],
   interests: [],
+  tags: [],
 };
 
 const contactOverviewWithProfile = {
@@ -300,6 +314,10 @@ describe('PersonDetailPageComponent', () => {
     return host?.querySelector('.interests-form') as HTMLFormElement | null;
   }
 
+  function tagsForm(host: Element | null): HTMLFormElement | null {
+    return host?.querySelector('.tags-form') as HTMLFormElement | null;
+  }
+
   function routeComponent(harness: RouterTestingHarness): PersonDetailPageComponent {
     return harness.fixture.debugElement.query(By.directive(PersonDetailPageComponent)).componentInstance as PersonDetailPageComponent;
   }
@@ -340,6 +358,12 @@ describe('PersonDetailPageComponent', () => {
     ) as HTMLButtonElement | undefined;
   }
 
+  function addTagButton(host: Element | null): HTMLButtonElement | undefined {
+    return Array.from(host?.querySelectorAll('button') ?? []).find((button) =>
+      button.textContent?.trim() === 'Add Tag',
+    ) as HTMLButtonElement | undefined;
+  }
+
   function removeSkillButton(host: Element | null, skillName: string): HTMLButtonElement | undefined {
     return Array.from(host?.querySelectorAll('button') ?? []).find((button) =>
       button.getAttribute('aria-label') === `Remove ${skillName}`,
@@ -349,6 +373,12 @@ describe('PersonDetailPageComponent', () => {
   function removeInterestButton(host: Element | null, interestName: string): HTMLButtonElement | undefined {
     return Array.from(host?.querySelectorAll('button') ?? []).find((button) =>
       button.getAttribute('aria-label') === `Remove ${interestName}`,
+    ) as HTMLButtonElement | undefined;
+  }
+
+  function removeTagButton(host: Element | null, tagName: string): HTMLButtonElement | undefined {
+    return Array.from(host?.querySelectorAll('button') ?? []).find((button) =>
+      button.getAttribute('aria-label') === `Remove ${tagName}`,
     ) as HTMLButtonElement | undefined;
   }
 
@@ -461,6 +491,33 @@ describe('PersonDetailPageComponent', () => {
     expect(harness.routeNativeElement?.textContent).toContain('No interests recorded.');
   });
 
+  it('renders tags from the overview without showing slug metadata and with internal classification context', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('Tags');
+    expect(text).toContain('Internal CRM classification.');
+    expect(text).toContain('VIP');
+    expect(text).toContain('Follow-up Required');
+    expect(text).not.toContain('follow-up-required');
+    expect(text).not.toContain('assigned_at');
+    expect(text).not.toContain('removed_at');
+  });
+
+  it('shows a no-tags state when the overview contains no tags', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent).toContain('No tags recorded.');
+  });
+
   it('renders professional profile values with a human-readable career stage and safe LinkedIn link', async () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/people/12');
@@ -559,6 +616,54 @@ describe('PersonDetailPageComponent', () => {
     await stabilize(harness);
 
     expect(editProfessionalProfileButton(harness.routeNativeElement)?.textContent).toContain('Edit');
+  });
+
+  it('shows add and remove tag controls for CRM admin on a non-archived person', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    expect(addTagButton(harness.routeNativeElement)?.textContent).toContain('Add Tag');
+    expect(removeTagButton(harness.routeNativeElement, 'VIP')?.textContent).toContain('Remove');
+  });
+
+  it('shows add and remove tag controls for CRM manager on a non-archived person', async () => {
+    auth.setCurrentUser(managerUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    expect(addTagButton(harness.routeNativeElement)?.textContent).toContain('Add Tag');
+    expect(removeTagButton(harness.routeNativeElement, 'VIP')?.textContent).toContain('Remove');
+  });
+
+  it('does not show tag write controls for CRM viewer', async () => {
+    auth.setCurrentUser(viewerUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    expect(addTagButton(harness.routeNativeElement)).toBeUndefined();
+    expect(removeTagButton(harness.routeNativeElement, 'VIP')).toBeUndefined();
+  });
+
+  it('does not show tag write controls for archived people', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/13');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/13/overview/`).flush(formerMemberOverview);
+    await stabilize(harness);
+
+    expect(addTagButton(harness.routeNativeElement)).toBeUndefined();
+    expect(removeTagButton(harness.routeNativeElement, 'VIP')).toBeUndefined();
   });
 
   it('does not show professional profile write actions for CRM viewer', async () => {
@@ -1971,6 +2076,276 @@ describe('PersonDetailPageComponent', () => {
     expect(text).toContain('Kwame Mensah');
   });
 
+  it('loads canonical tags on demand and filters already assigned tags', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+    httpTesting.expectNone(`${apiBaseUrl}/tags/`);
+
+    addTagButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    httpTesting.expectOne(`${apiBaseUrl}/tags/`).flush([
+      { id: 8, name: 'VIP', slug: 'vip' },
+      { id: 6, name: 'Follow-up Required', slug: 'follow-up-required' },
+      { id: 2, name: 'Potential Mentor', slug: 'potential-mentor' },
+    ]);
+    await stabilize(harness);
+
+    const form = tagsForm(harness.routeNativeElement);
+    const options = Array.from(form?.querySelectorAll('option') ?? []).map((option) => option.textContent?.trim());
+
+    expect(options).toContain('Select a tag...');
+    expect(options).toContain('Potential Mentor');
+    expect(options).not.toContain('VIP');
+    expect(options).not.toContain('Follow-up Required');
+  });
+
+  it('shows an all-assigned tag message when every active canonical tag is already assigned', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    addTagButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    httpTesting.expectOne(`${apiBaseUrl}/tags/`).flush([
+      { id: 8, name: 'VIP', slug: 'vip' },
+      { id: 6, name: 'Follow-up Required', slug: 'follow-up-required' },
+    ]);
+    await stabilize(harness);
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('All available tags are already assigned.');
+    expect(tagsForm(harness.routeNativeElement)?.querySelector('select')).toBeNull();
+  });
+
+  it('shows an inline tag catalog load error and prevents invalid submission', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    addTagButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    httpTesting.expectOne(`${apiBaseUrl}/tags/`).flush({}, { status: 500, statusText: 'Server Error' });
+    await stabilize(harness);
+
+    tagsForm(harness.routeNativeElement)?.dispatchEvent(new Event('submit'));
+    await stabilize(harness);
+
+    httpTesting.expectNone(`${apiBaseUrl}/people/11/tags/`);
+    expect(harness.routeNativeElement?.textContent).toContain('Tag options could not be loaded right now. Try again.');
+  });
+
+  it('assigns a selected tag on 201 then refreshes overview and closes the form', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    addTagButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    httpTesting.expectOne(`${apiBaseUrl}/tags/`).flush([
+      { id: 8, name: 'VIP', slug: 'vip' },
+      { id: 6, name: 'Follow-up Required', slug: 'follow-up-required' },
+    ]);
+    await stabilize(harness);
+
+    const form = tagsForm(harness.routeNativeElement);
+    const select = form?.querySelector('select') as HTMLSelectElement;
+    select.value = '8';
+    select.dispatchEvent(new Event('change'));
+
+    form?.dispatchEvent(new Event('submit'));
+
+    const request = httpTesting.expectOne(`${apiBaseUrl}/people/11/tags/`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ tag: 8 });
+    expect(Object.keys(request.request.body)).toEqual(['tag']);
+
+    request.flush({ id: 8, name: 'VIP', slug: 'vip' }, { status: 201, statusText: 'Created' });
+
+    expect(tagsForm(harness.routeNativeElement)).not.toBeNull();
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush({
+      ...contactOverview,
+      tags: [{ id: 8, name: 'VIP', slug: 'vip' }],
+    });
+    await stabilize(harness);
+
+    expect(tagsForm(harness.routeNativeElement)).toBeNull();
+    expect(harness.routeNativeElement?.textContent).toContain('VIP');
+  });
+
+  it('treats a 200 tag assignment reactivation as success and refreshes overview before closing', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    addTagButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    httpTesting.expectOne(`${apiBaseUrl}/tags/`).flush([{ id: 6, name: 'Follow-up Required', slug: 'follow-up-required' }]);
+    await stabilize(harness);
+
+    const form = tagsForm(harness.routeNativeElement);
+    const select = form?.querySelector('select') as HTMLSelectElement;
+    select.value = '6';
+    select.dispatchEvent(new Event('change'));
+
+    form?.dispatchEvent(new Event('submit'));
+
+    const request = httpTesting.expectOne(`${apiBaseUrl}/people/11/tags/`);
+    expect(request.request.method).toBe('POST');
+    request.flush({ id: 6, name: 'Follow-up Required', slug: 'follow-up-required' }, { status: 200, statusText: 'OK' });
+
+    expect(tagsForm(harness.routeNativeElement)).not.toBeNull();
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush({
+      ...contactOverview,
+      tags: [{ id: 6, name: 'Follow-up Required', slug: 'follow-up-required' }],
+    });
+    await stabilize(harness);
+
+    expect(tagsForm(harness.routeNativeElement)).toBeNull();
+    expect(harness.routeNativeElement?.textContent).toContain('Follow-up Required');
+  });
+
+  it('prevents duplicate tag submissions while assignment is pending', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    addTagButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    httpTesting.expectOne(`${apiBaseUrl}/tags/`).flush([{ id: 8, name: 'VIP', slug: 'vip' }]);
+    await stabilize(harness);
+
+    const form = tagsForm(harness.routeNativeElement);
+    const select = form?.querySelector('select') as HTMLSelectElement;
+    select.value = '8';
+    select.dispatchEvent(new Event('change'));
+
+    form?.dispatchEvent(new Event('submit'));
+    form?.dispatchEvent(new Event('submit'));
+
+    expect(httpTesting.match(`${apiBaseUrl}/people/11/tags/`).length).toBe(1);
+  });
+
+  it('shows a useful inline message for duplicate tag assignment conflicts', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+
+    addTagButton(harness.routeNativeElement)?.click();
+    await stabilize(harness);
+
+    httpTesting.expectOne(`${apiBaseUrl}/tags/`).flush([{ id: 8, name: 'VIP', slug: 'vip' }]);
+    await stabilize(harness);
+
+    const form = tagsForm(harness.routeNativeElement);
+    const select = form?.querySelector('select') as HTMLSelectElement;
+    select.value = '8';
+    select.dispatchEvent(new Event('change'));
+
+    form?.dispatchEvent(new Event('submit'));
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/tags/`).flush(
+      { detail: 'Conflict' },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent).toContain('This tag is already assigned.');
+    expect(tagsForm(harness.routeNativeElement)).not.toBeNull();
+  });
+
+  it('removes a tag with the POST remove endpoint and refreshes overview', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    removeTagButton(harness.routeNativeElement, 'VIP')?.click();
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent).toContain('Remove VIP?');
+
+    const removeConfirmButton = harness.routeNativeElement?.querySelector(
+      '.inline-confirmation button'
+    ) as HTMLButtonElement | undefined;
+
+    removeConfirmButton?.click();
+
+    const request = httpTesting.expectOne(`${apiBaseUrl}/people/12/tags/8/remove/`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toBeNull();
+
+    request.flush(null, { status: 204, statusText: 'No Content' });
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush({
+      ...activeMemberOverview,
+      tags: [{ id: 6, name: 'Follow-up Required', slug: 'follow-up-required' }],
+    });
+    await stabilize(harness);
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).not.toContain('Remove VIP?');
+    expect(text).not.toContain('VIP');
+    expect(text).toContain('Follow-up Required');
+  });
+
+  it('shows a missing-assignment inline message when tag removal returns 404', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await stabilize(harness);
+
+    removeTagButton(harness.routeNativeElement, 'VIP')?.click();
+    await stabilize(harness);
+
+    const removeConfirmButton = harness.routeNativeElement?.querySelector(
+      '.inline-confirmation button'
+    ) as HTMLButtonElement | undefined;
+
+    removeConfirmButton?.click();
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/tags/8/remove/`).flush(
+      { detail: 'Not found' },
+      { status: 404, statusText: 'Not Found' },
+    );
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent).toContain('This tag assignment is no longer available.');
+  });
+
   it('renders record dates in a human-readable format', async () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/people/11');
@@ -2051,5 +2426,7 @@ describe('PersonDetailPageComponent', () => {
     httpTesting.expectNone(`${apiBaseUrl}/skills/`);
     httpTesting.expectNone(`${apiBaseUrl}/people/12/interests/`);
     httpTesting.expectNone(`${apiBaseUrl}/interests/`);
+    httpTesting.expectNone(`${apiBaseUrl}/people/12/tags/`);
+    httpTesting.expectNone(`${apiBaseUrl}/tags/`);
   });
 });

@@ -22,6 +22,7 @@ import {
   ProfessionalProfileCareerStage,
   ProfessionalProfileWriteRequest,
   SkillSummary,
+  TagSummary,
 } from '../../core/people/people.types';
 import { CrmSectionCardComponent } from '../../shared/ui/crm-section-card.component';
 import { DetailListComponent, DetailListItem } from '../../shared/ui/detail-list.component';
@@ -31,6 +32,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 type ProfessionalProfileFormMode = 'create' | 'edit' | null;
 type SkillRemovalState = number | null;
 type InterestRemovalState = number | null;
+type TagRemovalState = number | null;
 
 interface ProfessionalProfileFormValue {
   job_title: string;
@@ -450,6 +452,118 @@ interface AssignSkillFormValue {
             }
           </app-crm-section-card>
 
+          <app-crm-section-card title="Tags">
+            <p class="taxonomy-supporting-copy">Internal CRM classification.</p>
+
+            @if (tags().length) {
+              <div class="skills-list">
+                @for (tag of tags(); track tag.id) {
+                  <div class="skill-chip-row">
+                    <span class="skill-chip">{{ tag.name }}</span>
+
+                    @if (canManageTags()) {
+                      <button
+                        type="button"
+                        class="skill-remove-button"
+                        [attr.aria-label]="'Remove ' + tag.name"
+                        [disabled]="removingTagId() === tag.id"
+                        (click)="openTagRemovalConfirmation(tag.id)"
+                      >
+                        Remove
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+
+              @if (pendingTagRemoval()) {
+                <div class="inline-confirmation">
+                  <p class="form-note">Remove {{ pendingTagRemoval()!.name }}?</p>
+                  <div class="form-actions">
+                    <button
+                      type="button"
+                      [disabled]="removingTagId() === pendingTagRemoval()!.id"
+                      (click)="confirmTagRemoval()"
+                    >
+                      {{ removingTagId() === pendingTagRemoval()!.id ? 'Removing...' : 'Remove' }}
+                    </button>
+                    <button
+                      type="button"
+                      class="button-secondary"
+                      [disabled]="removingTagId() === pendingTagRemoval()!.id"
+                      (click)="cancelTagRemoval()"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              }
+            } @else {
+              <div class="skills-empty-state">
+                <p class="empty-section-copy">No tags recorded.</p>
+              </div>
+            }
+
+            @if (showAddTagForm()) {
+              <form class="tags-form" [formGroup]="assignTagForm" (ngSubmit)="submitAssignTag()">
+                @if (availableTags().length) {
+                  <label>
+                    <span>Tag</span>
+                    <select formControlName="tag" [disabled]="tagsCatalogLoading() || !!tagsCatalogErrorMessage()">
+                      <option value="">Select a tag...</option>
+                      @for (tag of availableTags(); track tag.id) {
+                        <option [value]="tag.id">{{ tag.name }}</option>
+                      }
+                    </select>
+                  </label>
+                } @else if (!tagsCatalogLoading() && !tagsCatalogErrorMessage()) {
+                  <p class="form-note">All available tags are already assigned.</p>
+                }
+
+                @if (tagsCatalogLoading()) {
+                  <p class="form-note">Loading tag options.</p>
+                }
+
+                @if (tagsCatalogErrorMessage()) {
+                  <p class="form-error">{{ tagsCatalogErrorMessage() }}</p>
+                }
+
+                @if (showAssignTagRequiredError()) {
+                  <p class="form-error">Tag is required.</p>
+                }
+
+                @if (tagWriteErrorMessage()) {
+                  <p class="form-error">{{ tagWriteErrorMessage() }}</p>
+                }
+
+                <div class="form-actions">
+                  <button
+                    type="submit"
+                    [disabled]="
+                      assigningTag() ||
+                      tagsCatalogLoading() ||
+                      !!tagsCatalogErrorMessage() ||
+                      !availableTags().length
+                    "
+                  >
+                    {{ assigningTag() ? 'Saving...' : 'Save' }}
+                  </button>
+                  <button type="button" class="button-secondary" [disabled]="assigningTag()" (click)="cancelAddTagForm()">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            } @else if (canManageTags()) {
+              <div class="section-actions">
+                <button type="button" class="button-primary" (click)="openAddTagForm()">Add Tag</button>
+              </div>
+            }
+
+            @if (tagWriteErrorMessage() && !showAddTagForm()) {
+              <p class="form-error skills-inline-error">{{ tagWriteErrorMessage() }}</p>
+            }
+          </app-crm-section-card>
+
           <app-crm-section-card title="Membership">
             @if (membershipDetails().length) {
               <app-detail-list [items]="membershipDetails()" />
@@ -645,6 +759,12 @@ interface AssignSkillFormValue {
       line-height: 1.5;
     }
 
+    .taxonomy-supporting-copy {
+      margin: 0 0 0.9rem;
+      color: #617b8c;
+      line-height: 1.5;
+    }
+
     .membership-empty-state,
     .skills-empty-state,
     .professional-profile-empty-state {
@@ -723,7 +843,8 @@ interface AssignSkillFormValue {
     .membership-form,
     .professional-profile-form,
     .skills-form,
-    .interests-form {
+    .interests-form,
+    .tags-form {
       display: grid;
       gap: 0.85rem;
       width: min(100%, 32rem);
@@ -733,7 +854,8 @@ interface AssignSkillFormValue {
     .membership-form label,
     .professional-profile-form label,
     .skills-form label,
-    .interests-form label {
+    .interests-form label,
+    .tags-form label {
       display: grid;
       gap: 0.4rem;
       color: #1c3344;
@@ -747,7 +869,9 @@ interface AssignSkillFormValue {
     .skills-form input,
     .skills-form select,
     .interests-form input,
-    .interests-form select {
+    .interests-form select,
+    .tags-form input,
+    .tags-form select {
       width: 100%;
       border: 1px solid #b7c7d4;
       border-radius: 0.85rem;
@@ -774,7 +898,8 @@ interface AssignSkillFormValue {
     .membership-form button,
     .professional-profile-form button,
     .skills-form button,
-    .interests-form button {
+    .interests-form button,
+    .tags-form button {
       width: fit-content;
       border-radius: 999px;
       padding: 0.75rem 1.1rem;
@@ -787,7 +912,8 @@ interface AssignSkillFormValue {
     .membership-form button[type='submit'],
     .professional-profile-form button[type='submit'],
     .skills-form button[type='submit'],
-    .interests-form button[type='submit'] {
+    .interests-form button[type='submit'],
+    .tags-form button[type='submit'] {
       border: 0;
       color: #fff;
       background: linear-gradient(135deg, #16354a, #2f6f84);
@@ -804,7 +930,8 @@ interface AssignSkillFormValue {
     .membership-form button:disabled,
     .professional-profile-form button:disabled,
     .skills-form button:disabled,
-    .interests-form button:disabled {
+    .interests-form button:disabled,
+    .tags-form button:disabled {
       cursor: wait;
       opacity: 0.7;
     }
@@ -861,6 +988,10 @@ export class PersonDetailPageComponent {
   readonly interestsCatalogLoaded = signal(false);
   readonly interestsCatalogLoading = signal(false);
   readonly interestsCatalogErrorMessage = signal<string | null>(null);
+  readonly tagsCatalog = signal<TagSummary[]>([]);
+  readonly tagsCatalogLoaded = signal(false);
+  readonly tagsCatalogLoading = signal(false);
+  readonly tagsCatalogErrorMessage = signal<string | null>(null);
   readonly showAddSkillForm = signal(false);
   readonly assigningSkill = signal(false);
   readonly skillWriteErrorMessage = signal<string | null>(null);
@@ -871,11 +1002,17 @@ export class PersonDetailPageComponent {
   readonly interestWriteErrorMessage = signal<string | null>(null);
   readonly confirmingInterestRemovalId = signal<InterestRemovalState>(null);
   readonly removingInterestId = signal<InterestRemovalState>(null);
+  readonly showAddTagForm = signal(false);
+  readonly assigningTag = signal(false);
+  readonly tagWriteErrorMessage = signal<string | null>(null);
+  readonly confirmingTagRemovalId = signal<TagRemovalState>(null);
+  readonly removingTagId = signal<TagRemovalState>(null);
   readonly person = computed<PersonListItem | null>(() => this.overview()?.person ?? null);
   readonly membership = computed<PersonMembership | null>(() => this.overview()?.membership ?? null);
   readonly professionalProfile = computed<ProfessionalProfile | null>(() => this.overview()?.professional_profile ?? null);
   readonly skills = computed<SkillSummary[]>(() => this.overview()?.skills ?? []);
   readonly interests = computed<InterestSummary[]>(() => this.overview()?.interests ?? []);
+  readonly tags = computed<TagSummary[]>(() => this.overview()?.tags ?? []);
   readonly relationshipLabel = computed(() => this.overview()?.relationship.label ?? 'Contact');
   readonly canMakeMember = computed(() => {
     const overview = this.overview();
@@ -940,6 +1077,16 @@ export class PersonDetailPageComponent {
 
     return hasStaffRole(currentUser, 'CRM_ADMIN') || hasStaffRole(currentUser, 'CRM_MANAGER');
   });
+  readonly canManageTags = computed(() => {
+    const person = this.person();
+    const currentUser = this.auth.currentUser();
+
+    if (!person || person.archived_at) {
+      return false;
+    }
+
+    return hasStaffRole(currentUser, 'CRM_ADMIN') || hasStaffRole(currentUser, 'CRM_MANAGER');
+  });
   readonly availableSkills = computed<SkillSummary[]>(() => {
     const assignedSkillIds = new Set(this.skills().map((skill) => skill.id));
     return this.skillsCatalog().filter((skill) => !assignedSkillIds.has(skill.id));
@@ -947,6 +1094,10 @@ export class PersonDetailPageComponent {
   readonly availableInterests = computed<InterestSummary[]>(() => {
     const assignedInterestIds = new Set(this.interests().map((interest) => interest.id));
     return this.interestsCatalog().filter((interest) => !assignedInterestIds.has(interest.id));
+  });
+  readonly availableTags = computed<TagSummary[]>(() => {
+    const assignedTagIds = new Set(this.tags().map((tag) => tag.id));
+    return this.tagsCatalog().filter((tag) => !assignedTagIds.has(tag.id));
   });
   readonly pendingSkillRemoval = computed<SkillSummary | null>(() => {
     const skillId = this.confirmingSkillRemovalId();
@@ -963,6 +1114,14 @@ export class PersonDetailPageComponent {
     }
 
     return this.interests().find((interest) => interest.id === interestId) ?? null;
+  });
+  readonly pendingTagRemoval = computed<TagSummary | null>(() => {
+    const tagId = this.confirmingTagRemovalId();
+    if (tagId === null) {
+      return null;
+    }
+
+    return this.tags().find((tag) => tag.id === tagId) ?? null;
   });
   readonly professionalProfileLinkedInUrl = computed(() => {
     const value = this.professionalProfile()?.linkedin_url ?? '';
@@ -987,6 +1146,9 @@ export class PersonDetailPageComponent {
   });
   readonly assignInterestForm = this.fb.nonNullable.group({
     interest: ['', Validators.required],
+  });
+  readonly assignTagForm = this.fb.nonNullable.group({
+    tag: ['', Validators.required],
   });
 
   readonly fullName = computed(() => {
@@ -1201,6 +1363,43 @@ export class PersonDetailPageComponent {
     this.interestWriteErrorMessage.set(null);
   }
 
+  openAddTagForm(): void {
+    if (!this.canManageTags()) {
+      return;
+    }
+
+    this.showAddTagForm.set(true);
+    this.tagWriteErrorMessage.set(null);
+    this.confirmingTagRemovalId.set(null);
+    this.assignTagForm.reset({ tag: '' });
+    this.ensureTagsCatalogLoaded();
+  }
+
+  cancelAddTagForm(): void {
+    this.showAddTagForm.set(false);
+    this.assigningTag.set(false);
+    this.tagWriteErrorMessage.set(null);
+    this.assignTagForm.reset({ tag: '' });
+  }
+
+  openTagRemovalConfirmation(tagId: number): void {
+    if (!this.canManageTags()) {
+      return;
+    }
+
+    this.showAddTagForm.set(false);
+    this.assigningTag.set(false);
+    this.tagWriteErrorMessage.set(null);
+    this.assignTagForm.reset({ tag: '' });
+    this.confirmingTagRemovalId.set(tagId);
+  }
+
+  cancelTagRemoval(): void {
+    this.confirmingTagRemovalId.set(null);
+    this.removingTagId.set(null);
+    this.tagWriteErrorMessage.set(null);
+  }
+
   openMakeMemberForm(): void {
     this.showMakeMemberForm.set(true);
     this.makeMemberErrorMessage.set(null);
@@ -1259,6 +1458,10 @@ export class PersonDetailPageComponent {
 
   showAssignInterestRequiredError(): boolean {
     return this.assignInterestForm.controls.interest.hasError('required') && this.assignInterestForm.touched;
+  }
+
+  showAssignTagRequiredError(): boolean {
+    return this.assignTagForm.controls.tag.hasError('required') && this.assignTagForm.touched;
   }
 
   submitAssignSkill(): void {
@@ -1435,6 +1638,95 @@ export class PersonDetailPageComponent {
         },
         complete: () => {
           this.removingInterestId.set(null);
+        },
+      });
+  }
+
+  submitAssignTag(): void {
+    const person = this.person();
+    if (
+      !person ||
+      !this.canManageTags() ||
+      !this.showAddTagForm() ||
+      this.assigningTag() ||
+      this.tagsCatalogLoading() ||
+      this.tagsCatalogErrorMessage()
+    ) {
+      return;
+    }
+
+    if (this.assignTagForm.invalid) {
+      this.assignTagForm.markAllAsTouched();
+      return;
+    }
+
+    const tagId = Number(this.assignTagForm.getRawValue().tag);
+    if (!Number.isInteger(tagId) || tagId <= 0) {
+      this.assignTagForm.markAllAsTouched();
+      return;
+    }
+
+    this.assigningTag.set(true);
+    this.tagWriteErrorMessage.set(null);
+
+    let writeSucceeded = false;
+    this.peopleService
+      .assignTag(person.id, tagId)
+      .pipe(
+        switchMap(() => {
+          writeSucceeded = true;
+          return this.peopleService.getPersonOverview(person.id);
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (overview) => {
+          this.overview.set(overview);
+          this.showAddTagForm.set(false);
+          this.assignTagForm.reset({ tag: '' });
+        },
+        error: (error: HttpErrorResponse) => {
+          this.tagWriteErrorMessage.set(formatAssignTagError(error, writeSucceeded));
+          this.assigningTag.set(false);
+        },
+        complete: () => {
+          this.assigningTag.set(false);
+        },
+      });
+  }
+
+  confirmTagRemoval(): void {
+    const person = this.person();
+    const tag = this.pendingTagRemoval();
+
+    if (!person || !tag || !this.canManageTags() || this.removingTagId() === tag.id) {
+      return;
+    }
+
+    this.removingTagId.set(tag.id);
+    this.tagWriteErrorMessage.set(null);
+
+    let writeSucceeded = false;
+    this.peopleService
+      .removeTag(person.id, tag.id)
+      .pipe(
+        switchMap(() => {
+          writeSucceeded = true;
+          return this.peopleService.getPersonOverview(person.id);
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (overview) => {
+          this.overview.set(overview);
+          this.confirmingTagRemovalId.set(null);
+        },
+        error: (error: HttpErrorResponse) => {
+          this.tagWriteErrorMessage.set(formatRemoveTagError(error, writeSucceeded));
+          this.removingTagId.set(null);
+        },
+        complete: () => {
+          this.removingTagId.set(null);
         },
       });
   }
@@ -1638,6 +1930,32 @@ export class PersonDetailPageComponent {
       });
   }
 
+  private ensureTagsCatalogLoaded(): void {
+    if (this.tagsCatalogLoaded() || this.tagsCatalogLoading()) {
+      return;
+    }
+
+    this.tagsCatalogLoading.set(true);
+    this.tagsCatalogErrorMessage.set(null);
+
+    this.peopleService
+      .getTags()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (tags) => {
+          this.tagsCatalog.set(tags);
+          this.tagsCatalogLoaded.set(true);
+        },
+        error: () => {
+          this.tagsCatalogLoading.set(false);
+          this.tagsCatalogErrorMessage.set('Tag options could not be loaded right now. Try again.');
+        },
+        complete: () => {
+          this.tagsCatalogLoading.set(false);
+        },
+      });
+  }
+
   private loadOverview(personId: number): void {
     this.loading.set(true);
     this.notFound.set(false);
@@ -1659,6 +1977,12 @@ export class PersonDetailPageComponent {
     this.confirmingInterestRemovalId.set(null);
     this.removingInterestId.set(null);
     this.assignInterestForm.reset({ interest: '' });
+    this.showAddTagForm.set(false);
+    this.assigningTag.set(false);
+    this.tagWriteErrorMessage.set(null);
+    this.confirmingTagRemovalId.set(null);
+    this.removingTagId.set(null);
+    this.assignTagForm.reset({ tag: '' });
     this.showMakeMemberForm.set(false);
     this.makeMemberSubmitting.set(false);
     this.makeMemberErrorMessage.set(null);
@@ -1962,6 +2286,58 @@ function formatRemoveInterestError(error: HttpErrorResponse, refreshFailedAfterS
   return 'Interest could not be removed right now. Try again.';
 }
 
+function formatAssignTagError(error: HttpErrorResponse, refreshFailedAfterSuccess: boolean): string {
+  if (refreshFailedAfterSuccess) {
+    return 'The tag change was saved, but the refreshed overview could not be loaded right now.';
+  }
+
+  if (error.status === 400 && error.error && typeof error.error === 'object' && !Array.isArray(error.error)) {
+    const entries = Object.entries(error.error as Record<string, unknown>)
+      .filter(([, value]) => Array.isArray(value) && value.length > 0)
+      .map(([field, value]) => `${getAssignTagFieldLabel(field)}: ${String((value as unknown[])[0])}`);
+
+    if (entries.length > 0) {
+      return entries.join(' ');
+    }
+
+    return 'Tag details need to be corrected before this change can be saved.';
+  }
+
+  if (error.status === 403) {
+    return 'You no longer have permission to assign tags.';
+  }
+
+  if (error.status === 404) {
+    return 'This person record is no longer available in the CRM People domain.';
+  }
+
+  if (error.status === 409) {
+    return 'This tag is already assigned.';
+  }
+
+  return 'Tag could not be assigned right now. Try again.';
+}
+
+function formatRemoveTagError(error: HttpErrorResponse, refreshFailedAfterSuccess: boolean): string {
+  if (refreshFailedAfterSuccess) {
+    return 'The tag change was saved, but the refreshed overview could not be loaded right now.';
+  }
+
+  if (error.status === 403) {
+    return 'You no longer have permission to remove tags.';
+  }
+
+  if (error.status === 404) {
+    return 'This tag assignment is no longer available.';
+  }
+
+  if (error.status === 409) {
+    return 'This person can no longer receive tag changes.';
+  }
+
+  return 'Tag could not be removed right now. Try again.';
+}
+
 function getMakeMemberFieldLabel(field: string): string {
   switch (field) {
     case 'joined_at':
@@ -2014,5 +2390,14 @@ function getAssignInterestFieldLabel(field: string): string {
       return 'Interest';
     default:
       return 'Interest';
+  }
+}
+
+function getAssignTagFieldLabel(field: string): string {
+  switch (field) {
+    case 'tag':
+      return 'Tag';
+    default:
+      return 'Tag';
   }
 }

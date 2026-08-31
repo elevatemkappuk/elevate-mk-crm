@@ -59,6 +59,12 @@ export interface InterestSummary {
   slug: string;
 }
 
+export interface TagSummary {
+  id: number;
+  name: string;
+  slug: string;
+}
+
 export type ProfessionalProfileCareerStage =
   | 'STUDENT'
   | 'EARLY_CAREER'
@@ -104,6 +110,10 @@ export interface AssignInterestRequest {
   interest: number;
 }
 
+export interface AssignTagRequest {
+  tag: number;
+}
+
 export interface PersonOverview {
   person: PersonListItem;
   relationship: PersonRelationship;
@@ -111,6 +121,7 @@ export interface PersonOverview {
   professional_profile: ProfessionalProfile | null;
   skills: SkillSummary[];
   interests: InterestSummary[];
+  tags: TagSummary[];
 }
 
 export interface PaginatedResponse<T> {

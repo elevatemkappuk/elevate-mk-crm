@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 
 import { API_CONFIG } from '../http/api-config';
 import {
+  AssignTagRequest,
   AssignInterestRequest,
   AssignSkillRequest,
   EndMembershipRequest,
@@ -18,6 +19,7 @@ import {
   ProfessionalProfile,
   ProfessionalProfileWriteRequest,
   SkillSummary,
+  TagSummary,
 } from './people.types';
 
 @Injectable({ providedIn: 'root' })
@@ -63,6 +65,10 @@ export class PeopleService {
     return this.http.get<InterestSummary[]>(this.buildUrl('/interests/'));
   }
 
+  getTags(): Observable<TagSummary[]> {
+    return this.http.get<TagSummary[]>(this.buildUrl('/tags/'));
+  }
+
   createProfessionalProfile(
     personId: number,
     payload: ProfessionalProfileWriteRequest,
@@ -95,12 +101,21 @@ export class PeopleService {
     return this.http.post<InterestSummary>(this.buildUrl(`/people/${personId}/interests/`), payload);
   }
 
+  assignTag(personId: number, tagId: number): Observable<TagSummary> {
+    const payload: AssignTagRequest = { tag: tagId };
+    return this.http.post<TagSummary>(this.buildUrl(`/people/${personId}/tags/`), payload);
+  }
+
   removeSkill(personId: number, skillId: number): Observable<void> {
     return this.http.delete<void>(this.buildUrl(`/people/${personId}/skills/${skillId}/`));
   }
 
   removeInterest(personId: number, interestId: number): Observable<void> {
     return this.http.delete<void>(this.buildUrl(`/people/${personId}/interests/${interestId}/`));
+  }
+
+  removeTag(personId: number, tagId: number): Observable<void> {
+    return this.http.post<void>(this.buildUrl(`/people/${personId}/tags/${tagId}/remove/`), null);
   }
 
   private buildUrl(path: string): string {
