@@ -37,6 +37,13 @@ describe('PeopleService', () => {
         ordering: '-updated_at',
         page: 2,
         page_size: 50,
+        relationship: [],
+        location: [],
+        industry: [],
+        career_stage: [],
+        interest: [],
+        skill: [],
+        tag: [],
       })
       .subscribe();
 
@@ -50,6 +57,17 @@ describe('PeopleService', () => {
     expect(request.request.params.get('page')).toBe('2');
     expect(request.request.params.get('page_size')).toBe('50');
 
+    request.flush({ count: 0, next: null, previous: null, results: [] });
+  });
+
+  it('encodes directory multi-select filters as repeated HttpParams keys', () => {
+    service.listPeople({ q: 'engineer', relationship: ['CONTACT', 'ACTIVE_MEMBER'], location: ['London'], industry: [5], career_stage: ['SENIOR'], interest: [2, 8], skill: [4], tag: [6, 7], record_state: 'active', ordering: '-membership_joined_at', page: 1, page_size: 25 }).subscribe();
+    const request = httpTesting.expectOne((candidate) => candidate.url.endsWith('/people/'));
+    expect(request.request.params.getAll('relationship')).toEqual(['CONTACT', 'ACTIVE_MEMBER']);
+    expect(request.request.params.getAll('interest')).toEqual(['2', '8']);
+    expect(request.request.params.getAll('tag')).toEqual(['6', '7']);
+    expect(request.request.params.get('q')).toBe('engineer');
+    expect(request.request.params.get('ordering')).toBe('-membership_joined_at');
     request.flush({ count: 0, next: null, previous: null, results: [] });
   });
 

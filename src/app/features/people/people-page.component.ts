@@ -2,9 +2,8 @@ import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
-import { debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { catchError, distinctUntilChanged, map, of, switchMap, tap } from 'rxjs';
 
 import { PeopleService } from '../../core/people/people.service';
 import { canManagePeople } from '../../core/auth/auth-access';
@@ -12,31 +11,13 @@ import { AuthService } from '../../core/auth/auth.service';
 import {
   PaginatedResponse,
   PersonListItem,
-  PeopleListQueryState,
+  PeopleDirectoryQuery,
   PeopleOrdering,
   PeoplePageSize,
-  PersonRecordState,
 } from '../../core/people/people.types';
+import { arePeopleDirectoryQueriesEqual, DEFAULT_PEOPLE_DIRECTORY_QUERY, parsePeopleDirectoryQuery, serializePeopleDirectoryQuery, withPeopleDirectoryQueryChange } from '../../core/people/people-directory-query';
+import { PeopleDirectoryFiltersComponent } from './people-directory-filters.component';
 
-const DEFAULT_QUERY_STATE: PeopleListQueryState = {
-  q: '',
-  record_state: 'active',
-  ordering: 'last_name',
-  page: 1,
-  page_size: 25,
-};
-
-const VALID_RECORD_STATES: PersonRecordState[] = ['active', 'archived', 'all'];
-const VALID_ORDERINGS: PeopleOrdering[] = [
-  'first_name',
-  '-first_name',
-  'last_name',
-  '-last_name',
-  'created_at',
-  '-created_at',
-  'updated_at',
-  '-updated_at',
-];
 const VALID_PAGE_SIZES: PeoplePageSize[] = [25, 50, 100];
 
 interface OrderingOption {
@@ -46,7 +27,7 @@ interface OrderingOption {
 
 @Component({
   selector: 'app-people-page',
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, RouterLink, PeopleDirectoryFiltersComponent],
   template: `
     <section class="page">
       @if (canManagePeople()) {
@@ -55,19 +36,11 @@ interface OrderingOption {
           <a routerLink="/people/new/contact" class="button-secondary">Add Contact</a>
         </div>
       }
-      <form class="controls" [formGroup]="filters" aria-label="People list controls">
-        <label class="search-field">
-          <span>Search</span>
-          <input
-            type="search"
-            formControlName="q"
-            placeholder="Search by name, email, or mobile"
-          />
-        </label>
-
+      <app-people-directory-filters [query]="queryState()" (changed)="changeDirectoryQuery($event)" (cleared)="clearFilters()" />
+      <div class="controls" aria-label="People list display controls">
         <label>
           <span>Record state</span>
-          <select formControlName="record_state">
+          <select [value]="queryState().record_state" (change)="changeDirectoryQuery({ record_state: $any($event.target).value })">
             <option value="active">Active</option>
             <option value="archived">Archived</option>
             <option value="all">All</option>
@@ -76,7 +49,7 @@ interface OrderingOption {
 
         <label>
           <span>Order by</span>
-          <select formControlName="ordering">
+          <select [value]="queryState().ordering" (change)="changeDirectoryQuery({ ordering: $any($event.target).value })">
             @for (option of orderingOptions; track option.value) {
               <option [value]="option.value">{{ option.label }}</option>
             }
@@ -85,13 +58,13 @@ interface OrderingOption {
 
         <label>
           <span>Page size</span>
-          <select formControlName="page_size">
+          <select [value]="queryState().page_size" (change)="changeDirectoryQuery({ page_size: parsePageSize($any($event.target).value) })">
             @for (size of pageSizes; track size) {
               <option [value]="size">{{ size }}</option>
             }
           </select>
         </label>
-      </form>
+      </div>
 
       @if (loading()) {
         <section class="state-card" aria-live="polite">
@@ -100,6 +73,7 @@ interface OrderingOption {
       } @else if (errorMessage()) {
         <section class="state-card state-card-error" aria-live="polite">
           <p>{{ errorMessage() }}</p>
+          <button type="button" class="pagination-button" (click)="retry()">Retry</button>
         </section>
       } @else if (!peopleResponse() || peopleResponse()!.results.length === 0) {
         <section class="state-card" aria-live="polite">
@@ -200,7 +174,7 @@ interface OrderingOption {
     }
 
     .controls {
-      grid-template-columns: minmax(0, 2.7fr) repeat(3, minmax(8.75rem, 0.95fr));
+      grid-template-columns: repeat(3, minmax(8.75rem, 0.95fr));
       align-items: end;
       gap: 0.85rem 1rem;
     }
@@ -374,9 +348,6 @@ interface OrderingOption {
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       }
 
-      .search-field {
-        grid-column: 1 / -1;
-      }
     }
 
     @media (max-width: 680px) {
@@ -440,7 +411,6 @@ interface OrderingOption {
   `,
 })
 export class PeoplePageComponent {
-  private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
@@ -448,29 +418,23 @@ export class PeoplePageComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly orderingOptions: OrderingOption[] = [
-    { label: 'Name A-Z', value: 'last_name' },
-    { label: 'Name Z-A', value: '-last_name' },
-    { label: 'First name A-Z', value: 'first_name' },
-    { label: 'First name Z-A', value: '-first_name' },
-    { label: 'Recently added', value: '-created_at' },
-    { label: 'Oldest added', value: 'created_at' },
+    { label: 'Last name', value: 'last_name' },
+    { label: 'Name A-Z', value: 'name' },
+    { label: 'Name Z-A', value: '-name' },
+    { label: 'Newest CRM record', value: '-created_at' },
+    { label: 'Oldest CRM record', value: 'created_at' },
     { label: 'Recently updated', value: '-updated_at' },
-    { label: 'Oldest updated', value: 'updated_at' },
+    { label: 'Least recently updated', value: 'updated_at' },
+    { label: 'Newest members', value: '-membership_joined_at' },
+    { label: 'Oldest members', value: 'membership_joined_at' },
   ];
   readonly pageSizes: PeoplePageSize[] = VALID_PAGE_SIZES;
 
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
   readonly peopleResponse = signal<PaginatedResponse<PersonListItem> | null>(null);
-  readonly queryState = signal<PeopleListQueryState>(DEFAULT_QUERY_STATE);
+  readonly queryState = signal<PeopleDirectoryQuery>(DEFAULT_PEOPLE_DIRECTORY_QUERY);
   readonly canManagePeople = computed(() => canManagePeople(this.auth.currentUser()));
-
-  readonly filters = this.fb.nonNullable.group({
-    q: DEFAULT_QUERY_STATE.q,
-    record_state: DEFAULT_QUERY_STATE.record_state,
-    ordering: DEFAULT_QUERY_STATE.ordering,
-    page_size: DEFAULT_QUERY_STATE.page_size,
-  });
 
   readonly currentPage = computed(() => this.queryState().page);
   readonly totalPages = computed(() => {
@@ -482,13 +446,13 @@ export class PeoplePageComponent {
     return Math.max(1, Math.ceil(response.count / this.queryState().page_size));
   });
   readonly emptyMessage = computed(() => {
-    const { q, record_state } = this.queryState();
+    const query = this.queryState();
 
-    if (q) {
-      return 'No people matched the current search.';
+    if (query.q || query.relationship.length || query.location.length || query.industry.length || query.career_stage.length || query.interest.length || query.skill.length || query.tag.length) {
+      return 'No people match these filters.';
     }
 
-    if (record_state === 'archived') {
+    if (query.record_state === 'archived') {
       return 'No archived people are available.';
     }
 
@@ -498,46 +462,27 @@ export class PeoplePageComponent {
   constructor() {
     this.route.queryParamMap
       .pipe(
-        map((params) => parseQueryState(params)),
-        distinctUntilChanged(areQueryStatesEqual),
+        map((params) => parsePeopleDirectoryQuery(params)),
+        distinctUntilChanged(arePeopleDirectoryQueriesEqual),
+        tap((state) => {
+          this.queryState.set(state);
+          this.loading.set(true);
+          this.errorMessage.set(null);
+        }),
+        switchMap((state) => this.peopleService.listPeople(state).pipe(
+          map((response) => ({ response, error: null as HttpErrorResponse | null })),
+          catchError((error: HttpErrorResponse) => of({ response: null, error })),
+        )),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe((state) => {
-        this.queryState.set(state);
-        this.filters.patchValue(
-          {
-            q: state.q,
-            record_state: state.record_state,
-            ordering: state.ordering,
-            page_size: state.page_size,
-          },
-          { emitEvent: false },
-        );
-        this.loadPeople(state);
-      });
-
-    this.filters.controls.q.valueChanges
-      .pipe(debounceTime(250), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
-      .subscribe((q) => {
-        this.updateUrlState({ q: q.trim(), page: 1 });
-      });
-
-    this.filters.controls.record_state.valueChanges
-      .pipe(distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
-      .subscribe((recordState) => {
-        this.updateUrlState({ record_state: recordState, page: 1 });
-      });
-
-    this.filters.controls.ordering.valueChanges
-      .pipe(distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
-      .subscribe((ordering) => {
-        this.updateUrlState({ ordering, page: 1 });
-      });
-
-    this.filters.controls.page_size.valueChanges
-      .pipe(distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
-      .subscribe((pageSize) => {
-        this.updateUrlState({ page_size: Number(pageSize) as PeoplePageSize, page: 1 });
+      .subscribe(({ response, error }) => {
+        this.loading.set(false);
+        if (error) {
+          this.peopleResponse.set(null);
+          this.errorMessage.set(error.status >= 500 ? 'People could not be loaded right now.' : 'People could not be loaded for the current request.');
+          return;
+        }
+        this.peopleResponse.set(response);
       });
   }
 
@@ -550,15 +495,26 @@ export class PeoplePageComponent {
       return;
     }
 
-    this.updateUrlState({ page });
+    this.navigateToQuery(withPeopleDirectoryQueryChange(this.queryState(), { page }, false));
   }
 
-  private loadPeople(state: PeopleListQueryState): void {
+  parsePageSize(value: string): PeoplePageSize {
+    return Number(value) as PeoplePageSize;
+  }
+
+  changeDirectoryQuery(patch: Partial<PeopleDirectoryQuery>): void {
+    this.navigateToQuery(withPeopleDirectoryQueryChange(this.queryState(), patch));
+  }
+
+  clearFilters(): void {
+    this.navigateToQuery({ ...DEFAULT_PEOPLE_DIRECTORY_QUERY, page_size: this.queryState().page_size });
+  }
+
+  retry(): void {
     this.loading.set(true);
     this.errorMessage.set(null);
-
     this.peopleService
-      .listPeople(state)
+      .listPeople(this.queryState())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
@@ -577,65 +533,13 @@ export class PeoplePageComponent {
       });
   }
 
-  private updateUrlState(patch: Partial<PeopleListQueryState>): void {
-    const nextState = { ...this.queryState(), ...patch };
-
-    if (areQueryStatesEqual(this.queryState(), nextState)) {
+  private navigateToQuery(nextState: PeopleDirectoryQuery): void {
+    if (arePeopleDirectoryQueriesEqual(this.queryState(), nextState)) {
       return;
     }
-
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: buildQueryParams(nextState),
+      queryParams: serializePeopleDirectoryQuery(nextState),
     });
   }
-}
-
-function parseQueryState(params: ParamMap): PeopleListQueryState {
-  const q = (params.get('q') ?? '').trim();
-  const recordState = params.get('record_state');
-  const ordering = params.get('ordering');
-  const page = Number(params.get('page'));
-  const pageSize = Number(params.get('page_size'));
-
-  return {
-    q,
-    record_state: isRecordState(recordState) ? recordState : DEFAULT_QUERY_STATE.record_state,
-    ordering: isOrdering(ordering) ? ordering : DEFAULT_QUERY_STATE.ordering,
-    page: Number.isInteger(page) && page > 0 ? page : DEFAULT_QUERY_STATE.page,
-    page_size: isPageSize(pageSize) ? pageSize : DEFAULT_QUERY_STATE.page_size,
-  };
-}
-
-function buildQueryParams(state: PeopleListQueryState): Record<string, string | null> {
-  return {
-    q: state.q || null,
-    record_state:
-      state.record_state === DEFAULT_QUERY_STATE.record_state ? null : state.record_state,
-    ordering: state.ordering === DEFAULT_QUERY_STATE.ordering ? null : state.ordering,
-    page: state.page === DEFAULT_QUERY_STATE.page ? null : String(state.page),
-    page_size: state.page_size === DEFAULT_QUERY_STATE.page_size ? null : String(state.page_size),
-  };
-}
-
-function areQueryStatesEqual(left: PeopleListQueryState, right: PeopleListQueryState): boolean {
-  return (
-    left.q === right.q &&
-    left.record_state === right.record_state &&
-    left.ordering === right.ordering &&
-    left.page === right.page &&
-    left.page_size === right.page_size
-  );
-}
-
-function isRecordState(value: string | null): value is PersonRecordState {
-  return value !== null && VALID_RECORD_STATES.includes(value as PersonRecordState);
-}
-
-function isOrdering(value: string | null): value is PeopleOrdering {
-  return value !== null && VALID_ORDERINGS.includes(value as PeopleOrdering);
-}
-
-function isPageSize(value: number): value is PeoplePageSize {
-  return VALID_PAGE_SIZES.includes(value as PeoplePageSize);
 }

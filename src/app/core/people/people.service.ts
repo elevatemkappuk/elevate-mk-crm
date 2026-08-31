@@ -39,15 +39,20 @@ export class PeopleService {
   listPeople(
     query: PeopleListQueryState,
   ): Observable<PaginatedResponse<PersonListItem>> {
-    const params = new HttpParams({
-      fromObject: {
-        q: query.q,
-        record_state: query.record_state,
-        ordering: query.ordering,
-        page: String(query.page),
-        page_size: String(query.page_size),
-      },
-    });
+    let params = new HttpParams()
+      .set('record_state', query.record_state)
+      .set('ordering', query.ordering)
+      .set('page', String(query.page))
+      .set('page_size', String(query.page_size));
+
+    if (query.q.trim()) { params = params.set('q', query.q.trim()); }
+    for (const value of query.relationship) { params = params.append('relationship', value); }
+    for (const value of query.location) { params = params.append('location', value); }
+    for (const value of query.industry) { params = params.append('industry', String(value)); }
+    for (const value of query.career_stage) { params = params.append('career_stage', value); }
+    for (const value of query.interest) { params = params.append('interest', String(value)); }
+    for (const value of query.skill) { params = params.append('skill', String(value)); }
+    for (const value of query.tag) { params = params.append('tag', String(value)); }
 
     return this.http.get<PaginatedResponse<PersonListItem>>(this.buildUrl('/people/'), {
       params,

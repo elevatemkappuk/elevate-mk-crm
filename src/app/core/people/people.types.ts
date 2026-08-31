@@ -2,6 +2,8 @@ export type PersonRecordState = 'active' | 'archived' | 'all';
 export type NoteRecordState = 'active' | 'archived' | 'all';
 
 export type PeopleOrdering =
+  | 'name'
+  | '-name'
   | 'first_name'
   | '-first_name'
   | 'last_name'
@@ -9,7 +11,9 @@ export type PeopleOrdering =
   | 'created_at'
   | '-created_at'
   | 'updated_at'
-  | '-updated_at';
+  | '-updated_at'
+  | 'membership_joined_at'
+  | '-membership_joined_at';
 
 export type PeoplePageSize = 25 | 50 | 100;
 
@@ -223,12 +227,24 @@ export interface PaginatedResponse<T> {
   results: T[];
 }
 
-export interface PeopleListQueryState {
+export type PersonRelationshipFilter = 'CONTACT' | 'ACTIVE_MEMBER' | 'FORMER_MEMBER';
+
+export interface PeopleDirectoryQuery {
   q: string;
+  relationship: PersonRelationshipFilter[];
+  location: string[];
+  industry: number[];
+  career_stage: ProfessionalProfileCareerStage[];
+  interest: number[];
+  skill: number[];
+  tag: number[];
   record_state: PersonRecordState;
   ordering: PeopleOrdering;
   page: number;
   page_size: PeoplePageSize;
 }
+
+// Kept as an alias while existing People callers migrate to the canonical name.
+export type PeopleListQueryState = PeopleDirectoryQuery;
 
 export type PaginatedPersonAuditHistoryResponse = PaginatedResponse<PersonAuditHistoryEvent>;
