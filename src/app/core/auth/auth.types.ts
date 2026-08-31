@@ -17,6 +17,21 @@ export interface LoginCredentials {
   password: string;
 }
 
+export interface PasswordResetRequest {
+  email: string;
+}
+
+export interface PasswordResetConfirmRequest {
+  uid: string;
+  token: string;
+  new_password: string;
+  confirm_password: string;
+}
+
+export interface DetailResponse {
+  detail: string;
+}
+
 export interface CsrfBootstrapResponse {
   detail: string;
 }

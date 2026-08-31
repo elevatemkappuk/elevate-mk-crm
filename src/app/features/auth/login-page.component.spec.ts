@@ -45,6 +45,11 @@ describe('LoginPageComponent', () => {
   let auth: MockAuthService;
   let router: MockRouter;
 
+  it('renders a forgot-password link', () => {
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('a[href="/forgot-password"]')?.textContent).toContain('Forgot password?');
+  });
+
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [LoginPageComponent],

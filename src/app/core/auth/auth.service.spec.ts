@@ -182,4 +182,26 @@ describe('AuthService', () => {
     expect(request.request.withCredentials).toBe(false);
     request.flush({});
   });
+
+  it('requests password reset through the public auth endpoint without persisting reset state', () => {
+    const localStorageSpy = vi.spyOn(Storage.prototype, 'setItem');
+    authService.requestPasswordReset({ email: ' ADA@EXAMPLE.COM ' }).subscribe();
+    const csrfRequest = httpTesting.expectOne(`${apiBaseUrl}/auth/csrf/`);
+    mockDocument.cookie = 'csrftoken=test-token';
+    csrfRequest.flush({ detail: 'CSRF cookie set.' });
+    const request = httpTesting.expectOne(`${apiBaseUrl}/auth/password-reset/`);
+    expect(request.request.body).toEqual({ email: 'ada@example.com' });
+    request.flush({ detail: 'If an account exists for that email address, password reset instructions have been sent.' });
+    expect(localStorageSpy).not.toHaveBeenCalled();
+  });
+
+  it('confirms password reset with route-supplied uid and token only in the request payload', () => {
+    authService.confirmPasswordReset({ uid: 'uid', token: 'token', new_password: 'Password-123!', confirm_password: 'Password-123!' }).subscribe();
+    const csrfRequest = httpTesting.expectOne(`${apiBaseUrl}/auth/csrf/`);
+    mockDocument.cookie = 'csrftoken=test-token';
+    csrfRequest.flush({ detail: 'CSRF cookie set.' });
+    const request = httpTesting.expectOne(`${apiBaseUrl}/auth/password-reset/confirm/`);
+    expect(request.request.body.token).toBe('token');
+    request.flush({ detail: 'Your password has been reset successfully.' });
+  });
 });

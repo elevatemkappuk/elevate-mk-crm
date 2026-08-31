@@ -8,6 +8,8 @@ import {
 } from './core/guards/auth.guards';
 import { AccessDeniedPageComponent } from './features/auth/access-denied-page.component';
 import { LoginPageComponent } from './features/auth/login-page.component';
+import { ForgotPasswordPageComponent } from './features/auth/forgot-password-page.component';
+import { ResetPasswordPageComponent } from './features/auth/reset-password-page.component';
 import { StaffCrmShellPageComponent } from './features/auth/staff-crm-shell-page.component';
 import { AdministrationPageComponent } from './features/administration/administration-page.component';
 import { PersonDetailPageComponent } from './features/people/person-detail-page.component';
@@ -20,6 +22,8 @@ export const routes: Routes = [
     component: LoginPageComponent,
     canActivate: [loginGuard],
   },
+  { path: 'forgot-password', component: ForgotPasswordPageComponent },
+  { path: 'reset-password/:uid/:token', component: ResetPasswordPageComponent },
   {
     path: 'access-denied',
     component: AccessDeniedPageComponent,

@@ -5,14 +5,14 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { RouterLink } from '@angular/router';
+import { AuthPageShellComponent } from './auth-page-shell.component';
 
 @Component({
   selector: 'app-login-page',
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, AuthPageShellComponent],
   template: `
-    <section class="auth-layout">
-      <div class="auth-card">
-        <p class="eyebrow">Elevate MK Staff CRM</p>
+    <app-auth-page-shell>
         <h1>Sign in</h1>
         <p class="intro">
           Use your Elevate MK staff account. Authentication is handled by the Django session backend.
@@ -36,9 +36,9 @@ import { AuthService } from '../../core/auth/auth.service';
           <button type="submit" [disabled]="submitting() || form.invalid">
             {{ submitting() ? 'Signing in...' : 'Sign in' }}
           </button>
+          <a routerLink="/forgot-password">Forgot password?</a>
         </form>
-      </div>
-    </section>
+    </app-auth-page-shell>
   `,
   styles: `
     .auth-layout {

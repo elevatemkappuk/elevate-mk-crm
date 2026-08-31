@@ -5,7 +5,7 @@ import { catchError, map, switchMap, tap } from 'rxjs/operators';
 
 import { API_CONFIG } from '../http/api-config';
 import { hasStaffCrmAccess, isCrmAdmin } from './auth-access';
-import { AuthenticatedUser, CsrfBootstrapResponse, LoginCredentials } from './auth.types';
+import { AuthenticatedUser, CsrfBootstrapResponse, DetailResponse, LoginCredentials, PasswordResetConfirmRequest, PasswordResetRequest } from './auth.types';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -68,6 +68,18 @@ export class AuthService {
     return this.http.post<void>(this.buildUrl('/auth/logout/'), null).pipe(
       tap(() => this.clearUserState()),
     );
+  }
+
+  requestPasswordReset(request: PasswordResetRequest): Observable<DetailResponse> {
+    return this.bootstrapCsrf().pipe(switchMap(() => this.http.post<DetailResponse>(
+      this.buildUrl('/auth/password-reset/'), { email: normalizeEmail(request.email) },
+    )));
+  }
+
+  confirmPasswordReset(request: PasswordResetConfirmRequest): Observable<DetailResponse> {
+    return this.bootstrapCsrf().pipe(switchMap(() => this.http.post<DetailResponse>(
+      this.buildUrl('/auth/password-reset/confirm/'), request,
+    )));
   }
 
   setAuthenticatedUser(user: AuthenticatedUser): void {
