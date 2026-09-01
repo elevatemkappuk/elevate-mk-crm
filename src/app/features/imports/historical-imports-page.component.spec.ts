@@ -59,6 +59,8 @@ describe('HistoricalImportsPageComponent', () => {
       invalid_count: 2,
       resolved_count: 7,
       committed_count: 0,
+      auto_match_count: 0,
+      new_person_count: 0,
     }];
     const fixture = createComponent();
     const content = fixture.nativeElement.textContent as string;

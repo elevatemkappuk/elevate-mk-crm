@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_CONFIG } from '../http/api-config';
@@ -8,6 +8,7 @@ import {
   ImportReviewDetail,
   ImportReviewQueue,
   ImportReviewRecord,
+  PaginatedImportRecordPreview,
 } from './import-reconciliation.types';
 
 @Injectable({ providedIn: 'root' })
@@ -25,6 +26,13 @@ export class ImportReconciliationService {
 
   getReviewQueue(id: number): Observable<ImportReviewQueue> {
     return this.http.get<ImportReviewQueue>(`${this.api.apiBaseUrl}/imports/${id}/review/`);
+  }
+
+  getBatchRecords(batchId: number, query: { page?: number; page_size?: number } = {}): Observable<PaginatedImportRecordPreview> {
+    let params = new HttpParams();
+    if (query.page) params = params.set('page', query.page);
+    if (query.page_size) params = params.set('page_size', query.page_size);
+    return this.http.get<PaginatedImportRecordPreview>(`${this.api.apiBaseUrl}/imports/${batchId}/records/`, { params });
   }
 
   getReviewRecord(batchId: number, recordId: number): Observable<ImportReviewDetail> {

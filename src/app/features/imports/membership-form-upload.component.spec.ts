@@ -10,6 +10,7 @@ const batch: ImportBatchSummary = {
   id: 3, source_type: 'MEMBERSHIP_FORM', source_filename: 'membership.xlsx', status: 'READY_FOR_REVIEW',
   created_at: '2026-09-01T10:00:00Z', started_at: '2026-09-01T10:00:00Z', completed_at: null,
   total_count: 2, review_required_count: 1, resolved_count: 1, invalid_count: 0, committed_count: 0,
+  auto_match_count: 1, new_person_count: 0,
 };
 
 class MockImportReconciliationService {

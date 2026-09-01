@@ -61,4 +61,12 @@ describe('ImportReconciliationService', () => {
     expect(request.request.headers.has('Content-Type')).toBe(false);
     request.flush({});
   });
+
+  it('requests paginated batch records with the canonical query parameters', () => {
+    service.getBatchRecords(3, { page: 2, page_size: 25 }).subscribe();
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/imports/3/records/?page=2&page_size=25');
+    expect(request.request.method).toBe('GET');
+    expect(request.request.withCredentials).toBe(true);
+    request.flush({ count: 0, next: null, previous: null, results: [] });
+  });
 });

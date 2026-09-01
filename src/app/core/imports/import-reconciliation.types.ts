@@ -11,6 +11,8 @@ export interface ImportBatchSummary {
   invalid_count: number;
   resolved_count: number;
   committed_count?: number;
+  auto_match_count: number;
+  new_person_count: number;
 }
 
 export interface ImportCandidate {
@@ -64,4 +66,32 @@ export interface ImportBatchDetail extends ImportBatchSummary {}
 export interface ImportReviewQueue {
   count: number;
   results: ImportReviewRecord[];
+}
+
+export interface ImportResolvedPerson {
+  id: number;
+  first_name: string;
+  last_name: string;
+  primary_email: string | null;
+  mobile: string;
+  record_state: 'active' | 'archived';
+}
+
+export interface ImportRecordPreview {
+  id: number;
+  source_row_identifier: string;
+  status: string;
+  resolution_method: string | null;
+  resolution_reason: string | null;
+  resolved_person: ImportResolvedPerson | null;
+  source: ImportSourceRecord;
+  reviewed_at: string | null;
+  committed_at: string | null;
+}
+
+export interface PaginatedImportRecordPreview {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: ImportRecordPreview[];
 }
