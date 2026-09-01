@@ -66,10 +66,37 @@ describe('HistoricalImportsPageComponent', () => {
     const content = fixture.nativeElement.textContent as string;
 
     expect(content).toContain('membership-form.xlsx');
+    expect(content).toContain('Ready for Review');
     expect(content).toContain('Review');
     expect(content).toContain('3');
     expect(content).toContain('Review 3 records');
     expect(content).not.toContain('david@example.com');
+  });
+
+  it('renders a zero-review ready-for-import batch without a review action', () => {
+    service.batches = [{
+      id: 4,
+      source_type: 'MEMBERSHIP_FORM',
+      source_filename: 'ready.xlsx',
+      status: 'READY_FOR_IMPORT',
+      created_at: '2026-09-02T09:00:00Z',
+      started_at: '2026-09-02T09:00:00Z',
+      completed_at: null,
+      total_count: 10,
+      review_required_count: 0,
+      invalid_count: 0,
+      resolved_count: 10,
+      committed_count: 0,
+      auto_match_count: 5,
+      new_person_count: 5,
+    }];
+    const fixture = createComponent();
+    const content = fixture.nativeElement.textContent as string;
+
+    expect(content).toContain('Ready for Import');
+    expect(content).toContain('View batch');
+    expect(content).not.toContain('Review 0 records');
+    expect(Array.from(fixture.nativeElement.querySelectorAll('button')).map((button: HTMLButtonElement) => button.textContent)).not.toContain('Import');
   });
 
   it('shows the reusable empty state when no batches exist', () => {

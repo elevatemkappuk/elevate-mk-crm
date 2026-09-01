@@ -1,8 +1,10 @@
+import type { ImportBatchStatus } from './import-batch-status';
+
 export interface ImportBatchSummary {
   id: number;
   source_type: string;
   source_filename: string;
-  status: string;
+  status: ImportBatchStatus;
   created_at: string;
   started_at: string;
   completed_at: string | null;
@@ -57,7 +59,7 @@ export interface ImportReviewDetail extends ImportReviewRecord {
     id: number;
     source_type: string;
     source_filename: string;
-    status: string;
+    status: ImportBatchStatus;
   };
 }
 

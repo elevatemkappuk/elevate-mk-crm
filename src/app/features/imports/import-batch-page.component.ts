@@ -2,6 +2,11 @@ import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { importResolutionLabel } from '../../core/imports/import-resolution-label';
+import {
+  importBatchStatusLabel,
+  isReviewableImportBatch,
+} from '../../core/imports/import-batch-status';
+import type { ImportBatchStatus } from '../../core/imports/import-batch-status';
 import { ImportReconciliationService } from '../../core/imports/import-reconciliation.service';
 import { ImportBatchDetail, ImportReviewRecord, PaginatedImportRecordPreview } from '../../core/imports/import-reconciliation.types';
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
@@ -18,17 +23,17 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
         <app-state-message title="Import batch unavailable" [message]="batchError()!" tone="error" />
       } @else if (batch(); as currentBatch) {
         <header>
-          <p class="meta">{{ currentBatch.source_type }} | {{ currentBatch.status }}</p><h3>{{ currentBatch.source_filename }}</h3>
+          <p class="meta">{{ currentBatch.source_type }} | {{ statusLabel(currentBatch.status) }}</p><h3>{{ currentBatch.source_filename }}</h3>
           <dl class="summary" aria-label="Batch resolution summary">
-            <div><dt>Records</dt><dd>{{ currentBatch.total_count }}</dd></div><div><dt>Auto matched</dt><dd>{{ currentBatch.auto_match_count }}</dd></div><div><dt>New people</dt><dd>{{ currentBatch.new_person_count }}</dd></div><div><dt>Review required</dt><dd>{{ currentBatch.review_required_count }}</dd></div><div><dt>Invalid</dt><dd>{{ currentBatch.invalid_count }}</dd></div><div><dt>Committed</dt><dd>{{ currentBatch.committed_count }}</dd></div>
+            <div><dt>Records</dt><dd>{{ currentBatch.total_count }}</dd></div><div><dt>Auto matched</dt><dd>{{ currentBatch.auto_match_count }}</dd></div><div><dt>New people</dt><dd>{{ currentBatch.new_person_count }}</dd></div><div><dt>Review required</dt><dd>{{ currentBatch.review_required_count }}</dd></div><div><dt>Invalid</dt><dd>{{ currentBatch.invalid_count }}</dd></div><div><dt>Imported</dt><dd>{{ currentBatch.committed_count }}</dd></div>
           </dl>
         </header>
         <section class="batch-message" aria-live="polite">
           <h4>{{ batchMessageTitle(currentBatch.status) }}</h4><p>{{ batchMessage(currentBatch.status) }}</p>
-          @if (currentBatch.review_required_count > 0 && reviewRecords().length) { <a [routerLink]="['/imports', batchId, 'review', reviewRecords()[0].id]">Review records</a> }
+          @if (isReviewable(currentBatch.status) && currentBatch.review_required_count > 0 && reviewRecords().length) { <a [routerLink]="['/imports', batchId, 'review', reviewRecords()[0].id]">Review records</a> }
         </section>
         <section class="preview" aria-labelledby="resolution-preview-title">
-          <div class="section-heading"><h4 id="resolution-preview-title">Resolution preview</h4><p>Read-only decisions before the future commit step.</p></div>
+          <div class="section-heading"><h4 id="resolution-preview-title">Resolution preview</h4><p>Read-only decisions before the future import operation.</p></div>
           @if (recordsLoading()) {
             <app-state-message title="Loading staged records" message="Retrieving the resolution preview." />
           } @else if (recordsError()) {
@@ -44,7 +49,7 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
             <nav class="pagination" aria-label="Resolution preview pages"><button type="button" [disabled]="!recordPage()!.previous || recordsLoading()" (click)="loadRecords(page() - 1)">Previous</button><span>Page {{ page() }}</span><button type="button" [disabled]="!recordPage()!.next || recordsLoading()" (click)="loadRecords(page() + 1)">Next</button></nav>
           }
         </section>
-        @if (currentBatch.review_required_count > 0 && reviewRecords().length) {
+        @if (isReviewable(currentBatch.status) && currentBatch.review_required_count > 0 && reviewRecords().length) {
           <section class="review-links" aria-labelledby="review-required-title"><h4 id="review-required-title">Records requiring review</h4>@for (record of reviewRecords(); track record.id) { <a [routerLink]="['/imports', batchId, 'review', record.id]">Review {{ value(record, 'first_name') }} {{ value(record, 'last_name') }}</a> }</section>
         }
       }
@@ -67,6 +72,8 @@ export class ImportBatchPageComponent {
   readonly batchError = signal<string | null>(null);
   readonly recordsError = signal<string | null>(null);
   readonly resolutionLabel = importResolutionLabel;
+  readonly statusLabel = importBatchStatusLabel;
+  readonly isReviewable = isReviewableImportBatch;
 
   constructor() { this.loadBatch(); this.loadReviewRecords(); this.loadRecords(1); }
 
@@ -80,8 +87,20 @@ export class ImportBatchPageComponent {
   }
 
   value(record: { source: ImportReviewRecord['source'] }, key: keyof ImportReviewRecord['source']): string { return record.source[key] ?? 'Not provided'; }
-  batchMessageTitle(status: string): string { return status === 'READY_FOR_REVIEW' ? 'Identity review required' : status === 'READY_TO_COMMIT' ? 'Identity review complete' : 'Identity analysis complete'; }
-  batchMessage(status: string): string { if (status === 'READY_FOR_REVIEW') return 'Some records need a staff identity decision before this batch can proceed.'; if (status === 'READY_TO_COMMIT') return 'All records have a final identity decision and are ready for the future commit step.'; return 'All records have an identity decision. Review the resolution preview below before the future commit step.'; }
+  batchMessageTitle(status: ImportBatchStatus): string {
+    if (status === 'PROCESSING') return 'Processing';
+    if (status === 'READY_FOR_REVIEW') return 'Identity review required';
+    if (status === 'READY_FOR_IMPORT') return 'Ready for import';
+    if (status === 'IMPORTED') return 'Imported';
+    return 'Failed';
+  }
+  batchMessage(status: ImportBatchStatus): string {
+    if (status === 'PROCESSING') return 'Identity analysis is in progress. This batch is not actionable yet.';
+    if (status === 'READY_FOR_REVIEW') return 'Some records need a staff identity decision before this batch can proceed.';
+    if (status === 'READY_FOR_IMPORT') return 'All identity decisions are resolved. This batch is ready for the future import action.';
+    if (status === 'IMPORTED') return 'This batch has been imported and is now read-only.';
+    return 'This batch could not be processed safely.';
+  }
   private loadBatch(): void { this.service.getBatch(this.batchId).subscribe({ next: (batch) => { this.batch.set(batch); this.batchLoading.set(false); }, error: () => { this.batchError.set('This import batch is not available.'); this.batchLoading.set(false); } }); }
   private loadReviewRecords(): void { this.service.getReviewQueue(this.batchId).subscribe({ next: (queue) => this.reviewRecords.set(queue.results) }); }
 }
