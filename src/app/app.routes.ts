@@ -12,6 +12,9 @@ import { ForgotPasswordPageComponent } from './features/auth/forgot-password-pag
 import { ResetPasswordPageComponent } from './features/auth/reset-password-page.component';
 import { StaffCrmShellPageComponent } from './features/auth/staff-crm-shell-page.component';
 import { AdministrationPageComponent } from './features/administration/administration-page.component';
+import { HistoricalImportsPageComponent } from './features/imports/historical-imports-page.component';
+import { ImportBatchPageComponent } from './features/imports/import-batch-page.component';
+import { ImportReviewPageComponent } from './features/imports/import-review-page.component';
 import { PersonDetailPageComponent } from './features/people/person-detail-page.component';
 import { PeoplePageComponent } from './features/people/people-page.component';
 import { PersonWritePageComponent } from './features/people/person-write-page.component';
@@ -65,6 +68,21 @@ export const routes: Routes = [
       {
         path: 'administration',
         component: AdministrationPageComponent,
+        canActivate: [administrationGuard],
+      },
+      {
+        path: 'imports',
+        component: HistoricalImportsPageComponent,
+        canActivate: [administrationGuard],
+      },
+      {
+        path: 'imports/:id',
+        component: ImportBatchPageComponent,
+        canActivate: [administrationGuard],
+      },
+      {
+        path: 'imports/:id/review/:recordId',
+        component: ImportReviewPageComponent,
         canActivate: [administrationGuard],
       },
       {

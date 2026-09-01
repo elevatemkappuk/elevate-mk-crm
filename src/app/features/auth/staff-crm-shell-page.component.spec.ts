@@ -61,6 +61,7 @@ describe('StaffCrmShellPageComponent', () => {
         provideRouter([
           { path: 'people', component: DummyRouteComponent },
           { path: 'administration', component: DummyRouteComponent },
+          { path: 'imports', component: DummyRouteComponent },
           { path: 'login', component: DummyRouteComponent },
         ]),
         { provide: AuthService, useClass: MockAuthService },
@@ -84,6 +85,7 @@ describe('StaffCrmShellPageComponent', () => {
 
     expect(links).toContain('People');
     expect(links).toContain('Administration');
+    expect(links).toContain('Historical Imports');
     expect(fixture.nativeElement.textContent).toContain('Ada Admin');
     expect(fixture.nativeElement.textContent).toContain('admin@example.com');
   });
@@ -99,6 +101,7 @@ describe('StaffCrmShellPageComponent', () => {
 
     expect(links).toContain('People');
     expect(links).not.toContain('Administration');
+    expect(links).not.toContain('Historical Imports');
   });
 
   it('marks the active route in navigation', async () => {

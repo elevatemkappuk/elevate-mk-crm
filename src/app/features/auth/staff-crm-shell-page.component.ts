@@ -280,6 +280,7 @@ export class StaffCrmShellPageComponent {
 
     if (this.auth.isCrmAdmin()) {
       items.push({ label: 'Administration', path: '/administration' });
+      items.push({ label: 'Historical Imports', path: '/imports' });
     }
 
     return items;
@@ -293,6 +294,10 @@ export class StaffCrmShellPageComponent {
   pageTitle(): string {
     if (this.router.url.startsWith('/administration')) {
       return 'Administration';
+    }
+
+    if (this.router.url.startsWith('/imports')) {
+      return 'Historical Imports';
     }
 
     if (this.router.url.startsWith('/people/new/member')) {
