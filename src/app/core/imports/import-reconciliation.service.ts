@@ -31,6 +31,12 @@ export class ImportReconciliationService {
     return this.http.get<ImportReviewDetail>(`${this.api.apiBaseUrl}/imports/${batchId}/review/${recordId}/`);
   }
 
+  uploadMembershipForm(file: File): Observable<ImportBatchSummary> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<ImportBatchSummary>(`${this.api.apiBaseUrl}/imports/membership-form/`, formData);
+  }
+
   resolveSamePerson(batchId: number, recordId: number, personId: number): Observable<ImportReviewRecord> {
     return this.http.post<ImportReviewRecord>(
       `${this.api.apiBaseUrl}/imports/${batchId}/review/${recordId}/resolve/`,

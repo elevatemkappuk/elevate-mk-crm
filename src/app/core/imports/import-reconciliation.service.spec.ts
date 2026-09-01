@@ -49,4 +49,16 @@ describe('ImportReconciliationService', () => {
     expect(request.request.body).toEqual({ resolution: 'DIFFERENT_PERSON' });
     request.flush({});
   });
+
+  it('uploads the Membership Form as multipart FormData without forcing a content type', () => {
+    const file = new File(['workbook'], 'membership.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    service.uploadMembershipForm(file).subscribe();
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/imports/membership-form/');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.withCredentials).toBe(true);
+    expect(request.request.body).toBeInstanceOf(FormData);
+    expect((request.request.body as FormData).get('file')).toBe(file);
+    expect(request.request.headers.has('Content-Type')).toBe(false);
+    request.flush({});
+  });
 });

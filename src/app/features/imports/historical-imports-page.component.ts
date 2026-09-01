@@ -2,23 +2,49 @@ import { DatePipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { AuthService } from '../../core/auth/auth.service';
 import { ImportReconciliationService } from '../../core/imports/import-reconciliation.service';
 import { ImportBatchSummary } from '../../core/imports/import-reconciliation.types';
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
+import { MembershipFormUploadComponent } from './membership-form-upload.component';
 
 @Component({
   selector: 'app-historical-imports-page',
-  imports: [DatePipe, RouterLink, StateMessageComponent],
+  imports: [DatePipe, RouterLink, StateMessageComponent, MembershipFormUploadComponent],
   template: `
     <section class="page">
-      <p class="intro">Review staged historical records that require an identity decision.</p>
+      <div class="page-intro">
+        <p class="intro">Review staged historical records that require an identity decision.</p>
+        @if (auth.isCrmAdmin()) {
+          <button type="button" class="button-primary" (click)="uploadOpen.set(true)">Import historical data</button>
+        }
+      </div>
+
+      @if (uploadOpen() && auth.isCrmAdmin()) {
+        <app-membership-form-upload (completed)="handleUploadComplete($event)" (cancelled)="uploadOpen.set(false)" />
+      }
+
+      @if (uploadedBatch(); as batch) {
+        <section class="success" aria-live="polite">
+          <strong>Membership Form staged and analysed.</strong>
+          @if (batch.status === 'READY_FOR_REVIEW') {
+            <a [routerLink]="['/imports', batch.id]">Review records</a>
+          } @else if (batch.status === 'ANALYZED') {
+            <span>No manual identity review is currently required.</span>
+          }
+        </section>
+      }
 
       @if (loading()) {
         <app-state-message title="Loading historical imports" message="Retrieving import batches." />
       } @else if (error()) {
         <app-state-message title="Historical imports unavailable" [message]="error()!" tone="error" />
       } @else if (!batches().length) {
-        <app-state-message title="No historical imports" message="No staged historical import batches are available." />
+        <app-state-message title="No historical imports" message="Upload the Membership Form workbook to stage and analyse historical records.">
+          @if (auth.isCrmAdmin()) {
+            <button type="button" class="button-primary" (click)="uploadOpen.set(true)">Import historical data</button>
+          }
+        </app-state-message>
       } @else {
         <div class="list">
           @for (batch of batches(); track batch.id) {
@@ -47,7 +73,7 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
     </section>
   `,
   styles: `
-    .page, .list { display: grid; gap: 1rem; }
+    .page, .list { display: grid; gap: 1rem; }.page-intro { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
     .intro, .created { margin: 0; color: #526f81; }
     .batch-card { display: grid; gap: 1rem; padding: 1.1rem; border: 1px solid #dce5ea; border-radius: 1rem; background: #fff; }
     .batch-card h3 { margin: 0.2rem 0; color: #173248; }
@@ -56,16 +82,34 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
     dt { color: #607b8d; font-size: 0.75rem; }
     dd { margin: 0.2rem 0 0; color: #173248; font-weight: 700; }
     a { color: #075879; font-weight: 700; }
+    .button-primary { border:0; border-radius:999px; padding:.72rem 1.1rem; color:#fff; background:#1d6077; font:inherit; font-weight:700; cursor:pointer; white-space:nowrap; }
+    .success { display:flex; flex-wrap:wrap; gap:.65rem 1rem; align-items:center; padding:1rem; border:1px solid #bcd5c3; border-radius:1rem; background:#f3faf4; color:#214d2b; }
+    @media (max-width:600px) { .page-intro { align-items:flex-start; flex-direction:column; } }
   `,
 })
 export class HistoricalImportsPageComponent {
   private readonly service = inject(ImportReconciliationService);
+  readonly auth = inject(AuthService);
 
   readonly batches = signal<ImportBatchSummary[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
+  readonly uploadOpen = signal(false);
+  readonly uploadedBatch = signal<ImportBatchSummary | null>(null);
 
   constructor() {
+    this.loadBatches();
+  }
+
+  handleUploadComplete(batch: ImportBatchSummary): void {
+    this.uploadedBatch.set(batch);
+    this.uploadOpen.set(false);
+    this.loadBatches();
+  }
+
+  private loadBatches(): void {
+    this.loading.set(true);
+    this.error.set(null);
     this.service.listBatches().subscribe({
       next: (batches) => {
         this.batches.set(batches);

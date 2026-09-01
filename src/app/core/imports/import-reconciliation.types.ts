@@ -4,6 +4,8 @@ export interface ImportBatchSummary {
   source_filename: string;
   status: string;
   created_at: string;
+  started_at: string;
+  completed_at: string | null;
   total_count: number;
   review_required_count: number;
   invalid_count: number;
