@@ -3,6 +3,12 @@ import { Component, effect, input, output } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { PersonListItem, PersonWriteFields } from '../../core/people/people.types';
+import {
+  AGE_RANGE_OPTIONS,
+  GENDER_OPTIONS,
+  toAgeRange,
+  toGender,
+} from '../../core/people/person-demographics';
 
 export interface PersonFormSubmission {
   person: PersonWriteFields;
@@ -22,8 +28,18 @@ export interface PersonFormSubmission {
           <label>Email <input type="email" formControlName="primary_email" autocomplete="email" /> @if (invalid('primary_email')) { <small>Enter a valid email address.</small> }</label>
           <label>Mobile <input type="tel" formControlName="mobile" autocomplete="tel" /></label>
           <label>Location <input formControlName="location" autocomplete="address-level2" /></label>
-          <label>Age range <input formControlName="age_range" /></label>
-          <label>Gender <input formControlName="gender" /></label>
+          <label>Age range
+            <select formControlName="age_range">
+              <option value="">Not specified</option>
+              @for (option of ageRangeOptions; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
+            </select>
+          </label>
+          <label>Gender
+            <select formControlName="gender">
+              <option value="">Not specified</option>
+              @for (option of genderOptions; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
+            </select>
+          </label>
         </div>
       </section>
       @if (member()) {
@@ -41,8 +57,8 @@ export interface PersonFormSubmission {
   styles: `
     form,.field-group,.fields { display:grid; gap:1rem; } .field-group { padding:1.15rem; border:1px solid rgba(22,39,53,.09); border-radius:1rem; background:#fff; }
     h3 { margin:0; color:#173248; font-size:1.05rem; } .fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
-    label { display:grid; gap:.38rem; font-weight:650; color:#294456; } input { min-width:0; padding:.68rem .78rem; border:1px solid #b7c7d4; border-radius:.7rem; font:inherit; color:#173248; }
-    input:focus-visible { outline:0; border-color:#5d88a0; box-shadow:0 0 0 3px rgba(108,154,180,.2); } small { color:#a12929; font-weight:600; }
+    label { display:grid; gap:.38rem; font-weight:650; color:#294456; } input,select { min-width:0; padding:.68rem .78rem; border:1px solid #b7c7d4; border-radius:.7rem; font:inherit; color:#173248; background:#fff; }
+    input:focus-visible,select:focus-visible { outline:0; border-color:#5d88a0; box-shadow:0 0 0 3px rgba(108,154,180,.2); } small { color:#a12929; font-weight:600; }
     .membership { max-width:22rem; } .actions { display:flex; gap:.7rem; flex-wrap:wrap; } button { border:0; border-radius:999px; padding:.72rem 1.1rem; font:inherit; font-weight:700; cursor:pointer; }
     .button-primary { color:#fff; background:#1d6077; } .button-secondary { color:#244359; background:#edf3f6; } button:disabled { opacity:.6; cursor:not-allowed; }
     @media (max-width:650px) { .fields { grid-template-columns:1fr; } }
@@ -55,6 +71,8 @@ export class PersonFormComponent {
   readonly pending = input(false);
   readonly submitted = output<PersonFormSubmission>();
   readonly cancelled = output<void>();
+  readonly ageRangeOptions = AGE_RANGE_OPTIONS;
+  readonly genderOptions = GENDER_OPTIONS;
   private readonly fb = new FormBuilder();
   readonly form = this.fb.nonNullable.group({
     first_name: ['', Validators.required], last_name: ['', Validators.required],
@@ -66,7 +84,12 @@ export class PersonFormComponent {
     effect(() => {
       const person = this.initialPerson();
       if (person) {
-        this.form.patchValue({ ...person, primary_email: person.primary_email ?? '' }, { emitEvent: false });
+        this.form.patchValue({
+          ...person,
+          primary_email: person.primary_email ?? '',
+          age_range: toAgeRange(person.age_range),
+          gender: toGender(person.gender),
+        }, { emitEvent: false });
       }
     });
   }
@@ -82,7 +105,7 @@ export class PersonFormComponent {
     const person: PersonWriteFields = {
       first_name: value.first_name.trim(), last_name: value.last_name.trim(),
       primary_email: value.primary_email.trim() || null, mobile: value.mobile.trim(), location: value.location.trim(),
-      age_range: value.age_range.trim(), gender: value.gender.trim(),
+      age_range: toAgeRange(value.age_range), gender: toGender(value.gender),
     };
     this.submitted.emit({ person, ...(this.member() ? { joined_at: value.joined_at } : {}) });
   }

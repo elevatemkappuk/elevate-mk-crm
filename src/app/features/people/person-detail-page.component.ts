@@ -10,6 +10,7 @@ import { distinctUntilChanged, map } from 'rxjs/operators';
 import { canManagePeople, hasStaffCrmAccess, hasStaffRole } from '../../core/auth/auth-access';
 import { AuthService } from '../../core/auth/auth.service';
 import { PeopleService } from '../../core/people/people.service';
+import { ageRangeLabel, genderLabel } from '../../core/people/person-demographics';
 import {
   EndMembershipRequest,
   InterestSummary,
@@ -1206,8 +1207,8 @@ export class PersonDetailPageComponent {
       { label: 'Email', value: person.primary_email },
       { label: 'Mobile', value: person.mobile },
       { label: 'Location', value: person.location },
-      { label: 'Age range', value: person.age_range },
-      { label: 'Gender', value: person.gender },
+      { label: 'Age range', value: ageRangeLabel(person.age_range) },
+      { label: 'Gender', value: genderLabel(person.gender) },
     ];
   });
 

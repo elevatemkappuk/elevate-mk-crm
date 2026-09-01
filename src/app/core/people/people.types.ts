@@ -148,8 +148,8 @@ export interface PersonWriteFields {
   primary_email?: string | null;
   mobile?: string;
   location?: string;
-  age_range?: string;
-  gender?: string;
+  age_range?: AgeRange | '';
+  gender?: Gender | '';
 }
 
 export interface CreateContactRequest extends PersonWriteFields {}
@@ -248,3 +248,4 @@ export interface PeopleDirectoryQuery {
 export type PeopleListQueryState = PeopleDirectoryQuery;
 
 export type PaginatedPersonAuditHistoryResponse = PaginatedResponse<PersonAuditHistoryEvent>;
+import { AgeRange, Gender } from './person-demographics';

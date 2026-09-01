@@ -73,8 +73,8 @@ const contactOverview = {
     primary_email: 'ama@example.com',
     mobile: '0991000001',
     location: 'Lilongwe',
-    age_range: '25-34',
-    gender: 'Female',
+    age_range: '25_29',
+    gender: 'NON_BINARY',
     archived_at: null,
     created_at: '2026-08-30T09:00:00Z',
     updated_at: '2026-08-30T09:15:00Z',
@@ -412,6 +412,10 @@ describe('PersonDetailPageComponent', () => {
     expect(harness.routeNativeElement?.textContent).toContain('ama@example.com');
     expect(harness.routeNativeElement?.textContent).toContain('0991000001');
     expect(harness.routeNativeElement?.textContent).toContain('Lilongwe');
+    expect(harness.routeNativeElement?.textContent).toContain('25 - 29');
+    expect(harness.routeNativeElement?.textContent).toContain('Non-Binary');
+    expect(harness.routeNativeElement?.textContent).not.toContain('25_29');
+    expect(harness.routeNativeElement?.textContent).not.toContain('NON_BINARY');
     expect(harness.routeNativeElement?.textContent).toContain('Contact');
     expect(harness.routeNativeElement?.textContent).toContain('Personal details');
     expect(harness.routeNativeElement?.textContent).toContain('Record information');
