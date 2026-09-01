@@ -25,7 +25,7 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
           <p class="meta">{{ batch()!.source_type }} | {{ batch()!.status }}</p>
           <h3>{{ batch()!.source_filename }}</h3>
           <dl>
-            <div><dt>Records</dt><dd>{{ batch()!.total_records }}</dd></div>
+            <div><dt>Records</dt><dd>{{ batch()!.total_count }}</dd></div>
             <div><dt>Review required</dt><dd>{{ batch()!.review_required_count }}</dd></div>
             <div><dt>Invalid</dt><dd>{{ batch()!.invalid_count }}</dd></div>
             <div><dt>Resolved</dt><dd>{{ batch()!.resolved_count }}</dd></div>
@@ -91,6 +91,6 @@ export class ImportBatchPageComponent {
   }
 
   value(record: ImportReviewRecord, key: string): string {
-    return record.normalized_data[key] ?? 'Not provided';
+    return record.source[key as keyof ImportReviewRecord['source']] ?? 'Not provided';
   }
 }

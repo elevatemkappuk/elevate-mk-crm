@@ -39,14 +39,14 @@ describe('HistoricalImportsPageComponent', () => {
     return fixture;
   }
 
-  it('renders batch review counts without source-row PII', () => {
+  it('renders backend total_count and review counts without source-row PII', () => {
     service.batches = [{
       id: 3,
       source_type: 'MEMBERSHIP_FORM',
       source_filename: 'membership-form.xlsx',
       status: 'READY_FOR_REVIEW',
       created_at: '2026-09-01T09:00:00Z',
-      total_records: 120,
+      total_count: 120,
       review_required_count: 3,
       invalid_count: 2,
       resolved_count: 7,

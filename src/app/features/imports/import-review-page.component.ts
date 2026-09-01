@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 
 import { importEvidenceLabel } from '../../core/imports/import-evidence';
 import { ImportReconciliationService } from '../../core/imports/import-reconciliation.service';
-import { ImportReviewRecord } from '../../core/imports/import-reconciliation.types';
+import { ImportReviewDetail, ImportReviewRecord } from '../../core/imports/import-reconciliation.types';
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
 
 @Component({
@@ -29,13 +29,13 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
 
           <article>
             <h3>Possible CRM match</h3>
-            @for (candidate of record()!.match_candidates; track candidate.person_id) {
-              <label class="candidate" [class.selected]="selectedId() === candidate.person_id">
-                <input type="radio" name="candidate" [checked]="selectedId() === candidate.person_id" (change)="selectedId.set(candidate.person_id)" />
+            @for (candidate of record()!.candidates; track candidate.id) {
+              <label class="candidate" [class.selected]="selectedId() === candidate.id">
+                <input type="radio" name="candidate" [checked]="selectedId() === candidate.id" (change)="selectedId.set(candidate.id)" />
                 <span>
-                  <strong>{{ candidate.person?.first_name }} {{ candidate.person?.last_name }}</strong>
-                  @if (candidate.person_record_state === 'archived') { <em>Archived person</em> }
-                  <br />{{ candidate.person?.primary_email }}<br />{{ candidate.person?.mobile }}
+                  <strong>{{ candidate.first_name }} {{ candidate.last_name }}</strong>
+                  @if (candidate.record_state === 'archived') { <em>Archived person</em> }
+                  <br />{{ candidate.primary_email }}<br />{{ candidate.mobile }}
                   <small>
                     @for (code of candidate.matched_on; track code) { <span>Match: {{ importEvidenceLabel(code) }}</span> }
                     @for (code of candidate.contradiction_codes; track code) { <span>Conflict: {{ importEvidenceLabel(code) }}</span> }
@@ -81,7 +81,7 @@ export class ImportReviewPageComponent {
 
   readonly batchId = Number(this.route.snapshot.paramMap.get('id'));
   readonly recordId = Number(this.route.snapshot.paramMap.get('recordId'));
-  readonly record = signal<ImportReviewRecord | null>(null);
+  readonly record = signal<ImportReviewDetail | null>(null);
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly selectedId = signal<number | null>(null);
@@ -91,7 +91,9 @@ export class ImportReviewPageComponent {
 
   constructor() { this.load(); }
 
-  value(key: string): string { return this.record()?.normalized_data[key] ?? 'Not provided'; }
+  value(key: keyof ImportReviewRecord['source']): string {
+    return this.record()?.source[key] ?? 'Not provided';
+  }
 
   samePerson(): void {
     const personId = this.selectedId();

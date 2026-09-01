@@ -5,40 +5,51 @@ import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ImportReconciliationService } from '../../core/imports/import-reconciliation.service';
-import { ImportReviewRecord } from '../../core/imports/import-reconciliation.types';
+import { ImportReviewDetail } from '../../core/imports/import-reconciliation.types';
 import { ImportReviewPageComponent } from './import-review-page.component';
 
 @Component({ template: '' })
 class DummyRouteComponent {}
 
-const reviewRecord: ImportReviewRecord = {
+const reviewRecord: ImportReviewDetail = {
   id: 9,
   batch_id: 3,
-  normalized_data: {
+  source_row_identifier: 'row-9',
+  status: 'REVIEW_REQUIRED',
+  source: {
     first_name: 'David', last_name: 'Mensah', email: 'david@example.com', mobile: '0712300000', location: 'Milton Keynes', job_title: 'Engineer',
+    industry: 'Technology', linkedin_url: 'https://www.linkedin.com/in/david',
   },
   resolution_reason: 'UNIQUE_EMAIL_WITH_CONTRADICTION',
   match_evidence: {},
-  match_candidates: [
+  validation_errors: [],
+  batch: { id: 3, source_type: 'MEMBERSHIP_FORM', source_filename: 'members.xlsx', status: 'READY_FOR_REVIEW' },
+  candidates: [
     {
-      person_id: 44,
+      id: 44,
+      first_name: 'David',
+      last_name: 'Mensah',
+      primary_email: 'david@example.com',
+      mobile: '0712399999',
+      record_state: 'archived',
       matched_on: ['EXACT_EMAIL'],
       name_agreement: true,
       mobile_agreement: false,
       email_agreement: true,
-      person_record_state: 'archived',
       contradiction_codes: ['MOBILE_CONFLICT'],
-      person: { first_name: 'David', last_name: 'Mensah', primary_email: 'david@example.com', mobile: '0712399999', location: 'Milton Keynes' },
     },
     {
-      person_id: 45,
+      id: 45,
+      first_name: 'D.',
+      last_name: 'Mensah',
+      primary_email: null,
+      mobile: '0712300000',
+      record_state: 'active',
       matched_on: ['EXACT_MOBILE'],
       name_agreement: null,
       mobile_agreement: true,
       email_agreement: null,
-      person_record_state: 'active',
       contradiction_codes: [],
-      person: { first_name: 'D.', last_name: 'Mensah', primary_email: null, mobile: '0712300000', location: 'Milton Keynes' },
     },
   ],
 };
@@ -69,7 +80,7 @@ describe('ImportReviewPageComponent', () => {
     fixture.detectChanges();
   });
 
-  it('renders the source record, readable evidence, archived candidate state, and no commit/search UI', () => {
+  it('renders backend source and candidates with readable evidence, archived state, and no commit/search UI', () => {
     const content = fixture.nativeElement.textContent as string;
     expect(content).toContain('Source record');
     expect(content).toContain('David Mensah');

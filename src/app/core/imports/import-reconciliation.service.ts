@@ -5,6 +5,7 @@ import { API_CONFIG } from '../http/api-config';
 import {
   ImportBatchDetail,
   ImportBatchSummary,
+  ImportReviewDetail,
   ImportReviewQueue,
   ImportReviewRecord,
 } from './import-reconciliation.types';
@@ -26,8 +27,8 @@ export class ImportReconciliationService {
     return this.http.get<ImportReviewQueue>(`${this.api.apiBaseUrl}/imports/${id}/review/`);
   }
 
-  getReviewRecord(batchId: number, recordId: number): Observable<ImportReviewRecord> {
-    return this.http.get<ImportReviewRecord>(`${this.api.apiBaseUrl}/imports/${batchId}/review/${recordId}/`);
+  getReviewRecord(batchId: number, recordId: number): Observable<ImportReviewDetail> {
+    return this.http.get<ImportReviewDetail>(`${this.api.apiBaseUrl}/imports/${batchId}/review/${recordId}/`);
   }
 
   resolveSamePerson(batchId: number, recordId: number, personId: number): Observable<ImportReviewRecord> {

@@ -29,7 +29,7 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
                 <p class="created">Created {{ batch.created_at | date: 'mediumDate' }}</p>
               </div>
               <dl class="counts">
-                <div><dt>Records</dt><dd>{{ batch.total_records }}</dd></div>
+                <div><dt>Records</dt><dd>{{ batch.total_count }}</dd></div>
                 <div><dt>Review</dt><dd>{{ batch.review_required_count }}</dd></div>
                 <div><dt>Invalid</dt><dd>{{ batch.invalid_count }}</dd></div>
                 <div><dt>Resolved</dt><dd>{{ batch.resolved_count }}</dd></div>
