@@ -67,21 +67,26 @@ export interface ImportReviewDetail extends ImportReviewRecord {
 
 export interface ImportBatchDetail extends ImportBatchSummary {}
 
-export interface MembershipFormImportResult {
+export interface AuthoritativeImportResult {
   processed_count: number;
   people_created_count: number;
   people_matched_count: number;
-  people_enriched_count: number;
-  memberships_created_count: number;
-  memberships_reused_count: number;
-  profiles_created_count: number;
-  profiles_enriched_count: number;
   skipped_count: number;
+  people_enriched_count?: number;
+  memberships_created_count?: number;
+  memberships_reused_count?: number;
+  profiles_created_count?: number;
+  profiles_enriched_count?: number;
+  events_created_count?: number;
+  events_reused_count?: number;
+  participations_created_count?: number;
+  participations_reused_count?: number;
+  participations_preserved_count?: number;
 }
 
-export interface MembershipFormImportResponse {
+export interface AuthoritativeImportResponse {
   batch: ImportBatchDetail;
-  result: MembershipFormImportResult;
+  result: AuthoritativeImportResult;
 }
 
 export interface ImportReviewQueue {

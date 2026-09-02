@@ -5,7 +5,7 @@ import { API_CONFIG } from '../http/api-config';
 import {
   ImportBatchDetail,
   ImportBatchSummary,
-  MembershipFormImportResponse,
+  AuthoritativeImportResponse,
   ImportReviewDetail,
   ImportReviewQueue,
   ImportReviewRecord,
@@ -56,8 +56,8 @@ export class ImportReconciliationService {
     return this.http.post<ImportBatchDetail>(`${this.api.apiBaseUrl}/imports/${batchId}/analyze/`, null);
   }
 
-  importMembershipFormBatch(batchId: number): Observable<MembershipFormImportResponse> {
-    return this.http.post<MembershipFormImportResponse>(`${this.api.apiBaseUrl}/imports/${batchId}/import/`, null);
+  importBatch(batchId: number): Observable<AuthoritativeImportResponse> {
+    return this.http.post<AuthoritativeImportResponse>(`${this.api.apiBaseUrl}/imports/${batchId}/import/`, null);
   }
 
   resolveSamePerson(batchId: number, recordId: number, personId: number): Observable<ImportReviewRecord> {

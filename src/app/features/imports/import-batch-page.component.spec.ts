@@ -10,7 +10,7 @@ import { ImportReconciliationService } from '../../core/imports/import-reconcili
 import {
   ImportBatchDetail,
   ImportReviewQueue,
-  MembershipFormImportResponse,
+  AuthoritativeImportResponse,
   PaginatedImportRecordPreview,
 } from '../../core/imports/import-reconciliation.types';
 import { ImportBatchPageComponent } from './import-batch-page.component';
@@ -35,7 +35,7 @@ const readyForImportBatch: ImportBatchDetail = {
   new_person_count: 1,
 };
 
-const importedResponse: MembershipFormImportResponse = {
+const importedResponse: AuthoritativeImportResponse = {
   batch: { ...readyForImportBatch, status: 'IMPORTED', completed_at: '2026-09-02T10:00:00Z', committed_count: 2 },
   result: {
     processed_count: 2,
@@ -46,6 +46,27 @@ const importedResponse: MembershipFormImportResponse = {
     memberships_reused_count: 1,
     profiles_created_count: 1,
     profiles_enriched_count: 0,
+    skipped_count: 0,
+  },
+};
+
+const eventbriteImportedResponse: AuthoritativeImportResponse = {
+  batch: {
+    ...readyForImportBatch,
+    source_type: 'EVENTBRITE',
+    status: 'IMPORTED',
+    completed_at: '2026-09-02T10:00:00Z',
+    committed_count: 2,
+  },
+  result: {
+    processed_count: 2,
+    people_created_count: 1,
+    people_matched_count: 1,
+    events_created_count: 1,
+    events_reused_count: 1,
+    participations_created_count: 2,
+    participations_reused_count: 1,
+    participations_preserved_count: 0,
     skipped_count: 0,
   },
 };
@@ -74,7 +95,7 @@ class MockImportReconciliationService {
       committed_at: null,
     }],
   }));
-  readonly importMembershipFormBatch = vi.fn(() => of(importedResponse));
+  readonly importBatch = vi.fn(() => of(importedResponse));
   readonly analyzeEventbriteBatch = vi.fn(() => of({ ...readyForImportBatch, source_type: 'EVENTBRITE', status: 'READY_FOR_IMPORT' as const }));
 }
 
@@ -140,20 +161,20 @@ describe('ImportBatchPageComponent', () => {
     button('Cancel').click();
     fixture.detectChanges();
 
-    expect(service.importMembershipFormBatch).not.toHaveBeenCalled();
+    expect(service.importBatch).not.toHaveBeenCalled();
   });
 
   it('submits once, disables the action while importing, and renders the server result', () => {
-    const pending = new Subject<MembershipFormImportResponse>();
-    service.importMembershipFormBatch.mockReturnValueOnce(pending);
+    const pending = new Subject<AuthoritativeImportResponse>();
+    service.importBatch.mockReturnValueOnce(pending);
     button('Add to CRM').click();
     fixture.detectChanges();
     confirmationButton().click();
     fixture.detectChanges();
     button('Adding to CRM...').click();
 
-    expect(service.importMembershipFormBatch).toHaveBeenCalledOnce();
-    expect(service.importMembershipFormBatch).toHaveBeenCalledWith(3);
+    expect(service.importBatch).toHaveBeenCalledOnce();
+    expect(service.importBatch).toHaveBeenCalledWith(3);
     expect(button('Adding to CRM...').disabled).toBe(true);
 
     pending.next(importedResponse);
@@ -182,7 +203,7 @@ describe('ImportBatchPageComponent', () => {
   });
 
   it('keeps the batch unimported locally and refreshes it after a safe conflict', () => {
-    service.importMembershipFormBatch.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 409 })));
+    service.importBatch.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 409 })));
     button('Add to CRM').click();
     fixture.detectChanges();
     confirmationButton().click();
@@ -203,7 +224,7 @@ describe('ImportBatchPageComponent', () => {
     expect(button('Add to CRM')).toBeFalsy();
   });
 
-  it('analyzes Eventbrite STAGED batches once and never exposes Add to CRM', () => {
+  it('analyzes Eventbrite STAGED batches once before exposing Add to CRM', () => {
     const staged = { ...readyForImportBatch, source_type: 'EVENTBRITE', status: 'STAGED' as const };
     fixture.componentInstance.batch.set(staged);
     fixture.detectChanges();
@@ -216,7 +237,34 @@ describe('ImportBatchPageComponent', () => {
     expect(service.analyzeEventbriteBatch).toHaveBeenCalledWith(3);
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Identity review complete');
-    expect(fixture.nativeElement.textContent).toContain('ready for the next import step');
+    expect(fixture.nativeElement.textContent).toContain('ready to add buyers, Events, and event registrations');
+    expect(button('Add to CRM')).toBeTruthy();
+  });
+
+  it('imports a ready Eventbrite batch through the shared confirmation and displays backend Eventbrite counts', () => {
+    fixture.componentInstance.batch.set({ ...readyForImportBatch, source_type: 'EVENTBRITE' });
+    service.importBatch.mockReturnValueOnce(of(eventbriteImportedResponse));
+    fixture.detectChanges();
+
+    button('Add to CRM').click();
+    fixture.detectChanges();
+
+    const confirmation = fixture.nativeElement.textContent as string;
+    expect(confirmation).toContain('buyers, Events, and event registrations');
+    expect(confirmation).toContain('Memberships will not be created or changed.');
+    confirmationButton().click();
+    fixture.detectChanges();
+
+    expect(service.importBatch).toHaveBeenCalledOnce();
+    expect(service.importBatch).toHaveBeenCalledWith(3);
+    const summary = fixture.nativeElement.querySelector('.import-success').textContent as string;
+    expect(summary).toContain('Events created');
+    expect(summary).toContain('Events reused');
+    expect(summary).toContain('Participations created');
+    expect(summary).toContain('Participations reused');
+    expect(summary).toContain('1 Event');
+    expect(summary).toContain('2 participations');
+    expect(summary).not.toContain('Memberships created');
     expect(button('Add to CRM')).toBeFalsy();
   });
 

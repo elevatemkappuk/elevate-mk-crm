@@ -11,7 +11,7 @@ import {
 } from '../../core/imports/import-batch-status';
 import type { ImportBatchStatus } from '../../core/imports/import-batch-status';
 import { ImportReconciliationService } from '../../core/imports/import-reconciliation.service';
-import { ImportBatchDetail, ImportRecordPreview, ImportReviewRecord, MembershipFormImportResult, PaginatedImportRecordPreview } from '../../core/imports/import-reconciliation.types';
+import { AuthoritativeImportResult, ImportBatchDetail, ImportRecordPreview, ImportReviewRecord, PaginatedImportRecordPreview } from '../../core/imports/import-reconciliation.types';
 import { ConfirmationDialogComponent } from '../../shared/ui/confirmation-dialog.component';
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
 
@@ -56,7 +56,15 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
               <div><dt>Processed</dt><dd>{{ result.processed_count }} {{ countLabel(result.processed_count, 'record') }}</dd></div>
               <div><dt>People created</dt><dd>{{ result.people_created_count }} {{ countLabel(result.people_created_count, 'Person', 'People') }}</dd></div>
               <div><dt>People matched</dt><dd>{{ result.people_matched_count }} {{ countLabel(result.people_matched_count, 'Person', 'People') }}</dd></div>
-              <div><dt>Memberships created</dt><dd>{{ result.memberships_created_count }} {{ countLabel(result.memberships_created_count, 'Membership') }}</dd></div>
+              @if (currentBatch.source_type === 'EVENTBRITE') {
+                <div><dt>Events created</dt><dd>{{ result.events_created_count ?? 0 }} {{ countLabel(result.events_created_count ?? 0, 'Event') }}</dd></div>
+                <div><dt>Events reused</dt><dd>{{ result.events_reused_count ?? 0 }} {{ countLabel(result.events_reused_count ?? 0, 'Event') }}</dd></div>
+                <div><dt>Participations created</dt><dd>{{ result.participations_created_count ?? 0 }} {{ countLabel(result.participations_created_count ?? 0, 'participation') }}</dd></div>
+                <div><dt>Participations reused</dt><dd>{{ result.participations_reused_count ?? 0 }} {{ countLabel(result.participations_reused_count ?? 0, 'participation') }}</dd></div>
+                <div><dt>Participations preserved</dt><dd>{{ result.participations_preserved_count ?? 0 }} {{ countLabel(result.participations_preserved_count ?? 0, 'participation') }}</dd></div>
+              } @else {
+                <div><dt>Memberships created</dt><dd>{{ result.memberships_created_count ?? 0 }} {{ countLabel(result.memberships_created_count ?? 0, 'Membership') }}</dd></div>
+              }
               <div><dt>Skipped</dt><dd>{{ result.skipped_count }} {{ countLabel(result.skipped_count, 'record') }}</dd></div>
             </dl>
           </section>
@@ -85,7 +93,7 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
       <app-confirmation-dialog
         [open]="importConfirmationOpen()"
         title="Add these records to the CRM?"
-        message="This will add the resolved historical records to the CRM. New identities create People, matched identities use existing People, and eligible Membership and professional information is added. Existing nonblank CRM information is preserved."
+        [message]="importConfirmationMessage()"
         confirmLabel="Add to CRM"
         [busy]="importing()"
         (cancelled)="cancelImportConfirmation()"
@@ -114,8 +122,13 @@ export class ImportBatchPageComponent {
   readonly importing = signal(false);
   readonly analyzing = signal(false);
   readonly importError = signal<string | null>(null);
-  readonly importResult = signal<MembershipFormImportResult | null>(null);
-  readonly canImport = computed(() => this.batch()?.source_type === 'MEMBERSHIP_FORM' && this.batch()?.status === 'READY_FOR_IMPORT' && this.auth.isCrmAdmin());
+  readonly importResult = signal<AuthoritativeImportResult | null>(null);
+  readonly canImport = computed(() => {
+    const batch = this.batch();
+    return (batch?.source_type === 'MEMBERSHIP_FORM' || batch?.source_type === 'EVENTBRITE')
+      && batch.status === 'READY_FOR_IMPORT'
+      && this.auth.isCrmAdmin();
+  });
   readonly canAnalyze = computed(() => this.batch()?.source_type === 'EVENTBRITE' && this.batch()?.status === 'STAGED' && this.auth.isCrmAdmin());
   readonly resolutionLabel = importResolutionLabel;
   readonly statusLabel = importBatchStatusLabel;
@@ -156,13 +169,18 @@ export class ImportBatchPageComponent {
       : 'Review how each record will be handled before adding it to the CRM.';
   }
   countLabel(count: number, singular: string, plural = `${singular}s`): string { return count === 1 ? singular : plural; }
+  importConfirmationMessage(): string {
+    return this.batch()?.source_type === 'EVENTBRITE'
+      ? 'This will add resolved Eventbrite buyers, Events, and event registrations to the CRM. Existing People and Event participations are reused where applicable. Memberships will not be created or changed.'
+      : 'This will add the resolved historical records to the CRM. New identities create People, matched identities use existing People, and eligible Membership and professional information is added. Existing nonblank CRM information is preserved.';
+  }
   openImportConfirmation(): void { if (this.canImport() && !this.importing()) { this.importConfirmationOpen.set(true); this.importError.set(null); } }
   cancelImportConfirmation(): void { this.importConfirmationOpen.set(false); }
   confirmImport(): void {
     const batch = this.batch();
     if (!batch || !this.canImport() || this.importing()) return;
     this.importConfirmationOpen.set(false); this.importing.set(true); this.importError.set(null);
-    this.service.importMembershipFormBatch(batch.id).pipe(finalize(() => this.importing.set(false))).subscribe({
+    this.service.importBatch(batch.id).pipe(finalize(() => this.importing.set(false))).subscribe({
       next: ({ batch: importedBatch, result }) => {
         this.batch.set(importedBatch); this.importResult.set(result); this.loadReviewRecords(); this.loadRecords(this.page());
       },
@@ -204,7 +222,7 @@ export class ImportBatchPageComponent {
     if (batch.status === 'PROCESSING') return 'Identity analysis is in progress. This batch is not actionable yet.';
     if (batch.status === 'READY_FOR_REVIEW') return 'Some records need a staff identity decision before this batch can proceed.';
     if (batch.status === 'READY_FOR_IMPORT') return batch.source_type === 'EVENTBRITE'
-      ? 'All Eventbrite buyers have been matched or resolved. This batch is ready for the next import step.'
+      ? 'All Eventbrite buyers have been matched or resolved. This batch is ready to add buyers, Events, and event registrations to the CRM.'
       : 'These records are ready to be added to the CRM.';
     if (batch.status === 'IMPORTED') return 'This batch has been imported and is now read-only.';
     return 'This batch could not be processed safely.';
