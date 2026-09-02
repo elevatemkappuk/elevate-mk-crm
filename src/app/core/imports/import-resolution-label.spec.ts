@@ -8,6 +8,7 @@ function record(status: string, resolutionMethod: string | null): ImportRecordPr
     id: 1, source_row_identifier: 'row-1', status, resolution_method: resolutionMethod, resolution_reason: null,
     resolved_person: null,
     source: { first_name: 'Amara', last_name: 'Owusu', email: 'amara@example.com', mobile: '', location: '', industry: '', job_title: '', linkedin_url: '' },
+    validation_errors: [],
     reviewed_at: null, committed_at: null,
   };
 }

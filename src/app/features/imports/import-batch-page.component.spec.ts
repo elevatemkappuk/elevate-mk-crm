@@ -69,6 +69,7 @@ class MockImportReconciliationService {
         first_name: 'Source', last_name: 'Person', email: 'source@example.com', mobile: null,
         location: null, industry: null, job_title: null, linkedin_url: null,
       },
+      validation_errors: [],
       reviewed_at: null,
       committed_at: null,
     }],
@@ -210,5 +211,50 @@ describe('ImportBatchPageComponent', () => {
 
     expect(fixture.nativeElement.textContent).toContain('Created Person');
     expect(fixture.nativeElement.textContent).not.toContain('None');
+  });
+
+  it('renders safe backend validation reasons for invalid records and keeps the destination not added', () => {
+    const record = fixture.componentInstance.recordPage()!.results[0];
+    fixture.componentInstance.recordPage.set({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [{
+        ...record,
+        status: 'INVALID',
+        resolution_method: null,
+        validation_errors: [
+          { field: 'age_range', code: 'unsupported_age_range', message: 'Age range is not supported.' },
+          { field: 'gender', code: 'unsupported_gender', message: 'Gender is not supported.' },
+          { field: 'email', code: 'invalid_email', message: 'Email address is not valid.' },
+          { field: 'linkedin_url', code: 'invalid_url', message: 'LinkedIn URL is not valid.' },
+        ],
+      }],
+    });
+    fixture.detectChanges();
+
+    const content = fixture.nativeElement.textContent as string;
+    expect(content).toContain('Invalid');
+    expect(content).toContain('Age range is not supported.');
+    expect(content).toContain('Gender is not supported.');
+    expect(content).toContain('Email address is not valid.');
+    expect(content).toContain('LinkedIn URL is not valid.');
+    expect(content).toContain('Not added');
+    expect(content).not.toContain('Will not be added to the CRM.');
+  });
+
+  it('uses a safe invalid-record fallback and leaves non-invalid decision copy unchanged', () => {
+    const component = fixture.componentInstance;
+    const record = component.recordPage()!.results[0];
+    component.recordPage.set({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [{ ...record, status: 'INVALID', resolution_method: null, validation_errors: [] }],
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Source record failed validation.');
+    expect(component.resolutionLabel(record).detail).toBe('A new CRM Person will be created.');
   });
 });

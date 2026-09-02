@@ -51,7 +51,7 @@ export interface ImportReviewRecord {
   candidates: ImportCandidate[];
   resolution_reason: string | null;
   match_evidence?: Record<string, unknown>;
-  validation_errors: unknown[];
+  validation_errors: ImportValidationError[];
 }
 
 export interface ImportReviewDetail extends ImportReviewRecord {
@@ -104,8 +104,15 @@ export interface ImportRecordPreview {
   resolution_reason: string | null;
   resolved_person: ImportResolvedPerson | null;
   source: ImportSourceRecord;
+  validation_errors: ImportValidationError[];
   reviewed_at: string | null;
   committed_at: string | null;
+}
+
+export interface ImportValidationError {
+  field: string;
+  code: string;
+  message: string;
 }
 
 export interface PaginatedImportRecordPreview {
