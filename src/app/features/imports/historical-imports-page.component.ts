@@ -18,7 +18,7 @@ import { MembershipFormUploadComponent } from './membership-form-upload.componen
   template: `
     <section class="page">
       <div class="page-intro">
-        <p class="intro">Review historical records and resolve identity decisions before a future import operation.</p>
+        <p class="intro">Review historical records and resolve identity decisions before adding records to the CRM.</p>
         @if (auth.isCrmAdmin()) {
           <button type="button" class="button-primary" (click)="uploadOpen.set(true)">Upload Membership Form</button>
         }
@@ -34,7 +34,7 @@ import { MembershipFormUploadComponent } from './membership-form-upload.componen
           @if (isReviewable(batch.status)) {
             <a [routerLink]="['/imports', batch.id]">Review records</a>
           } @else if (batch.status === 'READY_FOR_IMPORT') {
-            <span>All identity decisions are resolved. This batch is ready for the future import action.</span>
+            <span>These records are ready to be added to the CRM.</span>
           } @else if (batch.status === 'PROCESSING') {
             <span>Identity analysis is still in progress.</span>
           } @else if (batch.status === 'FAILED') {
@@ -44,7 +44,7 @@ import { MembershipFormUploadComponent } from './membership-form-upload.componen
       }
 
       @if (loading()) {
-        <app-state-message title="Loading historical imports" message="Retrieving import batches." />
+        <app-state-message title="Loading historical imports" message="Retrieving historical imports." />
       } @else if (error()) {
         <app-state-message title="Historical imports unavailable" [message]="error()!" tone="error" />
       } @else if (!batches().length) {
@@ -126,7 +126,7 @@ export class HistoricalImportsPageComponent {
         this.loading.set(false);
       },
       error: () => {
-        this.error.set('The import batches could not be loaded right now.');
+        this.error.set('The historical imports could not be loaded right now.');
         this.loading.set(false);
       },
     });

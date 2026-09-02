@@ -111,26 +111,28 @@ describe('ImportBatchPageComponent', () => {
     return fixture.nativeElement.querySelector('app-confirmation-dialog .button-primary') as HTMLButtonElement;
   }
 
-  it('shows Import only for a CRM_ADMIN-ready batch', () => {
-    expect(button('Import batch')).toBeTruthy();
+  it('shows Add to CRM only for a CRM_ADMIN-ready batch', () => {
+    expect(button('Add to CRM')).toBeTruthy();
+    expect(fixture.nativeElement.textContent).toContain('Ready to add to CRM');
+    expect(fixture.nativeElement.textContent).not.toMatch(/commit/i);
     auth.isCrmAdmin.set(false);
     fixture.detectChanges();
-    expect(button('Import batch')).toBeFalsy();
+    expect(button('Add to CRM')).toBeFalsy();
   });
 
   it('does not show Import for non-ready or terminal statuses', () => {
     for (const status of ['PROCESSING', 'READY_FOR_REVIEW', 'FAILED', 'IMPORTED'] as const) {
       fixture.componentInstance.batch.set({ ...readyForImportBatch, status });
       fixture.detectChanges();
-      expect(button('Import batch')).toBeFalsy();
+      expect(button('Add to CRM')).toBeFalsy();
     }
   });
 
   it('requires confirmation and cancel does not call the API', () => {
-    button('Import batch').click();
+    button('Add to CRM').click();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Import this batch?');
+    expect(fixture.nativeElement.textContent).toContain('Add these records to the CRM?');
     button('Cancel').click();
     fixture.detectChanges();
 
@@ -140,22 +142,22 @@ describe('ImportBatchPageComponent', () => {
   it('submits once, disables the action while importing, and renders the server result', () => {
     const pending = new Subject<MembershipFormImportResponse>();
     service.importMembershipFormBatch.mockReturnValueOnce(pending);
-    button('Import batch').click();
+    button('Add to CRM').click();
     fixture.detectChanges();
     confirmationButton().click();
     fixture.detectChanges();
-    button('Importing...').click();
+    button('Adding to CRM...').click();
 
     expect(service.importMembershipFormBatch).toHaveBeenCalledOnce();
     expect(service.importMembershipFormBatch).toHaveBeenCalledWith(3);
-    expect(button('Importing...').disabled).toBe(true);
+    expect(button('Adding to CRM...').disabled).toBe(true);
 
     pending.next(importedResponse);
     pending.complete();
     fixture.detectChanges();
 
     const content = fixture.nativeElement.textContent as string;
-    expect(content).toContain('Import complete');
+    expect(content).toContain('Added to CRM');
     expect(content).toContain('2 records');
     expect(content).toContain('1 Person');
     expect(content).toContain('1 Membership');
@@ -166,7 +168,7 @@ describe('ImportBatchPageComponent', () => {
 
   it('keeps the batch unimported locally and refreshes it after a safe conflict', () => {
     service.importMembershipFormBatch.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 409 })));
-    button('Import batch').click();
+    button('Add to CRM').click();
     fixture.detectChanges();
     confirmationButton().click();
     fixture.detectChanges();
@@ -183,6 +185,30 @@ describe('ImportBatchPageComponent', () => {
 
     expect(component.batchMessageTitle('IMPORTED')).toBe('Imported');
     expect(component.batchMessage('IMPORTED')).toContain('read-only');
-    expect(button('Import batch')).toBeFalsy();
+    expect(button('Add to CRM')).toBeFalsy();
+  });
+
+  it('presents destination outcomes instead of None', () => {
+    const component = fixture.componentInstance;
+    const record = fixture.componentInstance.recordPage()!.results[0];
+
+    expect(component.destinationLabel(record)).toBe('New CRM Person');
+    expect(component.destinationLabel({ ...record, status: 'INVALID' })).toBe('Not added');
+    expect(component.destinationLabel({ ...record, status: 'REVIEW_REQUIRED', resolution_method: null })).toBe('Pending review');
+
+    component.recordPage.set({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [{
+        ...record,
+        status: 'COMMITTED',
+        resolved_person: { id: 77, first_name: 'Created', last_name: 'Person', primary_email: null, mobile: '', record_state: 'active' },
+      }],
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Created Person');
+    expect(fixture.nativeElement.textContent).not.toContain('None');
   });
 });

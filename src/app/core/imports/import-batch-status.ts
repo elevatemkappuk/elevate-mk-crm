@@ -8,7 +8,7 @@ export type ImportBatchStatus =
 const IMPORT_BATCH_STATUS_LABELS: Readonly<Record<ImportBatchStatus, string>> = {
   PROCESSING: 'Processing',
   READY_FOR_REVIEW: 'Ready for Review',
-  READY_FOR_IMPORT: 'Ready for Import',
+  READY_FOR_IMPORT: 'Ready to add to CRM',
   IMPORTED: 'Imported',
   FAILED: 'Failed',
 };

@@ -12,8 +12,8 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
   template: `
     <section class="upload-panel" aria-labelledby="membership-upload-title">
       <div>
-        <h3 id="membership-upload-title">Import historical data</h3>
-        <p>Stage and analyse a Membership Form workbook. This does not commit CRM data.</p>
+        <h3 id="membership-upload-title">Upload historical records</h3>
+        <p>Stage and analyse a Membership Form workbook. This does not add CRM records.</p>
       </div>
 
       <div class="field">

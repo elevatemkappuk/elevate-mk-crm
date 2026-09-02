@@ -6,7 +6,7 @@ describe('import batch status labels', () => {
   it('renders every canonical lifecycle status as a human-readable label', () => {
     expect(importBatchStatusLabel('PROCESSING')).toBe('Processing');
     expect(importBatchStatusLabel('READY_FOR_REVIEW')).toBe('Ready for Review');
-    expect(importBatchStatusLabel('READY_FOR_IMPORT')).toBe('Ready for Import');
+    expect(importBatchStatusLabel('READY_FOR_IMPORT')).toBe('Ready to add to CRM');
     expect(importBatchStatusLabel('IMPORTED')).toBe('Imported');
     expect(importBatchStatusLabel('FAILED')).toBe('Failed');
   });

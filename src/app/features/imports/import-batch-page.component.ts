@@ -11,7 +11,7 @@ import {
 } from '../../core/imports/import-batch-status';
 import type { ImportBatchStatus } from '../../core/imports/import-batch-status';
 import { ImportReconciliationService } from '../../core/imports/import-reconciliation.service';
-import { ImportBatchDetail, ImportReviewRecord, MembershipFormImportResult, PaginatedImportRecordPreview } from '../../core/imports/import-reconciliation.types';
+import { ImportBatchDetail, ImportRecordPreview, ImportReviewRecord, MembershipFormImportResult, PaginatedImportRecordPreview } from '../../core/imports/import-reconciliation.types';
 import { ConfirmationDialogComponent } from '../../shared/ui/confirmation-dialog.component';
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
 
@@ -22,9 +22,9 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
     <section class="page">
       <a routerLink="/imports">Back to Historical Imports</a>
       @if (batchLoading()) {
-        <app-state-message title="Loading import batch" message="Retrieving batch summary." />
+        <app-state-message title="Loading historical import" message="Retrieving batch summary." />
       } @else if (batchError()) {
-        <app-state-message title="Import batch unavailable" [message]="batchError()!" tone="error" />
+        <app-state-message title="Historical import unavailable" [message]="batchError()!" tone="error" />
       } @else if (batch(); as currentBatch) {
         <header>
           <p class="meta">{{ currentBatch.source_type }} | {{ statusLabel(currentBatch.status) }}</p><h3>{{ currentBatch.source_filename }}</h3>
@@ -39,15 +39,15 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
           @if (canImport()) {
             <div class="batch-actions">
               <button type="button" class="button-primary" [disabled]="importing()" (click)="openImportConfirmation()">
-                {{ importing() ? 'Importing...' : 'Import batch' }}
+                {{ importing() ? 'Adding to CRM...' : 'Add to CRM' }}
               </button>
-              @if (importing()) { <span class="importing" aria-live="polite">Importing...</span> }
+              @if (importing()) { <span class="importing" aria-live="polite">Adding to CRM...</span> }
             </div>
           }
         </section>
         @if (importResult(); as result) {
           <section class="import-success" aria-live="polite" aria-labelledby="import-complete-title">
-            <h4 id="import-complete-title">Import complete</h4>
+            <h4 id="import-complete-title">Added to CRM</h4>
             <p>This batch is now Imported.</p>
             <dl class="result-summary">
               <div><dt>Processed</dt><dd>{{ result.processed_count }} {{ countLabel(result.processed_count, 'record') }}</dd></div>
@@ -63,7 +63,7 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
           </section>
         }
         <section class="preview" aria-labelledby="resolution-preview-title">
-          <div class="section-heading"><h4 id="resolution-preview-title">Resolution preview</h4><p>Read-only decisions before the future import operation.</p></div>
+          <div class="section-heading"><h4 id="resolution-preview-title">Resolution preview</h4><p>Review how each record will be handled before adding it to the CRM.</p></div>
           @if (recordsLoading()) {
             <app-state-message title="Loading staged records" message="Retrieving the resolution preview." />
           } @else if (recordsError()) {
@@ -73,7 +73,7 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
           } @else {
             <div class="table-wrap"><table><thead><tr><th>Source</th><th>Contact</th><th>Decision</th><th>Destination</th></tr></thead><tbody>
               @for (record of recordPage()!.results; track record.id) {
-                <tr><td><strong>{{ value(record, 'first_name') }} {{ value(record, 'last_name') }}</strong><small>{{ value(record, 'location') }}</small></td><td>{{ value(record, 'email') }}<small>{{ value(record, 'mobile') }}</small></td><td><strong>{{ resolutionLabel(record).title }}</strong><small>{{ resolutionLabel(record).detail }}</small></td><td>@if (record.resolved_person; as person) { <a [routerLink]="['/people', person.id]">{{ person.first_name }} {{ person.last_name }}</a><small>{{ person.primary_email || person.mobile }} @if (person.record_state === 'archived') { (Archived) }</small> } @else { <span>None</span> }</td></tr>
+                <tr><td><strong>{{ value(record, 'first_name') }} {{ value(record, 'last_name') }}</strong><small>{{ value(record, 'location') }}</small></td><td>{{ value(record, 'email') }}<small>{{ value(record, 'mobile') }}</small></td><td><strong>{{ resolutionLabel(record).title }}</strong><small>{{ resolutionLabel(record).detail }}</small></td><td>@if (record.resolved_person; as person) { <a [routerLink]="['/people', person.id]">{{ person.first_name }} {{ person.last_name }}</a><small>{{ person.primary_email || person.mobile }} @if (person.record_state === 'archived') { (Archived) }</small> } @else { <span>{{ destinationLabel(record) }}</span> }</td></tr>
               }
             </tbody></table></div>
             <nav class="pagination" aria-label="Resolution preview pages"><button type="button" [disabled]="!recordPage()!.previous || recordsLoading()" (click)="loadRecords(page() - 1)">Previous</button><span>Page {{ page() }}</span><button type="button" [disabled]="!recordPage()!.next || recordsLoading()" (click)="loadRecords(page() + 1)">Next</button></nav>
@@ -85,9 +85,9 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
       }
       <app-confirmation-dialog
         [open]="importConfirmationOpen()"
-        title="Import this batch?"
+        title="Add these records to the CRM?"
         message="This will add the resolved historical records to the CRM. New identities create People, matched identities use existing People, and eligible Membership and professional information is added. Existing nonblank CRM information is preserved."
-        confirmLabel="Import batch"
+        confirmLabel="Add to CRM"
         [busy]="importing()"
         (cancelled)="cancelImportConfirmation()"
         (confirmed)="confirmImport()"
@@ -132,6 +132,12 @@ export class ImportBatchPageComponent {
   }
 
   value(record: { source: ImportReviewRecord['source'] }, key: keyof ImportReviewRecord['source']): string { return record.source[key] ?? 'Not provided'; }
+  destinationLabel(record: ImportRecordPreview): string {
+    if (record.status === 'INVALID') return 'Not added';
+    if (record.status === 'REVIEW_REQUIRED') return 'Pending review';
+    if (record.resolution_method === 'NO_MATCH' || record.resolution_method === 'STAFF_CREATE_NEW') return 'New CRM Person';
+    return 'Pending review';
+  }
   countLabel(count: number, singular: string, plural = `${singular}s`): string { return count === 1 ? singular : plural; }
   openImportConfirmation(): void { if (this.canImport() && !this.importing()) { this.importConfirmationOpen.set(true); this.importError.set(null); } }
   cancelImportConfirmation(): void { this.importConfirmationOpen.set(false); }
@@ -155,14 +161,14 @@ export class ImportBatchPageComponent {
   batchMessageTitle(status: ImportBatchStatus): string {
     if (status === 'PROCESSING') return 'Processing';
     if (status === 'READY_FOR_REVIEW') return 'Identity review required';
-    if (status === 'READY_FOR_IMPORT') return 'Ready for import';
+    if (status === 'READY_FOR_IMPORT') return 'Ready to add to CRM';
     if (status === 'IMPORTED') return 'Imported';
     return 'Failed';
   }
   batchMessage(status: ImportBatchStatus): string {
     if (status === 'PROCESSING') return 'Identity analysis is in progress. This batch is not actionable yet.';
     if (status === 'READY_FOR_REVIEW') return 'Some records need a staff identity decision before this batch can proceed.';
-    if (status === 'READY_FOR_IMPORT') return 'All identity decisions are resolved. This batch is ready to import.';
+    if (status === 'READY_FOR_IMPORT') return 'These records are ready to be added to the CRM.';
     if (status === 'IMPORTED') return 'This batch has been imported and is now read-only.';
     return 'This batch could not be processed safely.';
   }
@@ -170,7 +176,7 @@ export class ImportBatchPageComponent {
     if (!refresh) this.batchLoading.set(true);
     this.service.getBatch(this.batchId).subscribe({
       next: (batch) => { this.batch.set(batch); this.batchLoading.set(false); },
-      error: () => { if (!refresh) { this.batchError.set('This import batch is not available.'); this.batchLoading.set(false); } },
+      error: () => { if (!refresh) { this.batchError.set('This historical import is not available.'); this.batchLoading.set(false); } },
     });
   }
   private loadReviewRecords(): void { this.service.getReviewQueue(this.batchId).subscribe({ next: (queue) => this.reviewRecords.set(queue.results) }); }

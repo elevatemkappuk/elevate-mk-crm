@@ -93,7 +93,7 @@ describe('HistoricalImportsPageComponent', () => {
     const fixture = createComponent();
     const content = fixture.nativeElement.textContent as string;
 
-    expect(content).toContain('Ready for Import');
+    expect(content).toContain('Ready to add to CRM');
     expect(content).toContain('View batch');
     expect(content).not.toContain('Review 0 records');
     expect(Array.from(fixture.nativeElement.querySelectorAll('button')).map((button: HTMLButtonElement) => button.textContent)).not.toContain('Import');
@@ -102,13 +102,13 @@ describe('HistoricalImportsPageComponent', () => {
   it('shows the reusable empty state when no batches exist', () => {
     const fixture = createComponent();
     expect(fixture.nativeElement.textContent).toContain('No historical imports');
-    expect(fixture.nativeElement.textContent).toContain('Import historical data');
+    expect(fixture.nativeElement.textContent).toContain('Upload historical records');
   });
 
   it('hides import actions for non-admin staff', () => {
     const auth = TestBed.inject(AuthService) as unknown as MockAuthService;
     auth.isCrmAdmin.set(false);
     const fixture = createComponent();
-    expect(fixture.nativeElement.textContent).not.toContain('Import historical data');
+    expect(fixture.nativeElement.textContent).not.toContain('Upload historical records');
   });
 });

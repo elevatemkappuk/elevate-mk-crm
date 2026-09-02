@@ -13,16 +13,17 @@ function record(status: string, resolutionMethod: string | null): ImportRecordPr
 }
 
 describe('importResolutionLabel', () => {
-  it('uses authoritative resolution methods for match and future-create decisions', () => {
+  it('uses authoritative resolution methods for match and new CRM Person decisions', () => {
     expect(importResolutionLabel(record('RESOLVED', 'AUTO_MATCH')).title).toBe('Auto matched');
     expect(importResolutionLabel(record('RESOLVED', 'STAFF_MATCH')).title).toBe('Matched by staff');
-    expect(importResolutionLabel(record('RESOLVED', 'NO_MATCH')).detail).toBe('Will be created at commit.');
-    expect(importResolutionLabel(record('RESOLVED', 'STAFF_CREATE_NEW')).detail).toBe('Confirmed by staff.');
+    expect(importResolutionLabel(record('RESOLVED', 'NO_MATCH')).detail).toBe('A new CRM Person will be created.');
+    expect(importResolutionLabel(record('RESOLVED', 'STAFF_CREATE_NEW')).detail).toBe('A new CRM Person will be created.');
   });
 
-  it('prioritizes record state for review, invalid, and committed records', () => {
+  it('prioritizes record state for review, invalid, and previously added records', () => {
     expect(importResolutionLabel(record('REVIEW_REQUIRED', null)).title).toBe('Needs review');
     expect(importResolutionLabel(record('INVALID', null)).title).toBe('Invalid');
-    expect(importResolutionLabel(record('COMMITTED', 'NO_MATCH')).title).toBe('Committed');
+    expect(importResolutionLabel(record('INVALID', null)).detail).toBe('Will not be added to the CRM.');
+    expect(importResolutionLabel(record('COMMITTED', 'NO_MATCH')).title).toBe('Added to CRM');
   });
 });
