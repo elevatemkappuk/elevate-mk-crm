@@ -57,10 +57,12 @@ export class ImportReconciliationService {
     );
   }
 
-  resolveDifferentPerson(batchId: number, recordId: number): Observable<ImportReviewRecord> {
+  resolveDifferentPerson(batchId: number, recordId: number, confirmIdentityOverride = false): Observable<ImportReviewRecord> {
     return this.http.post<ImportReviewRecord>(
       `${this.api.apiBaseUrl}/imports/${batchId}/review/${recordId}/resolve/`,
-      { resolution: 'DIFFERENT_PERSON' },
+      confirmIdentityOverride
+        ? { resolution: 'DIFFERENT_PERSON', confirm_identity_override: true }
+        : { resolution: 'DIFFERENT_PERSON' },
     );
   }
 }

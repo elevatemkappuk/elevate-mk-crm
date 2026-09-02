@@ -113,23 +113,70 @@ describe('ImportReviewPageComponent', () => {
     expect(navigate).toHaveBeenCalledWith(['/imports', 3]);
   });
 
-  it('submits a different-person resolution without an arbitrary Person selection', () => {
+  it('requires strong confirmation before submitting an email-involved different-person decision', () => {
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const button = Array.from(fixture.nativeElement.querySelectorAll('button')).find(
+      (candidate: HTMLButtonElement) => candidate.textContent?.includes('Different person'),
+    ) as HTMLButtonElement;
+    button.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Create a separate CRM Person?');
+    expect(service.resolveDifferentPerson).not.toHaveBeenCalled();
+    (fixture.nativeElement.querySelector('app-confirmation-dialog .button-primary') as HTMLButtonElement).click();
+    expect(service.resolveDifferentPerson).toHaveBeenCalledWith(3, 9, true);
+    expect(navigate).toHaveBeenCalledWith(['/imports', 3]);
+  });
+
+  it('cancels an email override confirmation without submitting a resolution', () => {
+    const button = Array.from(fixture.nativeElement.querySelectorAll('button')).find(
+      (candidate: HTMLButtonElement) => candidate.textContent?.includes('Different person'),
+    ) as HTMLButtonElement;
+    button.click();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('app-confirmation-dialog .button-secondary') as HTMLButtonElement).click();
+    expect(service.resolveDifferentPerson).not.toHaveBeenCalled();
+  });
+
+  it('keeps a mobile-only different-person decision as the lighter flow', () => {
+    fixture.componentInstance.record.set({
+      ...reviewRecord,
+      candidates: [{ ...reviewRecord.candidates[1] }],
+    });
+    fixture.detectChanges();
     const button = Array.from(fixture.nativeElement.querySelectorAll('button')).find(
       (candidate: HTMLButtonElement) => candidate.textContent?.includes('Different person'),
     ) as HTMLButtonElement;
     button.click();
     expect(service.resolveDifferentPerson).toHaveBeenCalledWith(3, 9);
-    expect(navigate).toHaveBeenCalledWith(['/imports', 3]);
   });
 
-  it('refreshes the queue after a stale conflict', () => {
-    service.resolveDifferentPerson.mockReturnValueOnce(throwError(() => ({ status: 409 })));
-    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+  it('displays a safe backend confirmation-required error', () => {
+    service.resolveDifferentPerson.mockReturnValueOnce(throwError(() => ({
+      status: 400,
+      error: { detail: 'This record uses contact details already associated with another CRM Person. Confirm that these are different people before creating a separate Person.' },
+    })));
     const button = Array.from(fixture.nativeElement.querySelectorAll('button')).find(
       (candidate: HTMLButtonElement) => candidate.textContent?.includes('Different person'),
     ) as HTMLButtonElement;
     button.click();
-    expect(navigate).toHaveBeenCalledWith(['/imports', 3]);
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('app-confirmation-dialog .button-primary') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Confirm that these are different people before creating a separate Person.');
+  });
+
+  it('displays a safe stale-review conflict without hiding the review record', () => {
+    service.resolveDifferentPerson.mockReturnValueOnce(throwError(() => ({
+      status: 409,
+      error: { detail: 'The possible CRM matches have changed since this identity decision was made. Review the record again before adding it to the CRM.' },
+    })));
+    const button = Array.from(fixture.nativeElement.querySelectorAll('button')).find(
+      (candidate: HTMLButtonElement) => candidate.textContent?.includes('Different person'),
+    ) as HTMLButtonElement;
+    button.click();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('app-confirmation-dialog .button-primary') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('The possible CRM matches have changed since this identity decision was made.');
   });
 });

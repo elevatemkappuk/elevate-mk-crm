@@ -5,11 +5,12 @@ import { Observable } from 'rxjs';
 import { importEvidenceLabel } from '../../core/imports/import-evidence';
 import { ImportReconciliationService } from '../../core/imports/import-reconciliation.service';
 import { ImportReviewDetail, ImportReviewRecord } from '../../core/imports/import-reconciliation.types';
+import { ConfirmationDialogComponent } from '../../shared/ui/confirmation-dialog.component';
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
 
 @Component({
   selector: 'app-import-review-page',
-  imports: [RouterLink, StateMessageComponent],
+  imports: [RouterLink, ConfirmationDialogComponent, StateMessageComponent],
   template: `
     <section class="page">
       <a [routerLink]="['/imports', batchId]">Back to review queue</a>
@@ -53,6 +54,15 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
         </div>
         <p class="hint">Different person records a future create decision. It does not create a Person now.</p>
       }
+      <app-confirmation-dialog
+        [open]="identityOverrideConfirmationOpen()"
+        title="Create a separate CRM Person?"
+        [message]="identityOverrideConfirmationMessage()"
+        confirmLabel="Create separate Person"
+        [busy]="saving()"
+        (cancelled)="cancelIdentityOverrideConfirmation()"
+        (confirmed)="confirmDifferentPerson()"
+      />
     </section>
   `,
   styles: `
@@ -87,6 +97,7 @@ export class ImportReviewPageComponent {
   readonly selectedId = signal<number | null>(null);
   readonly error = signal<string | null>(null);
   readonly actionError = signal<string | null>(null);
+  readonly identityOverrideConfirmationOpen = signal(false);
   readonly importEvidenceLabel = importEvidenceLabel;
 
   constructor() { this.load(); }
@@ -103,7 +114,32 @@ export class ImportReviewPageComponent {
 
   differentPerson(): void {
     if (!this.record()) return;
+    if (this.requiresStrongIdentityOverride()) {
+      this.identityOverrideConfirmationOpen.set(true);
+      return;
+    }
     this.resolve(this.service.resolveDifferentPerson(this.batchId, this.recordId));
+  }
+
+  confirmDifferentPerson(): void {
+    if (!this.record()) return;
+    this.identityOverrideConfirmationOpen.set(false);
+    this.resolve(this.service.resolveDifferentPerson(this.batchId, this.recordId, true));
+  }
+
+  cancelIdentityOverrideConfirmation(): void {
+    this.identityOverrideConfirmationOpen.set(false);
+  }
+
+  requiresStrongIdentityOverride(): boolean {
+    return this.record()?.candidates.some((candidate) => candidate.matched_on.includes('EXACT_EMAIL')) ?? false;
+  }
+
+  identityOverrideConfirmationMessage(): string {
+    const includesMobile = this.record()?.candidates.some((candidate) => candidate.matched_on.includes('EXACT_MOBILE'));
+    return includesMobile
+      ? 'This email address and mobile number are already associated with another CRM Person. Only continue if you are sure these records belong to different people.'
+      : 'This email address is already associated with another CRM Person. Only continue if you are sure these records belong to different people. The new Person may share the same email address.';
   }
 
   private load(): void {
@@ -119,8 +155,11 @@ export class ImportReviewPageComponent {
     this.actionError.set(null);
     request.subscribe({
       next: () => void this.router.navigate(['/imports', this.batchId]),
-      error: (error: { status?: number }) => {
-        if (error.status === 409) {
+      error: (error: { status?: number; error?: { detail?: string } }) => {
+        const detail = error.error?.detail;
+        if (detail) {
+          this.actionError.set(detail);
+        } else if (error.status === 409) {
           this.actionError.set('This record was already resolved. The review queue has been refreshed.');
           void this.router.navigate(['/imports', this.batchId]);
         } else {

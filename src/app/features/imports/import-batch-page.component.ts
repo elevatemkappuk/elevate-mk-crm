@@ -160,8 +160,9 @@ export class ImportBatchPageComponent {
         this.batch.set(importedBatch); this.importResult.set(result); this.loadReviewRecords(); this.loadRecords(this.page());
       },
       error: (error: HttpErrorResponse) => {
+        const detail = typeof error.error?.detail === 'string' ? error.error.detail : null;
         this.importError.set(error.status === 409
-          ? 'This batch can no longer be imported in its current state. The batch status has been refreshed.'
+          ? detail ?? 'This batch can no longer be imported in its current state. The batch status has been refreshed.'
           : 'The batch could not be imported. No imported state has been recorded locally.');
         if (error.status === 409) this.loadBatch(true);
         if (error.status === 404) this.loadBatch();

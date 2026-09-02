@@ -50,6 +50,13 @@ describe('ImportReconciliationService', () => {
     request.flush({});
   });
 
+  it('sends an explicit identity override confirmation only when requested', () => {
+    service.resolveDifferentPerson(3, 9, true).subscribe();
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/imports/3/review/9/resolve/');
+    expect(request.request.body).toEqual({ resolution: 'DIFFERENT_PERSON', confirm_identity_override: true });
+    request.flush({});
+  });
+
   it('uploads the Membership Form as multipart FormData without forcing a content type', () => {
     const file = new File(['workbook'], 'membership.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     service.uploadMembershipForm(file).subscribe();
