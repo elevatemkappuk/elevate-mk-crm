@@ -159,14 +159,25 @@ describe('ImportBatchPageComponent', () => {
     pending.complete();
     fixture.detectChanges();
 
-    const content = fixture.nativeElement.textContent as string;
-    expect(content).toContain('Added to CRM');
-    expect(content).toContain('2 records');
-    expect(content).toContain('1 Person');
-    expect(content).toContain('1 Membership');
-    expect(content).toContain('1 Professional Profile');
-    expect(content).toContain('Source Person');
-    expect(content).not.toContain('Import batch');
+    const summary = fixture.nativeElement.querySelector('.import-success').textContent as string;
+    expect(summary).toContain('Added to CRM');
+    expect(summary).toContain('The records were added to the CRM successfully.');
+    expect(summary).toContain('2 records');
+    expect(summary).toContain('1 Person');
+    expect(summary).toContain('1 Membership');
+    expect(summary).toContain('0 records');
+    expect(summary).not.toContain('People enriched');
+    expect(summary).not.toContain('Memberships reused');
+    expect(summary).not.toContain('Profiles created');
+    expect(summary).not.toContain('Profiles enriched');
+    expect(fixture.nativeElement.textContent).toContain('Source Person');
+    expect(fixture.nativeElement.textContent).not.toContain('Import batch');
+    expect(fixture.componentInstance.countLabel(1, 'Person', 'People')).toBe('Person');
+    expect(fixture.componentInstance.countLabel(2, 'Person', 'People')).toBe('People');
+    expect(fixture.componentInstance.countLabel(1, 'Membership')).toBe('Membership');
+    expect(fixture.componentInstance.countLabel(2, 'Membership')).toBe('Memberships');
+    expect(fixture.componentInstance.countLabel(1, 'record')).toBe('record');
+    expect(fixture.componentInstance.countLabel(2, 'record')).toBe('records');
   });
 
   it('keeps the batch unimported locally and refreshes it after a safe conflict', () => {

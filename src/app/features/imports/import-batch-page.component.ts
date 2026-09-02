@@ -48,16 +48,12 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
         @if (importResult(); as result) {
           <section class="import-success" aria-live="polite" aria-labelledby="import-complete-title">
             <h4 id="import-complete-title">Added to CRM</h4>
-            <p>This batch is now Imported.</p>
+            <p>The records were added to the CRM successfully.</p>
             <dl class="result-summary">
               <div><dt>Processed</dt><dd>{{ result.processed_count }} {{ countLabel(result.processed_count, 'record') }}</dd></div>
               <div><dt>People created</dt><dd>{{ result.people_created_count }} {{ countLabel(result.people_created_count, 'Person', 'People') }}</dd></div>
               <div><dt>People matched</dt><dd>{{ result.people_matched_count }} {{ countLabel(result.people_matched_count, 'Person', 'People') }}</dd></div>
-              <div><dt>People enriched</dt><dd>{{ result.people_enriched_count }} {{ countLabel(result.people_enriched_count, 'Person', 'People') }}</dd></div>
               <div><dt>Memberships created</dt><dd>{{ result.memberships_created_count }} {{ countLabel(result.memberships_created_count, 'Membership') }}</dd></div>
-              <div><dt>Memberships reused</dt><dd>{{ result.memberships_reused_count }} {{ countLabel(result.memberships_reused_count, 'Membership') }}</dd></div>
-              <div><dt>Profiles created</dt><dd>{{ result.profiles_created_count }} {{ countLabel(result.profiles_created_count, 'Professional Profile') }}</dd></div>
-              <div><dt>Profiles enriched</dt><dd>{{ result.profiles_enriched_count }} {{ countLabel(result.profiles_enriched_count, 'Professional Profile') }}</dd></div>
               <div><dt>Skipped</dt><dd>{{ result.skipped_count }} {{ countLabel(result.skipped_count, 'record') }}</dd></div>
             </dl>
           </section>
