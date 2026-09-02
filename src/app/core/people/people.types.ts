@@ -159,6 +159,18 @@ export interface CreateMemberRequest extends PersonWriteFields {
   membership_source: 'STAFF';
 }
 
+export type IdentityCollisionType = 'MOBILE_COLLISION' | 'EMAIL_COLLISION' | 'EMAIL_AND_MOBILE_COLLISION';
+
+export interface ReviewedIdentityCollision {
+  collision: IdentityCollisionType;
+  person_ids: number[];
+}
+
+export interface IdentityOverrideRequest {
+  confirm_identity_override: true;
+  reviewed_collision: ReviewedIdentityCollision;
+}
+
 export interface UpdatePersonRequest extends Partial<PersonWriteFields> {}
 
 export interface DuplicatePersonMatch {
@@ -172,8 +184,9 @@ export interface DuplicatePersonMatch {
 
 export interface DuplicatePersonConflict {
   detail: string;
-  code: 'duplicate_person';
-  matches: DuplicatePersonMatch[];
+  code: 'IDENTITY_COLLISION' | 'IDENTITY_COLLISION_STALE';
+  collision: ReviewedIdentityCollision;
+  candidates: DuplicatePersonMatch[];
 }
 
 export interface EndMembershipRequest {

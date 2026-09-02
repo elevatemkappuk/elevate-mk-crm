@@ -127,6 +127,23 @@ describe('PeopleService', () => {
     request.flush({});
   });
 
+  it('sends reviewed identity evidence only for an explicit create override', () => {
+    const person = { first_name: 'Michael', last_name: 'Owuse', primary_email: 'ethan.clarke@example.com' };
+    service.createContact({
+      ...person,
+      confirm_identity_override: true,
+      reviewed_collision: { collision: 'EMAIL_COLLISION', person_ids: [20] },
+    }).subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/people/');
+    expect(request.request.body).toEqual({
+      ...person,
+      confirm_identity_override: true,
+      reviewed_collision: { collision: 'EMAIL_COLLISION', person_ids: [20] },
+    });
+    request.flush({ id: 44, ...person, mobile: '', location: '', age_range: '', gender: '', archived_at: null, created_at: '2026-08-31T00:00:00Z', updated_at: '2026-08-31T00:00:00Z' });
+  });
+
   it('sends the backend person overview request contract', () => {
     service.getPersonOverview(44).subscribe();
 

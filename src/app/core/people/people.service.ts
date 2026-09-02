@@ -11,6 +11,7 @@ import {
   CreateInternalNoteRequest,
   CreateContactRequest,
   CreateMemberRequest,
+  IdentityOverrideRequest,
   EndMembershipRequest,
   InternalNote,
   InterestSummary,
@@ -67,11 +68,11 @@ export class PeopleService {
     return this.http.get<PersonOverview>(this.buildUrl(`/people/${personId}/overview/`));
   }
 
-  createContact(payload: CreateContactRequest): Observable<PersonListItem> {
+  createContact(payload: CreateContactRequest | (CreateContactRequest & IdentityOverrideRequest)): Observable<PersonListItem> {
     return this.http.post<PersonListItem>(this.buildUrl('/people/'), payload);
   }
 
-  createMember(payload: CreateMemberRequest): Observable<PersonListItem> {
+  createMember(payload: CreateMemberRequest | (CreateMemberRequest & IdentityOverrideRequest)): Observable<PersonListItem> {
     return this.http.post<PersonListItem>(this.buildUrl('/people/members/'), payload);
   }
 
