@@ -26,5 +26,6 @@ describe('importResolutionLabel', () => {
     expect(importResolutionLabel(record('INVALID', null)).title).toBe('Invalid');
     expect(importResolutionLabel(record('INVALID', null)).detail).toBe('Will not be added to the CRM.');
     expect(importResolutionLabel(record('COMMITTED', 'NO_MATCH')).title).toBe('Added to CRM');
+    expect(importResolutionLabel(record('COMMITTED', 'NO_MATCH')).detail).toBe('Added to the CRM.');
   });
 });

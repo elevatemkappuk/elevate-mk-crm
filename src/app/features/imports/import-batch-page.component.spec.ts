@@ -115,6 +115,8 @@ describe('ImportBatchPageComponent', () => {
   it('shows Add to CRM only for a CRM_ADMIN-ready batch', () => {
     expect(button('Add to CRM')).toBeTruthy();
     expect(fixture.nativeElement.textContent).toContain('Ready to add to CRM');
+    expect(fixture.nativeElement.textContent).toContain('Resolution preview');
+    expect(fixture.nativeElement.textContent).toContain('Review how each record will be handled before adding it to the CRM.');
     expect(fixture.nativeElement.textContent).not.toMatch(/commit/i);
     auth.isCrmAdmin.set(false);
     fixture.detectChanges();
@@ -187,6 +189,43 @@ describe('ImportBatchPageComponent', () => {
     expect(component.batchMessageTitle('IMPORTED')).toBe('Imported');
     expect(component.batchMessage('IMPORTED')).toContain('read-only');
     expect(button('Add to CRM')).toBeFalsy();
+  });
+
+  it('presents imported records as historical results while preserving their outcomes', () => {
+    const component = fixture.componentInstance;
+    const record = component.recordPage()!.results[0];
+    component.batch.set(importedResponse.batch);
+    component.recordPage.set({
+      count: 2,
+      next: null,
+      previous: null,
+      results: [
+        {
+          ...record,
+          status: 'COMMITTED',
+          resolution_method: 'STAFF_MATCH',
+          resolved_person: { id: 77, first_name: 'Existing', last_name: 'Person', primary_email: 'existing@example.com', mobile: '', record_state: 'active' },
+        },
+        {
+          ...record,
+          id: 10,
+          status: 'INVALID',
+          resolution_method: null,
+          validation_errors: [{ field: 'age_range', code: 'unsupported_age_range', message: 'Age range is not supported.' }],
+        },
+      ],
+    });
+    fixture.detectChanges();
+
+    const content = fixture.nativeElement.textContent as string;
+    expect(content).toContain('Import results');
+    expect(content).toContain('Review how each source record was handled.');
+    expect(content).not.toContain('Review how each record will be handled before adding it to the CRM.');
+    expect(content).toContain('Added to the CRM.');
+    expect(content).toContain('Existing Person');
+    expect(content).toContain('Invalid');
+    expect(content).toContain('Age range is not supported.');
+    expect(content).toContain('Excluded');
   });
 
   it('presents destination outcomes instead of None', () => {

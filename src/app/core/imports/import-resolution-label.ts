@@ -6,7 +6,7 @@ export interface ImportResolutionLabel {
 }
 
 export function importResolutionLabel(record: ImportRecordPreview): ImportResolutionLabel {
-  if (record.status === 'COMMITTED') return { title: 'Added to CRM', detail: 'Added in a previous CRM addition.' };
+  if (record.status === 'COMMITTED') return { title: 'Added to CRM', detail: 'Added to the CRM.' };
   if (record.status === 'INVALID') return { title: 'Invalid', detail: 'Will not be added to the CRM.' };
   if (record.status === 'REVIEW_REQUIRED') return { title: 'Needs review', detail: 'A staff identity decision is required.' };
   if (record.resolution_method === 'AUTO_MATCH') return { title: 'Auto matched', detail: 'Existing person selected by analysis.' };

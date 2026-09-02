@@ -63,7 +63,7 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
           </section>
         }
         <section class="preview" aria-labelledby="resolution-preview-title">
-          <div class="section-heading"><h4 id="resolution-preview-title">Resolution preview</h4><p>Review how each record will be handled before adding it to the CRM.</p></div>
+          <div class="section-heading"><h4 id="resolution-preview-title">{{ resolutionSectionHeading(currentBatch.status) }}</h4><p>{{ resolutionSectionSubtitle(currentBatch.status) }}</p></div>
           @if (recordsLoading()) {
             <app-state-message title="Loading staged records" message="Retrieving the resolution preview." />
           } @else if (recordsError()) {
@@ -143,6 +143,14 @@ export class ImportBatchPageComponent {
     if (record.status === 'REVIEW_REQUIRED') return 'Pending review';
     if (record.resolution_method === 'NO_MATCH' || record.resolution_method === 'STAFF_CREATE_NEW') return 'New CRM Person';
     return 'Pending review';
+  }
+  resolutionSectionHeading(status: ImportBatchStatus): string {
+    return status === 'IMPORTED' ? 'Import results' : 'Resolution preview';
+  }
+  resolutionSectionSubtitle(status: ImportBatchStatus): string {
+    return status === 'IMPORTED'
+      ? 'Review how each source record was handled.'
+      : 'Review how each record will be handled before adding it to the CRM.';
   }
   countLabel(count: number, singular: string, plural = `${singular}s`): string { return count === 1 ? singular : plural; }
   openImportConfirmation(): void { if (this.canImport() && !this.importing()) { this.importConfirmationOpen.set(true); this.importError.set(null); } }
