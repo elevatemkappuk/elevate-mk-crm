@@ -15,6 +15,7 @@ const batch: ImportBatchSummary = {
 
 class MockImportReconciliationService {
   readonly uploadMembershipForm = vi.fn(() => of(batch));
+  readonly uploadEventbrite = vi.fn(() => of({ ...batch, source_type: 'EVENTBRITE', status: 'STAGED' as const }));
 }
 
 describe('MembershipFormUploadComponent', () => {
@@ -57,6 +58,16 @@ describe('MembershipFormUploadComponent', () => {
     expect(service.uploadMembershipForm).toHaveBeenCalledWith(file);
     expect(component.selectedFile()).toBeNull();
     expect(completed).toHaveBeenCalledWith(batch);
+  });
+
+  it('offers both sources and sends Eventbrite workbooks to its endpoint', () => {
+    expect(fixture.nativeElement.textContent).toContain('Membership Form');
+    expect(fixture.nativeElement.textContent).toContain('Eventbrite');
+    component.selectSource({ target: { value: 'EVENTBRITE' } } as unknown as Event);
+    select(new File(['workbook'], 'eventbrite.xlsx'));
+    component.submit();
+    expect(service.uploadEventbrite).toHaveBeenCalledOnce();
+    expect(fixture.nativeElement.textContent).toContain('Import historical Eventbrite contacts and event records.');
   });
 
   it('shows progress and disables controls while uploading', () => {

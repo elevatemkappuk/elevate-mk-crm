@@ -17,6 +17,8 @@ export interface ImportBatchSummary {
   new_person_count: number;
 }
 
+export type HistoricalImportSource = 'MEMBERSHIP_FORM' | 'EVENTBRITE';
+
 export interface ImportCandidate {
   id: number;
   first_name: string;

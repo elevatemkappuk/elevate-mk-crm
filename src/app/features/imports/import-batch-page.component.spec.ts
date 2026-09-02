@@ -75,6 +75,7 @@ class MockImportReconciliationService {
     }],
   }));
   readonly importMembershipFormBatch = vi.fn(() => of(importedResponse));
+  readonly analyzeEventbriteBatch = vi.fn(() => of({ ...readyForImportBatch, source_type: 'EVENTBRITE', status: 'READY_FOR_IMPORT' as const }));
 }
 
 class MockAuthService {
@@ -197,8 +198,25 @@ describe('ImportBatchPageComponent', () => {
     component.batch.set(importedResponse.batch);
     fixture.detectChanges();
 
-    expect(component.batchMessageTitle('IMPORTED')).toBe('Imported');
-    expect(component.batchMessage('IMPORTED')).toContain('read-only');
+    expect(component.batchMessageTitle(importedResponse.batch)).toBe('Imported');
+    expect(component.batchMessage(importedResponse.batch)).toContain('read-only');
+    expect(button('Add to CRM')).toBeFalsy();
+  });
+
+  it('analyzes Eventbrite STAGED batches once and never exposes Add to CRM', () => {
+    const staged = { ...readyForImportBatch, source_type: 'EVENTBRITE', status: 'STAGED' as const };
+    fixture.componentInstance.batch.set(staged);
+    fixture.detectChanges();
+
+    expect(button('Analyze buyers')).toBeTruthy();
+    expect(button('Add to CRM')).toBeFalsy();
+    button('Analyze buyers').click();
+    button('Analyze buyers').click();
+    expect(service.analyzeEventbriteBatch).toHaveBeenCalledOnce();
+    expect(service.analyzeEventbriteBatch).toHaveBeenCalledWith(3);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Identity review complete');
+    expect(fixture.nativeElement.textContent).toContain('ready for the next import step');
     expect(button('Add to CRM')).toBeFalsy();
   });
 

@@ -46,6 +46,16 @@ export class ImportReconciliationService {
     return this.http.post<ImportBatchSummary>(`${this.api.apiBaseUrl}/imports/membership-form/`, formData);
   }
 
+  uploadEventbrite(file: File): Observable<ImportBatchSummary> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<ImportBatchSummary>(`${this.api.apiBaseUrl}/imports/eventbrite/`, formData);
+  }
+
+  analyzeEventbriteBatch(batchId: number): Observable<ImportBatchDetail> {
+    return this.http.post<ImportBatchDetail>(`${this.api.apiBaseUrl}/imports/${batchId}/analyze/`, null);
+  }
+
   importMembershipFormBatch(batchId: number): Observable<MembershipFormImportResponse> {
     return this.http.post<MembershipFormImportResponse>(`${this.api.apiBaseUrl}/imports/${batchId}/import/`, null);
   }

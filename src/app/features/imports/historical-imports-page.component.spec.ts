@@ -99,6 +99,18 @@ describe('HistoricalImportsPageComponent', () => {
     expect(Array.from(fixture.nativeElement.querySelectorAll('button')).map((button: HTMLButtonElement) => button.textContent)).not.toContain('Import');
   });
 
+  it('labels Eventbrite staged batches without exposing source-row data', () => {
+    service.batches = [{
+      id: 5, source_type: 'EVENTBRITE', source_filename: 'eventbrite.xlsx', status: 'STAGED',
+      created_at: '2026-09-02T09:00:00Z', started_at: '2026-09-02T09:00:00Z', completed_at: null,
+      total_count: 10, review_required_count: 0, invalid_count: 0, resolved_count: 0, committed_count: 0,
+      auto_match_count: 0, new_person_count: 0,
+    }];
+    const fixture = createComponent();
+    expect(fixture.nativeElement.textContent).toContain('Eventbrite');
+    expect(fixture.nativeElement.textContent).toContain('Staged');
+  });
+
   it('shows the reusable empty state when no batches exist', () => {
     const fixture = createComponent();
     expect(fixture.nativeElement.textContent).toContain('No historical imports');

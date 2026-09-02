@@ -69,6 +69,21 @@ describe('ImportReconciliationService', () => {
     request.flush({});
   });
 
+  it('uploads Eventbrite workbooks and analyzes staged batches through their dedicated endpoints', () => {
+    const file = new File(['workbook'], 'eventbrite.xlsx');
+    service.uploadEventbrite(file).subscribe();
+    let request = httpTesting.expectOne('http://localhost:8000/api/v1/imports/eventbrite/');
+    expect(request.request.method).toBe('POST');
+    expect((request.request.body as FormData).get('file')).toBe(file);
+    request.flush({});
+
+    service.analyzeEventbriteBatch(3).subscribe();
+    request = httpTesting.expectOne('http://localhost:8000/api/v1/imports/3/analyze/');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toBeNull();
+    request.flush({});
+  });
+
   it('imports a batch without inventing a request body', () => {
     service.importMembershipFormBatch(3).subscribe();
     const request = httpTesting.expectOne('http://localhost:8000/api/v1/imports/3/import/');

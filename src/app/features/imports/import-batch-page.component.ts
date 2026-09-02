@@ -33,9 +33,12 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
           </dl>
         </header>
         <section class="batch-message" aria-live="polite">
-          <h4>{{ batchMessageTitle(currentBatch.status) }}</h4><p>{{ batchMessage(currentBatch.status) }}</p>
+          <h4>{{ batchMessageTitle(currentBatch) }}</h4><p>{{ batchMessage(currentBatch) }}</p>
           @if (importError()) { <p class="import-error" role="alert">{{ importError() }}</p> }
           @if (isReviewable(currentBatch.status) && currentBatch.review_required_count > 0 && reviewRecords().length) { <a [routerLink]="['/imports', batchId, 'review', reviewRecords()[0].id]">Review records</a> }
+          @if (canAnalyze()) {
+            <div class="batch-actions"><button type="button" class="button-primary" [disabled]="analyzing()" (click)="analyzeBuyers()">{{ analyzing() ? 'Analyzing buyers...' : 'Analyze buyers' }}</button>@if (analyzing()) { <span class="importing" aria-live="polite">Analyzing buyers...</span> }</div>
+          }
           @if (canImport()) {
             <div class="batch-actions">
               <button type="button" class="button-primary" [disabled]="importing()" (click)="openImportConfirmation()">
@@ -59,7 +62,7 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
           </section>
         }
         <section class="preview" aria-labelledby="resolution-preview-title">
-          <div class="section-heading"><h4 id="resolution-preview-title">{{ resolutionSectionHeading(currentBatch.status) }}</h4><p>{{ resolutionSectionSubtitle(currentBatch.status) }}</p></div>
+          <div class="section-heading"><h4 id="resolution-preview-title">{{ resolutionSectionHeading(currentBatch.status) }}</h4><p>{{ resolutionSectionSubtitle(currentBatch) }}</p></div>
           @if (recordsLoading()) {
             <app-state-message title="Loading staged records" message="Retrieving the resolution preview." />
           } @else if (recordsError()) {
@@ -109,9 +112,11 @@ export class ImportBatchPageComponent {
   readonly recordsError = signal<string | null>(null);
   readonly importConfirmationOpen = signal(false);
   readonly importing = signal(false);
+  readonly analyzing = signal(false);
   readonly importError = signal<string | null>(null);
   readonly importResult = signal<MembershipFormImportResult | null>(null);
-  readonly canImport = computed(() => this.batch()?.status === 'READY_FOR_IMPORT' && this.auth.isCrmAdmin());
+  readonly canImport = computed(() => this.batch()?.source_type === 'MEMBERSHIP_FORM' && this.batch()?.status === 'READY_FOR_IMPORT' && this.auth.isCrmAdmin());
+  readonly canAnalyze = computed(() => this.batch()?.source_type === 'EVENTBRITE' && this.batch()?.status === 'STAGED' && this.auth.isCrmAdmin());
   readonly resolutionLabel = importResolutionLabel;
   readonly statusLabel = importBatchStatusLabel;
   readonly isReviewable = isReviewableImportBatch;
@@ -143,9 +148,11 @@ export class ImportBatchPageComponent {
   resolutionSectionHeading(status: ImportBatchStatus): string {
     return status === 'IMPORTED' ? 'Import results' : 'Resolution preview';
   }
-  resolutionSectionSubtitle(status: ImportBatchStatus): string {
-    return status === 'IMPORTED'
+  resolutionSectionSubtitle(batch: ImportBatchDetail): string {
+    return batch.status === 'IMPORTED'
       ? 'Review how each source record was handled.'
+      : batch.source_type === 'EVENTBRITE'
+        ? 'Review how each source record is currently resolved.'
       : 'Review how each record will be handled before adding it to the CRM.';
   }
   countLabel(count: number, singular: string, plural = `${singular}s`): string { return count === 1 ? singular : plural; }
@@ -169,18 +176,37 @@ export class ImportBatchPageComponent {
       },
     });
   }
-  batchMessageTitle(status: ImportBatchStatus): string {
-    if (status === 'PROCESSING') return 'Processing';
-    if (status === 'READY_FOR_REVIEW') return 'Identity review required';
-    if (status === 'READY_FOR_IMPORT') return 'Ready to add to CRM';
-    if (status === 'IMPORTED') return 'Imported';
+  analyzeBuyers(): void {
+    const batch = this.batch();
+    if (!batch || !this.canAnalyze() || this.analyzing()) return;
+    this.analyzing.set(true); this.importError.set(null);
+    this.service.analyzeEventbriteBatch(batch.id).pipe(finalize(() => this.analyzing.set(false))).subscribe({
+      next: (updatedBatch) => { this.batch.set(updatedBatch); this.loadReviewRecords(); this.loadRecords(this.page()); },
+      error: (error: HttpErrorResponse) => {
+        const detail = typeof error.error?.detail === 'string' ? error.error.detail : null;
+        this.importError.set(error.status === 409
+          ? detail ?? 'This batch can no longer be analyzed in its current state. The batch status has been refreshed.'
+          : 'The buyers could not be analyzed right now.');
+        if (error.status === 409) this.loadBatch(true);
+      },
+    });
+  }
+  batchMessageTitle(batch: ImportBatchDetail): string {
+    if (batch.status === 'STAGED') return 'Staged';
+    if (batch.status === 'PROCESSING') return 'Processing';
+    if (batch.status === 'READY_FOR_REVIEW') return 'Identity review required';
+    if (batch.status === 'READY_FOR_IMPORT') return batch.source_type === 'EVENTBRITE' ? 'Identity review complete' : 'Ready to add to CRM';
+    if (batch.status === 'IMPORTED') return 'Imported';
     return 'Failed';
   }
-  batchMessage(status: ImportBatchStatus): string {
-    if (status === 'PROCESSING') return 'Identity analysis is in progress. This batch is not actionable yet.';
-    if (status === 'READY_FOR_REVIEW') return 'Some records need a staff identity decision before this batch can proceed.';
-    if (status === 'READY_FOR_IMPORT') return 'These records are ready to be added to the CRM.';
-    if (status === 'IMPORTED') return 'This batch has been imported and is now read-only.';
+  batchMessage(batch: ImportBatchDetail): string {
+    if (batch.status === 'STAGED') return 'The file has been processed and is ready for identity analysis.';
+    if (batch.status === 'PROCESSING') return 'Identity analysis is in progress. This batch is not actionable yet.';
+    if (batch.status === 'READY_FOR_REVIEW') return 'Some records need a staff identity decision before this batch can proceed.';
+    if (batch.status === 'READY_FOR_IMPORT') return batch.source_type === 'EVENTBRITE'
+      ? 'All Eventbrite buyers have been matched or resolved. This batch is ready for the next import step.'
+      : 'These records are ready to be added to the CRM.';
+    if (batch.status === 'IMPORTED') return 'This batch has been imported and is now read-only.';
     return 'This batch could not be processed safely.';
   }
   private loadBatch(refresh = false): void {

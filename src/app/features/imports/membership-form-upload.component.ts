@@ -3,27 +3,24 @@ import { Component, inject, output, signal } from '@angular/core';
 import { finalize } from 'rxjs';
 
 import { ImportReconciliationService } from '../../core/imports/import-reconciliation.service';
-import { ImportBatchSummary } from '../../core/imports/import-reconciliation.types';
+import { HistoricalImportSource, ImportBatchSummary } from '../../core/imports/import-reconciliation.types';
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 @Component({
-  selector: 'app-membership-form-upload',
+  selector: 'app-historical-import-upload',
   template: `
-    <section class="upload-panel" aria-labelledby="membership-upload-title">
+    <section class="upload-panel" aria-labelledby="historical-import-upload-title">
       <div>
-        <h3 id="membership-upload-title">Upload historical records</h3>
-        <p>Stage and analyse a Membership Form workbook. This does not add CRM records.</p>
+        <h3 id="historical-import-upload-title">Upload historical records</h3>
+        <p>{{ sourceDescription() }}</p>
       </div>
 
-      <div class="field">
-        <span class="label">Source</span>
-        <strong>Membership Form</strong>
-      </div>
+      <label class="field" for="historical-import-source"><span class="label">Source</span><select id="historical-import-source" [disabled]="uploading()" [value]="source()" (change)="selectSource($event)"><option value="MEMBERSHIP_FORM">Membership Form</option><option value="EVENTBRITE">Eventbrite</option></select></label>
 
-      <label class="field" for="membership-form-file">
+      <label class="field" for="historical-import-file">
         <span class="label">File</span>
-        <input id="membership-form-file" type="file" accept=".xlsx" [disabled]="uploading()" (change)="selectFile($event)" />
+        <input id="historical-import-file" type="file" accept=".xlsx" [disabled]="uploading()" (change)="selectFile($event)" />
         <small>Accepted: .xlsx. Maximum size: 10 MB.</small>
       </label>
 
@@ -33,7 +30,7 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
       <div class="actions">
         <button type="button" class="button-primary" [disabled]="uploading()" (click)="submit()">
-          {{ uploading() ? 'Uploading and analysing...' : 'Import & analyse' }}
+          {{ uploading() ? uploadLabel() : 'Upload workbook' }}
         </button>
         <button type="button" class="button-secondary" [disabled]="uploading()" (click)="cancelled.emit()">Cancel</button>
       </div>
@@ -61,6 +58,24 @@ export class MembershipFormUploadComponent {
   readonly validationError = signal<string | null>(null);
   readonly uploadError = signal<string | null>(null);
   readonly uploading = signal(false);
+  readonly source = signal<HistoricalImportSource>('MEMBERSHIP_FORM');
+
+  sourceDescription(): string {
+    return this.source() === 'EVENTBRITE'
+      ? 'Import historical Eventbrite contacts and event records.'
+      : 'Import historical membership records.';
+  }
+
+  uploadLabel(): string {
+    return this.source() === 'EVENTBRITE' ? 'Uploading...' : 'Uploading and analysing...';
+  }
+
+  selectSource(event: Event): void {
+    this.source.set((event.target as HTMLSelectElement).value as HistoricalImportSource);
+    this.selectedFile.set(null);
+    this.validationError.set(null);
+    this.uploadError.set(null);
+  }
 
   selectFile(event: Event): void {
     const file = (event.target as HTMLInputElement).files?.item(0) ?? null;
@@ -79,7 +94,10 @@ export class MembershipFormUploadComponent {
 
     this.uploading.set(true);
     this.uploadError.set(null);
-    this.service.uploadMembershipForm(file!).pipe(finalize(() => this.uploading.set(false))).subscribe({
+    const upload = this.source() === 'EVENTBRITE'
+      ? this.service.uploadEventbrite(file!)
+      : this.service.uploadMembershipForm(file!);
+    upload.pipe(finalize(() => this.uploading.set(false))).subscribe({
       next: (batch) => {
         this.selectedFile.set(null);
         this.validationError.set(null);
@@ -90,15 +108,15 @@ export class MembershipFormUploadComponent {
   }
 
   private fileError(file: File | null): string | null {
-    if (!file) return 'Choose a valid .xlsx Membership Form workbook.';
-    if (!file.name.toLowerCase().endsWith('.xlsx')) return 'Choose a valid .xlsx Membership Form workbook.';
+    if (!file) return 'Choose a valid .xlsx workbook.';
+    if (!file.name.toLowerCase().endsWith('.xlsx')) return 'Choose a valid .xlsx workbook.';
     if (file.size <= 0) return 'The workbook cannot be empty.';
     if (file.size > MAX_UPLOAD_BYTES) return 'The workbook must be 10 MB or smaller.';
     return null;
   }
 
   private messageForUploadError(error: HttpErrorResponse): string {
-    if (error.status === 400) return 'This file does not match the expected Membership Form structure.';
+    if (error.status === 400) return `This file does not match the expected ${this.source() === 'EVENTBRITE' ? 'Eventbrite' : 'Membership Form'} structure.`;
     if (error.status === 403) return 'You do not have permission to import historical data.';
     if (error.status === 401) return 'Your session has expired. Sign in again to import historical data.';
     return 'The historical import could not be processed right now.';

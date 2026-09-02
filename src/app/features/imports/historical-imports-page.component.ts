@@ -20,19 +20,23 @@ import { MembershipFormUploadComponent } from './membership-form-upload.componen
       <div class="page-intro">
         <p class="intro">Review historical records and resolve identity decisions before adding records to the CRM.</p>
         @if (auth.isCrmAdmin()) {
-          <button type="button" class="button-primary" (click)="uploadOpen.set(true)">Upload Membership Form</button>
+          <button type="button" class="button-primary" (click)="uploadOpen.set(true)">Upload historical records</button>
         }
       </div>
 
       @if (uploadOpen() && auth.isCrmAdmin()) {
-        <app-membership-form-upload (completed)="handleUploadComplete($event)" (cancelled)="uploadOpen.set(false)" />
+        <app-historical-import-upload (completed)="handleUploadComplete($event)" (cancelled)="uploadOpen.set(false)" />
       }
 
       @if (uploadedBatch(); as batch) {
         <section class="success" aria-live="polite">
-          <strong>Membership Form uploaded. {{ statusLabel(batch.status) }}.</strong>
+          <strong>{{ sourceLabel(batch.source_type) }} uploaded. {{ statusLabel(batch.status) }}.</strong>
           @if (isReviewable(batch.status)) {
             <a [routerLink]="['/imports', batch.id]">Review records</a>
+          } @else if (batch.status === 'STAGED') {
+            <span>The file has been processed and is ready for identity analysis.</span>
+          } @else if (batch.status === 'READY_FOR_IMPORT' && batch.source_type === 'EVENTBRITE') {
+            <span>Identity review is complete. This batch is ready for the next import step.</span>
           } @else if (batch.status === 'READY_FOR_IMPORT') {
             <span>These records are ready to be added to the CRM.</span>
           } @else if (batch.status === 'PROCESSING') {
@@ -48,9 +52,9 @@ import { MembershipFormUploadComponent } from './membership-form-upload.componen
       } @else if (error()) {
         <app-state-message title="Historical imports unavailable" [message]="error()!" tone="error" />
       } @else if (!batches().length) {
-        <app-state-message title="No historical imports" message="Upload the Membership Form workbook to process historical records.">
+        <app-state-message title="No historical imports" message="Upload a Membership Form or Eventbrite workbook to process historical records.">
           @if (auth.isCrmAdmin()) {
-            <button type="button" class="button-primary" (click)="uploadOpen.set(true)">Upload Membership Form</button>
+            <button type="button" class="button-primary" (click)="uploadOpen.set(true)">Upload historical records</button>
           }
         </app-state-message>
       } @else {
@@ -58,7 +62,7 @@ import { MembershipFormUploadComponent } from './membership-form-upload.componen
           @for (batch of batches(); track batch.id) {
             <article class="batch-card">
               <div>
-                <p class="meta">{{ batch.source_type }} | {{ statusLabel(batch.status) }}</p>
+                <p class="meta">{{ sourceLabel(batch.source_type) }} | {{ statusLabel(batch.status) }}</p>
                 <h3>{{ batch.source_filename }}</h3>
                 <p class="created">Created {{ batch.created_at | date: 'mediumDate' }}</p>
               </div>
@@ -106,6 +110,7 @@ export class HistoricalImportsPageComponent {
   readonly uploadedBatch = signal<ImportBatchSummary | null>(null);
   readonly statusLabel = importBatchStatusLabel;
   readonly isReviewable = isReviewableImportBatch;
+  readonly sourceLabel = (source: string) => source === 'EVENTBRITE' ? 'Eventbrite' : source === 'MEMBERSHIP_FORM' ? 'Membership Form' : source;
 
   constructor() {
     this.loadBatches();
