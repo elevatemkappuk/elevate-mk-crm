@@ -139,7 +139,7 @@ export class ImportBatchPageComponent {
       .filter(Boolean);
   }
   destinationLabel(record: ImportRecordPreview): string {
-    if (record.status === 'INVALID') return 'Not added';
+    if (record.status === 'INVALID') return 'Excluded';
     if (record.status === 'REVIEW_REQUIRED') return 'Pending review';
     if (record.resolution_method === 'NO_MATCH' || record.resolution_method === 'STAFF_CREATE_NEW') return 'New CRM Person';
     return 'Pending review';

@@ -194,7 +194,7 @@ describe('ImportBatchPageComponent', () => {
     const record = fixture.componentInstance.recordPage()!.results[0];
 
     expect(component.destinationLabel(record)).toBe('New CRM Person');
-    expect(component.destinationLabel({ ...record, status: 'INVALID' })).toBe('Not added');
+    expect(component.destinationLabel({ ...record, status: 'INVALID' })).toBe('Excluded');
     expect(component.destinationLabel({ ...record, status: 'REVIEW_REQUIRED', resolution_method: null })).toBe('Pending review');
 
     component.recordPage.set({
@@ -213,7 +213,7 @@ describe('ImportBatchPageComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('None');
   });
 
-  it('renders safe backend validation reasons for invalid records and keeps the destination not added', () => {
+  it('renders safe backend validation reasons for invalid records and keeps the destination excluded', () => {
     const record = fixture.componentInstance.recordPage()!.results[0];
     fixture.componentInstance.recordPage.set({
       count: 1,
@@ -239,7 +239,7 @@ describe('ImportBatchPageComponent', () => {
     expect(content).toContain('Gender is not supported.');
     expect(content).toContain('Email address is not valid.');
     expect(content).toContain('LinkedIn URL is not valid.');
-    expect(content).toContain('Not added');
+    expect(content).toContain('Excluded');
     expect(content).not.toContain('Will not be added to the CRM.');
   });
 
