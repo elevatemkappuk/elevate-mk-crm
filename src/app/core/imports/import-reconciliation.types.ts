@@ -65,6 +65,23 @@ export interface ImportReviewDetail extends ImportReviewRecord {
 
 export interface ImportBatchDetail extends ImportBatchSummary {}
 
+export interface MembershipFormImportResult {
+  processed_count: number;
+  people_created_count: number;
+  people_matched_count: number;
+  people_enriched_count: number;
+  memberships_created_count: number;
+  memberships_reused_count: number;
+  profiles_created_count: number;
+  profiles_enriched_count: number;
+  skipped_count: number;
+}
+
+export interface MembershipFormImportResponse {
+  batch: ImportBatchDetail;
+  result: MembershipFormImportResult;
+}
+
 export interface ImportReviewQueue {
   count: number;
   results: ImportReviewRecord[];

@@ -1,6 +1,9 @@
-import { Component, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
 
+import { AuthService } from '../../core/auth/auth.service';
 import { importResolutionLabel } from '../../core/imports/import-resolution-label';
 import {
   importBatchStatusLabel,
@@ -8,12 +11,13 @@ import {
 } from '../../core/imports/import-batch-status';
 import type { ImportBatchStatus } from '../../core/imports/import-batch-status';
 import { ImportReconciliationService } from '../../core/imports/import-reconciliation.service';
-import { ImportBatchDetail, ImportReviewRecord, PaginatedImportRecordPreview } from '../../core/imports/import-reconciliation.types';
+import { ImportBatchDetail, ImportReviewRecord, MembershipFormImportResult, PaginatedImportRecordPreview } from '../../core/imports/import-reconciliation.types';
+import { ConfirmationDialogComponent } from '../../shared/ui/confirmation-dialog.component';
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
 
 @Component({
   selector: 'app-import-batch-page',
-  imports: [RouterLink, StateMessageComponent],
+  imports: [RouterLink, ConfirmationDialogComponent, StateMessageComponent],
   template: `
     <section class="page">
       <a routerLink="/imports">Back to Historical Imports</a>
@@ -30,8 +34,34 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
         </header>
         <section class="batch-message" aria-live="polite">
           <h4>{{ batchMessageTitle(currentBatch.status) }}</h4><p>{{ batchMessage(currentBatch.status) }}</p>
+          @if (importError()) { <p class="import-error" role="alert">{{ importError() }}</p> }
           @if (isReviewable(currentBatch.status) && currentBatch.review_required_count > 0 && reviewRecords().length) { <a [routerLink]="['/imports', batchId, 'review', reviewRecords()[0].id]">Review records</a> }
+          @if (canImport()) {
+            <div class="batch-actions">
+              <button type="button" class="button-primary" [disabled]="importing()" (click)="openImportConfirmation()">
+                {{ importing() ? 'Importing...' : 'Import batch' }}
+              </button>
+              @if (importing()) { <span class="importing" aria-live="polite">Importing...</span> }
+            </div>
+          }
         </section>
+        @if (importResult(); as result) {
+          <section class="import-success" aria-live="polite" aria-labelledby="import-complete-title">
+            <h4 id="import-complete-title">Import complete</h4>
+            <p>This batch is now Imported.</p>
+            <dl class="result-summary">
+              <div><dt>Processed</dt><dd>{{ result.processed_count }} {{ countLabel(result.processed_count, 'record') }}</dd></div>
+              <div><dt>People created</dt><dd>{{ result.people_created_count }} {{ countLabel(result.people_created_count, 'Person', 'People') }}</dd></div>
+              <div><dt>People matched</dt><dd>{{ result.people_matched_count }} {{ countLabel(result.people_matched_count, 'Person', 'People') }}</dd></div>
+              <div><dt>People enriched</dt><dd>{{ result.people_enriched_count }} {{ countLabel(result.people_enriched_count, 'Person', 'People') }}</dd></div>
+              <div><dt>Memberships created</dt><dd>{{ result.memberships_created_count }} {{ countLabel(result.memberships_created_count, 'Membership') }}</dd></div>
+              <div><dt>Memberships reused</dt><dd>{{ result.memberships_reused_count }} {{ countLabel(result.memberships_reused_count, 'Membership') }}</dd></div>
+              <div><dt>Profiles created</dt><dd>{{ result.profiles_created_count }} {{ countLabel(result.profiles_created_count, 'Professional Profile') }}</dd></div>
+              <div><dt>Profiles enriched</dt><dd>{{ result.profiles_enriched_count }} {{ countLabel(result.profiles_enriched_count, 'Professional Profile') }}</dd></div>
+              <div><dt>Skipped</dt><dd>{{ result.skipped_count }} {{ countLabel(result.skipped_count, 'record') }}</dd></div>
+            </dl>
+          </section>
+        }
         <section class="preview" aria-labelledby="resolution-preview-title">
           <div class="section-heading"><h4 id="resolution-preview-title">Resolution preview</h4><p>Read-only decisions before the future import operation.</p></div>
           @if (recordsLoading()) {
@@ -53,15 +83,25 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
           <section class="review-links" aria-labelledby="review-required-title"><h4 id="review-required-title">Records requiring review</h4>@for (record of reviewRecords(); track record.id) { <a [routerLink]="['/imports', batchId, 'review', record.id]">Review {{ value(record, 'first_name') }} {{ value(record, 'last_name') }}</a> }</section>
         }
       }
+      <app-confirmation-dialog
+        [open]="importConfirmationOpen()"
+        title="Import this batch?"
+        message="This will add the resolved historical records to the CRM. New identities create People, matched identities use existing People, and eligible Membership and professional information is added. Existing nonblank CRM information is preserved."
+        confirmLabel="Import batch"
+        [busy]="importing()"
+        (cancelled)="cancelImportConfirmation()"
+        (confirmed)="confirmImport()"
+      />
     </section>
   `,
   styles: `
-    .page,.preview,.review-links { display:grid; gap:1rem; } header,.batch-message,.review-links { padding:1rem; border:1px solid #dce5ea; border-radius:1rem; background:#fff; } h3,h4,p { margin:0; } h3,h4 { color:#173248; }.meta,small,.section-heading p { color:#526f81; }.meta { font-size:.78rem;font-weight:700;letter-spacing:.05em; }.summary { display:flex;flex-wrap:wrap;gap:1.25rem;margin:1rem 0 0; } dt { color:#607b8d;font-size:.75rem; } dd { margin:.2rem 0 0;color:#173248;font-weight:700; }.batch-message { display:grid;gap:.45rem; }.batch-message a,a { color:#075879;font-weight:700; }.table-wrap { overflow-x:auto;border:1px solid #dce5ea;border-radius:1rem;background:#fff; } table { width:100%;min-width:48rem;border-collapse:collapse; } th,td { padding:.85rem 1rem;text-align:left;vertical-align:top;border-bottom:1px solid #e6edf0; } th { color:#526f81;font-size:.78rem; } td { color:#173248; } td strong,td small { display:block; } td small { margin-top:.3rem; }.pagination { display:flex;align-items:center;gap:.75rem; }.pagination button { border:0;border-radius:999px;padding:.65rem .9rem;background:#e5eef2;color:#173248;font:inherit;font-weight:700; }.pagination button:disabled { opacity:.55;cursor:not-allowed; }
+    .page,.preview,.review-links { display:grid; gap:1rem; } header,.batch-message,.review-links,.import-success { padding:1rem; border:1px solid #dce5ea; border-radius:1rem; background:#fff; } h3,h4,p { margin:0; } h3,h4 { color:#173248; }.meta,small,.section-heading p { color:#526f81; }.meta { font-size:.78rem;font-weight:700;letter-spacing:.05em; }.summary,.result-summary { display:flex;flex-wrap:wrap;gap:1.25rem;margin:1rem 0 0; } dt { color:#607b8d;font-size:.75rem; } dd { margin:.2rem 0 0;color:#173248;font-weight:700; }.batch-message,.import-success { display:grid;gap:.45rem; }.batch-message a,a { color:#075879;font-weight:700; }.batch-actions { display:flex;align-items:center;gap:.75rem;margin-top:.45rem; }.button-primary { border:0;border-radius:999px;padding:.65rem .95rem;background:#1d6077;color:#fff;font:inherit;font-weight:700;cursor:pointer; }.button-primary:disabled { opacity:.55;cursor:not-allowed; }.importing { color:#526f81;font-weight:700; }.import-error { color:#8b2626;font-weight:700; }.import-success { border-color:#bcd5c3;background:#f3faf4; }.table-wrap { overflow-x:auto;border:1px solid #dce5ea;border-radius:1rem;background:#fff; } table { width:100%;min-width:48rem;border-collapse:collapse; } th,td { padding:.85rem 1rem;text-align:left;vertical-align:top;border-bottom:1px solid #e6edf0; } th { color:#526f81;font-size:.78rem; } td { color:#173248; } td strong,td small { display:block; } td small { margin-top:.3rem; }.pagination { display:flex;align-items:center;gap:.75rem; }.pagination button { border:0;border-radius:999px;padding:.65rem .9rem;background:#e5eef2;color:#173248;font:inherit;font-weight:700; }.pagination button:disabled { opacity:.55;cursor:not-allowed; }
   `,
 })
 export class ImportBatchPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly service = inject(ImportReconciliationService);
+  readonly auth = inject(AuthService);
   readonly batchId = Number(this.route.snapshot.paramMap.get('id'));
   readonly batch = signal<ImportBatchDetail | null>(null);
   readonly reviewRecords = signal<ImportReviewRecord[]>([]);
@@ -71,6 +111,11 @@ export class ImportBatchPageComponent {
   readonly recordsLoading = signal(true);
   readonly batchError = signal<string | null>(null);
   readonly recordsError = signal<string | null>(null);
+  readonly importConfirmationOpen = signal(false);
+  readonly importing = signal(false);
+  readonly importError = signal<string | null>(null);
+  readonly importResult = signal<MembershipFormImportResult | null>(null);
+  readonly canImport = computed(() => this.batch()?.status === 'READY_FOR_IMPORT' && this.auth.isCrmAdmin());
   readonly resolutionLabel = importResolutionLabel;
   readonly statusLabel = importBatchStatusLabel;
   readonly isReviewable = isReviewableImportBatch;
@@ -87,6 +132,26 @@ export class ImportBatchPageComponent {
   }
 
   value(record: { source: ImportReviewRecord['source'] }, key: keyof ImportReviewRecord['source']): string { return record.source[key] ?? 'Not provided'; }
+  countLabel(count: number, singular: string, plural = `${singular}s`): string { return count === 1 ? singular : plural; }
+  openImportConfirmation(): void { if (this.canImport() && !this.importing()) { this.importConfirmationOpen.set(true); this.importError.set(null); } }
+  cancelImportConfirmation(): void { this.importConfirmationOpen.set(false); }
+  confirmImport(): void {
+    const batch = this.batch();
+    if (!batch || !this.canImport() || this.importing()) return;
+    this.importConfirmationOpen.set(false); this.importing.set(true); this.importError.set(null);
+    this.service.importMembershipFormBatch(batch.id).pipe(finalize(() => this.importing.set(false))).subscribe({
+      next: ({ batch: importedBatch, result }) => {
+        this.batch.set(importedBatch); this.importResult.set(result); this.loadReviewRecords(); this.loadRecords(this.page());
+      },
+      error: (error: HttpErrorResponse) => {
+        this.importError.set(error.status === 409
+          ? 'This batch can no longer be imported in its current state. The batch status has been refreshed.'
+          : 'The batch could not be imported. No imported state has been recorded locally.');
+        if (error.status === 409) this.loadBatch(true);
+        if (error.status === 404) this.loadBatch();
+      },
+    });
+  }
   batchMessageTitle(status: ImportBatchStatus): string {
     if (status === 'PROCESSING') return 'Processing';
     if (status === 'READY_FOR_REVIEW') return 'Identity review required';
@@ -97,10 +162,16 @@ export class ImportBatchPageComponent {
   batchMessage(status: ImportBatchStatus): string {
     if (status === 'PROCESSING') return 'Identity analysis is in progress. This batch is not actionable yet.';
     if (status === 'READY_FOR_REVIEW') return 'Some records need a staff identity decision before this batch can proceed.';
-    if (status === 'READY_FOR_IMPORT') return 'All identity decisions are resolved. This batch is ready for the future import action.';
+    if (status === 'READY_FOR_IMPORT') return 'All identity decisions are resolved. This batch is ready to import.';
     if (status === 'IMPORTED') return 'This batch has been imported and is now read-only.';
     return 'This batch could not be processed safely.';
   }
-  private loadBatch(): void { this.service.getBatch(this.batchId).subscribe({ next: (batch) => { this.batch.set(batch); this.batchLoading.set(false); }, error: () => { this.batchError.set('This import batch is not available.'); this.batchLoading.set(false); } }); }
+  private loadBatch(refresh = false): void {
+    if (!refresh) this.batchLoading.set(true);
+    this.service.getBatch(this.batchId).subscribe({
+      next: (batch) => { this.batch.set(batch); this.batchLoading.set(false); },
+      error: () => { if (!refresh) { this.batchError.set('This import batch is not available.'); this.batchLoading.set(false); } },
+    });
+  }
   private loadReviewRecords(): void { this.service.getReviewQueue(this.batchId).subscribe({ next: (queue) => this.reviewRecords.set(queue.results) }); }
 }

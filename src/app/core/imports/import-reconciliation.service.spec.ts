@@ -62,6 +62,15 @@ describe('ImportReconciliationService', () => {
     request.flush({});
   });
 
+  it('imports a batch without inventing a request body', () => {
+    service.importMembershipFormBatch(3).subscribe();
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/imports/3/import/');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.withCredentials).toBe(true);
+    expect(request.request.body).toBeNull();
+    request.flush({ batch: {}, result: {} });
+  });
+
   it('requests paginated batch records with the canonical query parameters', () => {
     service.getBatchRecords(3, { page: 2, page_size: 25 }).subscribe();
     const request = httpTesting.expectOne('http://localhost:8000/api/v1/imports/3/records/?page=2&page_size=25');
