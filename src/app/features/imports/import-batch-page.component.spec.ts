@@ -241,7 +241,7 @@ describe('ImportBatchPageComponent', () => {
     expect(button('Add to CRM')).toBeTruthy();
   });
 
-  it('imports a ready Eventbrite batch through the shared confirmation and displays backend Eventbrite counts', () => {
+  it('imports a ready Eventbrite batch through the shared confirmation and keeps its banner focused on People outcomes', () => {
     fixture.componentInstance.batch.set({ ...readyForImportBatch, source_type: 'EVENTBRITE' });
     service.importBatch.mockReturnValueOnce(of(eventbriteImportedResponse));
     fixture.detectChanges();
@@ -258,12 +258,15 @@ describe('ImportBatchPageComponent', () => {
     expect(service.importBatch).toHaveBeenCalledOnce();
     expect(service.importBatch).toHaveBeenCalledWith(3);
     const summary = fixture.nativeElement.querySelector('.import-success').textContent as string;
-    expect(summary).toContain('Events created');
-    expect(summary).toContain('Events reused');
-    expect(summary).toContain('Participations created');
-    expect(summary).toContain('Participations reused');
-    expect(summary).toContain('1 Event');
-    expect(summary).toContain('2 participations');
+    expect(summary).toContain('Processed');
+    expect(summary).toContain('People created');
+    expect(summary).toContain('People matched');
+    expect(summary).not.toContain('Events created');
+    expect(summary).not.toContain('Events reused');
+    expect(summary).not.toContain('Participations created');
+    expect(summary).not.toContain('Participations reused');
+    expect(summary).not.toContain('Participations preserved');
+    expect(summary).not.toContain('Skipped');
     expect(summary).not.toContain('Memberships created');
     expect(button('Add to CRM')).toBeFalsy();
   });

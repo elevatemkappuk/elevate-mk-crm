@@ -56,16 +56,10 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
               <div><dt>Processed</dt><dd>{{ result.processed_count }} {{ countLabel(result.processed_count, 'record') }}</dd></div>
               <div><dt>People created</dt><dd>{{ result.people_created_count }} {{ countLabel(result.people_created_count, 'Person', 'People') }}</dd></div>
               <div><dt>People matched</dt><dd>{{ result.people_matched_count }} {{ countLabel(result.people_matched_count, 'Person', 'People') }}</dd></div>
-              @if (currentBatch.source_type === 'EVENTBRITE') {
-                <div><dt>Events created</dt><dd>{{ result.events_created_count ?? 0 }} {{ countLabel(result.events_created_count ?? 0, 'Event') }}</dd></div>
-                <div><dt>Events reused</dt><dd>{{ result.events_reused_count ?? 0 }} {{ countLabel(result.events_reused_count ?? 0, 'Event') }}</dd></div>
-                <div><dt>Participations created</dt><dd>{{ result.participations_created_count ?? 0 }} {{ countLabel(result.participations_created_count ?? 0, 'participation') }}</dd></div>
-                <div><dt>Participations reused</dt><dd>{{ result.participations_reused_count ?? 0 }} {{ countLabel(result.participations_reused_count ?? 0, 'participation') }}</dd></div>
-                <div><dt>Participations preserved</dt><dd>{{ result.participations_preserved_count ?? 0 }} {{ countLabel(result.participations_preserved_count ?? 0, 'participation') }}</dd></div>
-              } @else {
+              @if (currentBatch.source_type !== 'EVENTBRITE') {
                 <div><dt>Memberships created</dt><dd>{{ result.memberships_created_count ?? 0 }} {{ countLabel(result.memberships_created_count ?? 0, 'Membership') }}</dd></div>
+                <div><dt>Skipped</dt><dd>{{ result.skipped_count }} {{ countLabel(result.skipped_count, 'record') }}</dd></div>
               }
-              <div><dt>Skipped</dt><dd>{{ result.skipped_count }} {{ countLabel(result.skipped_count, 'record') }}</dd></div>
             </dl>
           </section>
         }
