@@ -28,60 +28,16 @@ import { Component, input } from '@angular/core';
     </section>
   `,
   styles: `
-    :host {
-      display: block;
-    }
-
-    .state-card {
-      display: grid;
-      gap: 0.65rem;
-      min-height: 10rem;
-      align-content: center;
-      padding: 1.2rem 1.25rem;
-      border-radius: 1.1rem;
-      border: 1px solid rgba(22, 39, 53, 0.08);
-      background: rgba(255, 255, 255, 0.88);
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.85),
-        0 10px 24px rgba(17, 29, 40, 0.04);
-    }
-
-    .state-card-error {
-      background: rgba(255, 250, 250, 0.94);
-      border-color: rgba(184, 81, 81, 0.16);
-    }
-
-    h3,
-    p {
-      margin: 0;
-    }
-
-    h3 {
-      font-size: 1.05rem;
-      color: #1d3749;
-    }
-
-    p {
-      max-width: 36rem;
-      line-height: 1.5;
-      color: #4f697b;
-    }
-
-    .state-card-error h3,
-    .state-card-error p {
-      color: #8b2626;
-    }
-
-    .secondary {
-      color: #6c8392;
-    }
-
-    .state-actions {
-      display: flex;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-      margin-top: 0.2rem;
-    }
+    :host { display: block; }
+    .state-card { display: grid; gap: var(--crm-space-3); min-height: 10rem; align-content: center; padding: var(--crm-space-4) var(--crm-space-5); border: 1px solid var(--crm-border); border-radius: var(--crm-radius-lg); background: var(--crm-surface); box-shadow: var(--crm-shadow-sm); }
+    .state-card-error { background: var(--crm-error-surface); border-color: var(--crm-error); }
+    h3, p { margin: 0; }
+    h3 { font-size: var(--crm-font-base); font-weight: var(--crm-weight-medium); color: var(--crm-text-strong); }
+    p { max-width: var(--crm-width-reading); line-height: var(--crm-leading); color: var(--crm-text-secondary); overflow-wrap: anywhere; }
+    .secondary { color: var(--crm-text-muted); }
+    .state-card-error h3, .state-card-error p { color: var(--crm-error); }
+    .state-actions { display: flex; gap: var(--crm-space-3); flex-wrap: wrap; }
+    .state-actions:empty { display: none; }
   `,
 })
 export class StateMessageComponent {

@@ -1,0 +1,5 @@
+// Shared vocabulary for new foundation styles. Existing feature thresholds stay unchanged.
+// Use SCSS values in media queries; CSS custom properties cannot supply query thresholds.
+$compact: 42.5rem; // 680px at the default browser font size
+$medium: 56.25rem; // 900px
+$wide: 75rem; // 1200px

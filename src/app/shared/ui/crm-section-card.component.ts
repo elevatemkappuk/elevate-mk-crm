@@ -18,36 +18,19 @@ import { Component, input } from '@angular/core';
     </section>
   `,
   styles: `
-    :host {
-      display: block;
-    }
-
+    :host { display: block; }
     .section-card {
       display: grid;
-      gap: 0.9rem;
-      padding: 1.15rem 1.25rem;
-      border-radius: 1.1rem;
-      border: 1px solid rgba(22, 39, 53, 0.08);
-      background: rgba(255, 255, 255, 0.88);
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.85),
-        0 10px 24px rgba(17, 29, 40, 0.04);
+      gap: var(--crm-space-4);
+      padding: var(--crm-space-4) var(--crm-space-5);
+      border: 1px solid var(--crm-border);
+      border-radius: var(--crm-radius-lg);
+      background: var(--crm-surface);
+      box-shadow: var(--crm-shadow-sm);
     }
-
-    .section-header,
-    h3 {
-      margin: 0;
-    }
-
-    h3 {
-      font-size: 1rem;
-      line-height: 1.3;
-      color: #1d3749;
-    }
-
-    .section-body {
-      min-width: 0;
-    }
+    .section-header, h3 { margin: 0; }
+    h3 { color: var(--crm-text-strong); font-size: var(--crm-font-base); font-weight: var(--crm-weight-medium); line-height: var(--crm-leading-heading); }
+    .section-body { min-width: 0; }
   `,
 })
 export class CrmSectionCardComponent {

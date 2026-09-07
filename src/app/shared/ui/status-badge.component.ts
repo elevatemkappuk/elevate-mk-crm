@@ -6,27 +6,9 @@ import { Component, input } from '@angular/core';
   imports: [CommonModule],
   template: ` <span class="status-badge" [class.status-badge-archived]="tone() === 'archived'">{{ label() }}</span> `,
   styles: `
-    :host {
-      display: inline-flex;
-    }
-
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      min-height: 1.8rem;
-      padding: 0.2rem 0.7rem;
-      border-radius: 999px;
-      background: rgba(34, 79, 102, 0.09);
-      color: #21465b;
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-    }
-
-    .status-badge-archived {
-      background: rgba(144, 88, 46, 0.12);
-      color: #805028;
-    }
+    :host { display: inline-flex; max-width: 100%; }
+    .status-badge { display: inline-flex; align-items: center; min-height: var(--crm-control-height-sm); padding: var(--crm-space-1) var(--crm-space-3); border-radius: var(--crm-radius-pill); background: var(--crm-surface-subtle); color: var(--crm-text-secondary); font-size: var(--crm-font-sm); font-weight: var(--crm-weight-medium); line-height: var(--crm-leading-heading); overflow-wrap: anywhere; }
+    .status-badge-archived { background: var(--crm-warning-surface); color: var(--crm-warning); }
   `,
 })
 export class StatusBadgeComponent {

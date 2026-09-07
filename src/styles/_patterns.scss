@@ -1,0 +1,107 @@
+@use 'breakpoints' as bp;
+
+// Opt-in presentation only: consumers retain native semantics and behavior bindings.
+.crm-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--crm-space-2);
+  min-height: var(--crm-control-height);
+  padding: var(--crm-space-2) var(--crm-space-4);
+  border: 1px solid transparent;
+  border-radius: var(--crm-radius-md);
+  font: inherit;
+  font-weight: var(--crm-weight-medium);
+  line-height: var(--crm-leading-heading);
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  background: var(--crm-surface);
+  color: var(--crm-text-strong);
+}
+.crm-button--primary { background: var(--crm-action); color: var(--crm-on-action); }
+.crm-button--secondary { border-color: var(--crm-control-border); }
+.crm-button--quiet { background: transparent; color: var(--crm-action); }
+.crm-button--destructive { background: var(--crm-destructive); color: var(--crm-on-action); }
+.crm-button:not(:disabled):not([aria-disabled='true']):hover {
+  background: var(--crm-surface-subtle);
+}
+.crm-button--primary:not(:disabled):not([aria-disabled='true']):hover { background: var(--crm-action-hover); }
+.crm-button--destructive:not(:disabled):not([aria-disabled='true']):hover { background: var(--crm-destructive-hover); }
+
+.crm-control {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--crm-control-height);
+  padding: var(--crm-space-2) var(--crm-space-3);
+  border: 1px solid var(--crm-control-border);
+  border-radius: var(--crm-radius-md);
+  background: var(--crm-surface);
+  color: var(--crm-text-strong);
+  font: inherit;
+  line-height: var(--crm-leading);
+}
+textarea.crm-control { min-height: 7rem; resize: vertical; }
+.crm-control::placeholder { color: var(--crm-text-muted); opacity: 1; }
+.crm-control[aria-invalid='true'] { border-color: var(--crm-error); }
+.crm-check {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+  flex: 0 0 auto;
+  accent-color: var(--crm-action);
+}
+.crm-field { display: grid; gap: var(--crm-space-2); min-width: 0; }
+.crm-label { color: var(--crm-text-strong); font-weight: var(--crm-weight-medium); }
+.crm-choice { display: flex; align-items: center; gap: var(--crm-space-2); min-height: var(--crm-control-height); }
+.crm-help, .crm-error { margin: 0; font-size: var(--crm-font-sm); line-height: var(--crm-leading); }
+.crm-help { color: var(--crm-text-muted); }
+.crm-error { color: var(--crm-error); }
+:is(.crm-button, .crm-control, .crm-check):disabled,
+.crm-button[aria-disabled='true'] { opacity: 0.6; cursor: not-allowed; }
+.crm-control:disabled { background: var(--crm-surface-subtle); }
+.crm-pending, .crm-button[aria-busy='true'] { cursor: progress; }
+.crm-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--crm-space-3); }
+.crm-actions--end { justify-content: flex-end; }
+
+:is(.crm-button, .crm-control, .crm-check, .crm-focusable):focus-visible {
+  outline: 2px solid var(--crm-focus-ring);
+  outline-offset: 3px;
+}
+.crm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--crm-space-2);
+  max-width: 100%;
+  min-height: var(--crm-control-height-sm);
+  padding: var(--crm-space-1) var(--crm-space-3);
+  border: 1px solid var(--crm-border);
+  border-radius: var(--crm-radius-pill);
+  background: var(--crm-surface-subtle);
+  color: var(--crm-text-secondary);
+  font: inherit;
+  font-size: var(--crm-font-sm);
+  overflow-wrap: anywhere;
+}
+.crm-table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid var(--crm-border); border-radius: var(--crm-radius-md); }
+.crm-table { width: 100%; border-collapse: collapse; background: var(--crm-surface); color: var(--crm-text-strong); }
+.crm-table :is(th, td) { padding: var(--crm-space-3) var(--crm-space-4); text-align: left; vertical-align: top; border-bottom: 1px solid var(--crm-border); }
+.crm-table th { font-size: var(--crm-font-sm); font-weight: var(--crm-weight-medium); background: var(--crm-surface-subtle); color: var(--crm-text-secondary); }
+.crm-table tbody tr:last-child td { border-bottom: 0; }
+.crm-table tbody tr:focus-within { background: var(--crm-surface-subtle); }
+.crm-pagination { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--crm-space-3); color: var(--crm-text-secondary); }
+.crm-banner { padding: var(--crm-space-3) var(--crm-space-4); border: 1px solid currentColor; border-radius: var(--crm-radius-md); color: var(--crm-info); background: var(--crm-info-surface); line-height: var(--crm-leading); overflow-wrap: anywhere; }
+.crm-banner--success { color: var(--crm-success); background: var(--crm-success-surface); }
+.crm-banner--warning { color: var(--crm-warning); background: var(--crm-warning-surface); }
+.crm-banner--error { color: var(--crm-error); background: var(--crm-error-surface); }
+
+// Heading remains native markup; the page chooses its heading level and actions.
+.crm-page { width: 100%; max-width: var(--crm-width-page); margin-inline: auto; }
+.crm-page-heading { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--crm-space-4); }
+.crm-page-heading__copy { min-width: 0; }
+.crm-page-heading__title { margin: 0; color: var(--crm-text-strong); font-size: var(--crm-font-title); font-weight: var(--crm-weight-bold); line-height: var(--crm-leading-heading); overflow-wrap: anywhere; }
+.crm-page-heading__description { margin: var(--crm-space-2) 0 0; max-width: var(--crm-width-reading); color: var(--crm-text-secondary); line-height: var(--crm-leading); }
+@media (max-width: bp.$compact) {
+  .crm-page-heading { flex-direction: column; }
+}

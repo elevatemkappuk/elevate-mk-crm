@@ -1,10 +1,11 @@
+@use './styles/tokens';
+@use './styles/patterns';
+
 :root {
   color-scheme: light;
-  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-  background:
-    radial-gradient(circle at top, rgba(91, 164, 196, 0.32), transparent 36%),
-    linear-gradient(160deg, #f4efe5 0%, #edf6fa 45%, #fbfdff 100%);
-  color: #172938;
+  font-family: var(--crm-font-family);
+  background: var(--crm-workspace);
+  color: var(--crm-text-strong);
 }
 
 * {

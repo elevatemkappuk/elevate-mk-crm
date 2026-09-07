@@ -20,46 +20,14 @@ export interface DetailListItem {
     </dl>
   `,
   styles: `
-    :host {
-      display: block;
-    }
-
-    .detail-list {
-      margin: 0;
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.9rem 1.25rem;
-    }
-
-    .detail-row {
-      display: grid;
-      gap: 0.22rem;
-      align-content: start;
-      padding: 0.1rem 0;
-    }
-
-    dt,
-    dd {
-      margin: 0;
-    }
-
-    dt {
-      font-size: 0.8rem;
-      font-weight: 700;
-      color: #617b8c;
-    }
-
-    dd {
-      line-height: 1.45;
-      color: #203a4c;
-      word-break: break-word;
-    }
-
-    @media (max-width: 680px) {
-      .detail-list {
-        grid-template-columns: 1fr;
-      }
-    }
+    @use '../../../styles/breakpoints' as bp;
+    :host { display: block; }
+    .detail-list { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--crm-space-4) var(--crm-space-5); }
+    .detail-row { display: grid; gap: var(--crm-space-1); align-content: start; }
+    dt, dd { margin: 0; }
+    dt { font-size: var(--crm-font-sm); font-weight: var(--crm-weight-medium); color: var(--crm-text-muted); }
+    dd { line-height: var(--crm-leading); color: var(--crm-text-strong); overflow-wrap: anywhere; }
+    @media (max-width: bp.$compact) { .detail-list { grid-template-columns: 1fr; } }
   `,
 })
 export class DetailListComponent {
