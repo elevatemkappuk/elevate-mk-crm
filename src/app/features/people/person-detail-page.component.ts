@@ -863,38 +863,21 @@ interface AssignSkillFormValue {
       margin-top: 0.9rem;
     }
 
-    .membership-form,
-    .professional-profile-form,
-    .skills-form,
-    .interests-form,
-    .tags-form {
+    :is(.membership-form, .professional-profile-form, .skills-form, .interests-form, .tags-form) {
       display: grid;
       gap: 0.85rem;
       width: min(100%, 32rem);
       margin-top: 0.9rem;
     }
 
-    .membership-form label,
-    .professional-profile-form label,
-    .skills-form label,
-    .interests-form label,
-    .tags-form label {
+    :is(.membership-form, .professional-profile-form, .skills-form, .interests-form, .tags-form) label {
       display: grid;
       gap: 0.4rem;
       color: #1c3344;
       font-weight: 600;
     }
 
-    .membership-form input,
-    .membership-form select,
-    .professional-profile-form input,
-    .professional-profile-form select,
-    .skills-form input,
-    .skills-form select,
-    .interests-form input,
-    .interests-form select,
-    .tags-form input,
-    .tags-form select {
+    :is(.membership-form, .professional-profile-form, .skills-form, .interests-form, .tags-form) :is(input, select) {
       width: 100%;
       border: 1px solid #b7c7d4;
       border-radius: 0.85rem;
@@ -916,13 +899,7 @@ interface AssignSkillFormValue {
       gap: 0.7rem;
     }
 
-    .button-primary,
-    .button-secondary,
-    .membership-form button,
-    .professional-profile-form button,
-    .skills-form button,
-    .interests-form button,
-    .tags-form button {
+    :is(.button-primary, .button-secondary, .membership-form button, .professional-profile-form button, .skills-form button, .interests-form button, .tags-form button) {
       width: fit-content;
       border-radius: 999px;
       padding: 0.75rem 1.1rem;
@@ -931,12 +908,7 @@ interface AssignSkillFormValue {
       cursor: pointer;
     }
 
-    .button-primary,
-    .membership-form button[type='submit'],
-    .professional-profile-form button[type='submit'],
-    .skills-form button[type='submit'],
-    .interests-form button[type='submit'],
-    .tags-form button[type='submit'] {
+    :is(.button-primary, .membership-form button[type='submit'], .professional-profile-form button[type='submit'], .skills-form button[type='submit'], .interests-form button[type='submit'], .tags-form button[type='submit']) {
       border: 0;
       color: #fff;
       background: linear-gradient(135deg, #16354a, #2f6f84);
@@ -949,13 +921,7 @@ interface AssignSkillFormValue {
     }
 
 
-    .button-primary:disabled,
-    .button-secondary:disabled,
-    .membership-form button:disabled,
-    .professional-profile-form button:disabled,
-    .skills-form button:disabled,
-    .interests-form button:disabled,
-    .tags-form button:disabled {
+    :is(.button-primary, .button-secondary, .membership-form button, .professional-profile-form button, .skills-form button, .interests-form button, .tags-form button):disabled {
       cursor: wait;
       opacity: 0.7;
     }

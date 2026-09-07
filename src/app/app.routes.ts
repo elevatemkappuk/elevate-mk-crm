@@ -6,35 +6,22 @@ import {
   loginGuard,
   staffAccessGuard,
 } from './core/guards/auth.guards';
-import { AccessDeniedPageComponent } from './features/auth/access-denied-page.component';
-import { LoginPageComponent } from './features/auth/login-page.component';
-import { ForgotPasswordPageComponent } from './features/auth/forgot-password-page.component';
-import { ResetPasswordPageComponent } from './features/auth/reset-password-page.component';
-import { StaffCrmShellPageComponent } from './features/auth/staff-crm-shell-page.component';
-import { AdministrationPageComponent } from './features/administration/administration-page.component';
-import { HistoricalImportsPageComponent } from './features/imports/historical-imports-page.component';
-import { ImportBatchPageComponent } from './features/imports/import-batch-page.component';
-import { ImportReviewPageComponent } from './features/imports/import-review-page.component';
-import { PersonDetailPageComponent } from './features/people/person-detail-page.component';
-import { PeoplePageComponent } from './features/people/people-page.component';
-import { PersonWritePageComponent } from './features/people/person-write-page.component';
-
 export const routes: Routes = [
   {
     path: 'login',
-    component: LoginPageComponent,
+    loadComponent: () => import('./features/auth/login-page.component').then((module) => module.LoginPageComponent),
     canActivate: [loginGuard],
   },
-  { path: 'forgot-password', component: ForgotPasswordPageComponent },
-  { path: 'reset-password/:uid/:token', component: ResetPasswordPageComponent },
+  { path: 'forgot-password', loadComponent: () => import('./features/auth/forgot-password-page.component').then((module) => module.ForgotPasswordPageComponent) },
+  { path: 'reset-password/:uid/:token', loadComponent: () => import('./features/auth/reset-password-page.component').then((module) => module.ResetPasswordPageComponent) },
   {
     path: 'access-denied',
-    component: AccessDeniedPageComponent,
+    loadComponent: () => import('./features/auth/access-denied-page.component').then((module) => module.AccessDeniedPageComponent),
     canActivate: [authGuard],
   },
   {
     path: '',
-    component: StaffCrmShellPageComponent,
+    loadComponent: () => import('./features/auth/staff-crm-shell-page.component').then((module) => module.StaffCrmShellPageComponent),
     canActivate: [authGuard, staffAccessGuard],
     children: [
       {
@@ -44,45 +31,45 @@ export const routes: Routes = [
       },
       {
         path: 'people',
-        component: PeoplePageComponent,
+        loadComponent: () => import('./features/people/people-page.component').then((module) => module.PeoplePageComponent),
       },
       {
         path: 'people/new/member',
-        component: PersonWritePageComponent,
+        loadComponent: () => import('./features/people/person-write-page.component').then((module) => module.PersonWritePageComponent),
         data: { mode: 'member' },
       },
       {
         path: 'people/new/contact',
-        component: PersonWritePageComponent,
+        loadComponent: () => import('./features/people/person-write-page.component').then((module) => module.PersonWritePageComponent),
         data: { mode: 'contact' },
       },
       {
         path: 'people/:id/edit',
-        component: PersonWritePageComponent,
+        loadComponent: () => import('./features/people/person-write-page.component').then((module) => module.PersonWritePageComponent),
         data: { mode: 'edit' },
       },
       {
         path: 'people/:id',
-        component: PersonDetailPageComponent,
+        loadComponent: () => import('./features/people/person-detail-page.component').then((module) => module.PersonDetailPageComponent),
       },
       {
         path: 'administration',
-        component: AdministrationPageComponent,
+        loadComponent: () => import('./features/administration/administration-page.component').then((module) => module.AdministrationPageComponent),
         canActivate: [administrationGuard],
       },
       {
         path: 'imports',
-        component: HistoricalImportsPageComponent,
+        loadComponent: () => import('./features/imports/historical-imports-page.component').then((module) => module.HistoricalImportsPageComponent),
         canActivate: [administrationGuard],
       },
       {
         path: 'imports/:id',
-        component: ImportBatchPageComponent,
+        loadComponent: () => import('./features/imports/import-batch-page.component').then((module) => module.ImportBatchPageComponent),
         canActivate: [administrationGuard],
       },
       {
         path: 'imports/:id/review/:recordId',
-        component: ImportReviewPageComponent,
+        loadComponent: () => import('./features/imports/import-review-page.component').then((module) => module.ImportReviewPageComponent),
         canActivate: [administrationGuard],
       },
       {
