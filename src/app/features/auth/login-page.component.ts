@@ -7,119 +7,49 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { RouterLink } from '@angular/router';
 import { AuthPageShellComponent } from './auth-page-shell.component';
+import { AuthPasswordVisibilityComponent } from './auth-password-visibility.component';
 
 @Component({
   selector: 'app-login-page',
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, AuthPageShellComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, AuthPageShellComponent, AuthPasswordVisibilityComponent],
   template: `
     <app-auth-page-shell>
+      <header class="auth-heading">
         <h1>Sign in</h1>
-        <p class="intro">
-          Use your Elevate MK staff account. Authentication is handled by the Django session backend.
-        </p>
-
-        <form class="auth-form" [formGroup]="form" (ngSubmit)="submit()">
-          <label>
-            <span>Email</span>
-            <input type="email" formControlName="email" autocomplete="email" />
-          </label>
-
-          <label>
-            <span>Password</span>
-            <input type="password" formControlName="password" autocomplete="current-password" />
-          </label>
-
-          @if (errorMessage()) {
-            <p class="error">{{ errorMessage() }}</p>
+        <p>Sign in to your Elevate MK staff account.</p>
+      </header>
+      <form class="auth-form" [formGroup]="form" (ngSubmit)="submit()" [attr.aria-busy]="submitting()">
+        <div class="crm-field">
+          <label class="crm-label" for="login-email">Email</label>
+          <input class="crm-control" id="login-email" type="email" formControlName="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="you@example.com"
+            [attr.aria-invalid]="form.controls.email.invalid && form.controls.email.touched"
+            [attr.aria-describedby]="form.controls.email.invalid && form.controls.email.touched ? 'login-email-error' : null" />
+          @if (form.controls.email.invalid && form.controls.email.touched) {
+            <p class="crm-error" id="login-email-error">Enter your staff email address.</p>
           }
-
-          <button type="submit" [disabled]="submitting() || form.invalid">
-            {{ submitting() ? 'Signing in...' : 'Sign in' }}
-          </button>
-          <a routerLink="/forgot-password">Forgot password?</a>
-        </form>
+        </div>
+        <div class="crm-field">
+          <label class="crm-label" for="login-password">Password</label>
+          <div class="auth-password">
+            <input #password class="crm-control" id="login-password" type="password" formControlName="password" autocomplete="current-password"
+              [attr.aria-invalid]="form.controls.password.invalid && form.controls.password.touched"
+              [attr.aria-describedby]="form.controls.password.invalid && form.controls.password.touched ? 'login-password-error' : null" />
+            <button [appPasswordVisibility]="password" class="auth-password-toggle crm-focusable"></button>
+          </div>
+          @if (form.controls.password.invalid && form.controls.password.touched) {
+            <p class="crm-error" id="login-password-error">Enter your password.</p>
+          }
+        </div>
+        <div class="auth-forgot"><a class="auth-link crm-focusable" routerLink="/forgot-password">Forgot password?</a></div>
+        @if (errorMessage()) {
+          <p class="crm-banner crm-banner--error" role="alert">{{ errorMessage() }}</p>
+        }
+        <button class="crm-button crm-button--primary auth-submit" type="submit" [disabled]="submitting() || form.invalid">
+          {{ submitting() ? 'Signing in...' : 'Sign in' }}
+        </button>
+        @if (submitting()) { <span class="auth-sr-only" role="status">Signing in...</span> }
+      </form>
     </app-auth-page-shell>
-  `,
-  styles: `
-    .auth-layout {
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      padding: 2rem;
-    }
-
-    .auth-card {
-      width: min(100%, 28rem);
-      padding: 2rem;
-      border-radius: 1.25rem;
-      border: 1px solid rgba(23, 42, 58, 0.14);
-      background: rgba(255, 255, 255, 0.88);
-      box-shadow: 0 24px 60px rgba(19, 33, 46, 0.12);
-      backdrop-filter: blur(18px);
-    }
-
-    .eyebrow {
-      margin: 0 0 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.16em;
-      font-size: 0.72rem;
-      color: #476074;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: clamp(2rem, 3vw, 2.6rem);
-      color: #142433;
-    }
-
-    .intro {
-      margin: 0.75rem 0 1.5rem;
-      color: #466277;
-      line-height: 1.6;
-    }
-
-    .auth-form {
-      display: grid;
-      gap: 1rem;
-    }
-
-    label {
-      display: grid;
-      gap: 0.45rem;
-      color: #1c3344;
-      font-weight: 600;
-    }
-
-    input {
-      width: 100%;
-      border: 1px solid #b7c7d4;
-      border-radius: 0.85rem;
-      padding: 0.9rem 1rem;
-      font: inherit;
-      background: #fdfefe;
-    }
-
-    button {
-      border: 0;
-      border-radius: 999px;
-      padding: 0.9rem 1.25rem;
-      font: inherit;
-      font-weight: 700;
-      color: #fff;
-      background: linear-gradient(135deg, #16354a, #2f6f84);
-      cursor: pointer;
-    }
-
-    button:disabled {
-      cursor: wait;
-      opacity: 0.7;
-    }
-
-    .error {
-      margin: 0;
-      color: #9b1c1c;
-      font-weight: 600;
-    }
   `,
 })
 export class LoginPageComponent {
@@ -154,7 +84,7 @@ export class LoginPageComponent {
         this.submitting.set(false);
         this.errorMessage.set(
           error.status === 403
-            ? 'A valid CSRF token is required before sign-in.'
+            ? 'Your sign-in session could not be verified. Refresh the page and try again.'
             : 'Sign-in failed. Check your credentials and try again.',
         );
       },

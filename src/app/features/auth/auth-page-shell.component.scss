@@ -1,0 +1,80 @@
+@use '../../../styles/breakpoints' as bp;
+
+// Auth-only token overrides. Authenticated CRM screens retain the foundation palette.
+.auth-shell {
+  --crm-workspace: #fafaf8;
+  --crm-text-strong: #20252b;
+  --crm-text-secondary: #525d68;
+  --crm-text-muted: #626c76;
+  --crm-action: #f2d64e;
+  --crm-action-hover: #e7c735;
+  --crm-on-action: #24251f;
+  --crm-control-border: #8e949b;
+  --crm-control-height: 3.125rem;
+  display: block;
+  color: var(--crm-text-strong);
+
+  .auth-layout {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    padding: clamp(1.5rem, 5vh, 4rem) var(--crm-space-6);
+    background: var(--crm-workspace);
+  }
+
+  .auth-layout::before, .auth-layout::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    pointer-events: none;
+    width: min(65vw, 58rem);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: #f7edbb;
+    opacity: 0.45;
+  }
+  .auth-layout::before { top: -32rem; left: -26rem; }
+  .auth-layout::after { bottom: -38rem; right: -30rem; }
+
+  .auth-experience { width: min(100%, 32rem); min-width: 0; margin: auto; }
+  .auth-brand { display: grid; justify-items: center; gap: var(--crm-space-2); }
+  // Frame the supplied padded 500px PNG; the original asset is not modified.
+  .auth-logo { position: relative; width: min(20rem, 100%); aspect-ratio: 350 / 90; overflow: hidden; }
+  .auth-logo img { position: absolute; width: 142.857%; height: auto; max-width: none; left: -20%; top: -220%; }
+  .auth-brand p { margin: 0; padding-left: 0.3em; font-size: var(--crm-font-sm); font-weight: var(--crm-weight-medium); text-transform: uppercase; letter-spacing: 0.3em; color: var(--crm-text-secondary); }
+  .auth-card { padding: clamp(1.5rem, 4vw, 2.5rem); border: 1px solid #e0e2e4; border-radius: 1rem; background: var(--crm-surface); box-shadow: 0 12px 36px rgb(28 32 38 / 6%); }
+  .auth-brand, .auth-heading { margin-bottom: var(--crm-space-8); }
+  .auth-heading h1 { margin: 0; font-size: clamp(1.875rem, 4vw, 2.5rem); font-weight: var(--crm-weight-bold); line-height: 1.15; letter-spacing: -0.035em; overflow-wrap: anywhere; }
+  .auth-heading p { margin: var(--crm-space-3) 0 0; color: var(--crm-text-secondary); line-height: 1.6; }
+  .auth-form { display: grid; gap: var(--crm-space-5); }
+  .crm-label { font-size: var(--crm-font-md); }
+  .crm-control { padding-inline: var(--crm-space-4); }
+  .auth-password { position: relative; min-width: 0; }
+  .auth-password input { padding-right: 4.5rem; }
+  .auth-password-toggle { position: absolute; top: 3px; right: 4px; bottom: 3px; min-width: 3.75rem; min-height: 2.75rem; padding: 0 var(--crm-space-2); border: 0; border-radius: var(--crm-radius-sm); background: transparent; color: var(--crm-text-secondary); font: inherit; font-size: var(--crm-font-sm); font-weight: var(--crm-weight-medium); cursor: pointer; }
+  .auth-password-toggle:hover { background: var(--crm-surface-subtle); color: var(--crm-text-strong); }
+  .auth-link { display: inline-flex; align-items: center; min-height: 2.75rem; color: var(--crm-text-secondary); font-size: var(--crm-font-md); font-weight: var(--crm-weight-medium); text-decoration: underline; text-underline-offset: 0.2em; border-radius: var(--crm-radius-sm); overflow-wrap: anywhere; }
+  .auth-link:hover { color: var(--crm-text-strong); }
+  .auth-forgot { display: flex; justify-content: flex-end; margin-top: calc(-1 * var(--crm-space-2)); }
+  .auth-submit { width: 100%; font-weight: var(--crm-weight-bold); }
+  .auth-back { margin-top: var(--crm-space-5); }
+  .crm-banner { margin: 0; font-size: var(--crm-font-md); }
+  .auth-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+  @media (max-width: bp.$compact) {
+    .auth-layout { padding: var(--crm-space-6) var(--crm-space-4); }
+    .auth-layout::before { width: 24rem; top: -19rem; left: -12rem; }
+    .auth-layout::after { display: none; }
+    .auth-logo { width: 15rem; }
+    .auth-brand, .auth-heading { margin-bottom: var(--crm-space-6); }
+    .auth-card { padding: var(--crm-space-6); }
+  }
+  @media (max-height: 700px) {
+    .auth-layout { padding-block: var(--crm-space-5); }
+    .auth-brand { margin-bottom: var(--crm-space-4); }
+    .auth-logo { width: 14rem; }
+  }
+}

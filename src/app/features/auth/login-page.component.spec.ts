@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
@@ -35,15 +35,11 @@ class MockAuthService {
   getAuthorizedRoute = vi.fn();
 }
 
-class MockRouter {
-  navigateByUrl = vi.fn().mockResolvedValue(true);
-}
-
 describe('LoginPageComponent', () => {
   let fixture: ComponentFixture<LoginPageComponent>;
   let component: LoginPageComponent;
   let auth: MockAuthService;
-  let router: MockRouter;
+  let router: Router;
 
   it('renders a forgot-password link', () => {
     fixture.detectChanges();
@@ -55,14 +51,15 @@ describe('LoginPageComponent', () => {
       imports: [LoginPageComponent],
       providers: [
         { provide: AuthService, useClass: MockAuthService },
-        { provide: Router, useClass: MockRouter },
+        provideRouter([]),
       ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(LoginPageComponent);
     component = fixture.componentInstance;
     auth = TestBed.inject(AuthService) as unknown as MockAuthService;
-    router = TestBed.inject(Router) as unknown as MockRouter;
+    router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
     fixture.detectChanges();
   });
 
@@ -116,5 +113,45 @@ describe('LoginPageComponent', () => {
 
     expect(component.errorMessage()).toBe('Sign-in failed. Check your credentials and try again.');
     expect(router.navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it('reveals and conceals the same password input without submitting or changing its value', () => {
+    component.form.setValue({ email: 'staff@example.com', password: 'secret' });
+    fixture.detectChanges();
+    const input: HTMLInputElement = fixture.nativeElement.querySelector('#login-password');
+    const toggle: HTMLButtonElement = fixture.nativeElement.querySelector('[appPasswordVisibility]');
+    expect(toggle.type).toBe('button');
+    expect(toggle.getAttribute('aria-controls')).toBe(input.id);
+    expect(toggle.getAttribute('aria-label')).toBe('Show password');
+    toggle.click();
+    fixture.detectChanges();
+    expect(input.type).toBe('text');
+    expect(toggle.getAttribute('aria-label')).toBe('Hide password');
+    expect(input.value).toBe('secret');
+    expect(component.form.controls.password.value).toBe('secret');
+    expect(auth.login).not.toHaveBeenCalled();
+    toggle.click();
+    fixture.detectChanges();
+    expect(input.type).toBe('password');
+  });
+
+  it('connects a touched invalid email to its visible validation message', () => {
+    component.form.controls.email.setValue('invalid');
+    component.form.controls.email.markAsTouched();
+    fixture.detectChanges();
+    const input: HTMLInputElement = fixture.nativeElement.querySelector('#login-email');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(input.getAttribute('aria-describedby')).toBe('login-email-error');
+    expect(fixture.nativeElement.querySelector('#login-email-error').textContent).toContain('email address');
+  });
+
+  it('announces sign-in verification failures without backend terminology', () => {
+    auth.login.mockReturnValue(throwError(() => ({ status: 403 })));
+    component.form.setValue({ email: 'staff@example.com', password: 'secret' });
+    component.submit();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain('Refresh the page');
+    expect(fixture.nativeElement.textContent).not.toContain('CSRF');
+    expect(fixture.nativeElement.querySelector('img').getAttribute('src')).toBe('/branding/logo.png');
   });
 });
