@@ -2,7 +2,8 @@
 :host { display:block; min-width:0; }
 [hidden] { display:none !important; }
 .detail-page,.detail-grid,.history-panel { display:grid; gap:1.25rem; min-width:0; }
-.detail-grid { grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; }
+.detail-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.detail-grid > * { display:grid; --crm-card-align:start; }
 .back-link,.state-link,.external-link,.section-link { color:var(--crm-action); font-weight:600; }
 a:hover { text-decoration:underline; }
 .identity-card { display:flex; align-items:start; flex-wrap:wrap; gap:1rem; padding:1.5rem; background:var(--crm-surface); border:1px solid var(--crm-border); border-radius:var(--crm-radius-lg); }

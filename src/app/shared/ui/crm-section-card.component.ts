@@ -21,6 +21,7 @@ import { Component, input } from '@angular/core';
     :host { display: block; }
     .section-card {
       display: grid;
+      align-content: var(--crm-card-align, normal);
       gap: var(--crm-space-4);
       padding: var(--crm-space-4) var(--crm-space-5);
       border: 1px solid var(--crm-border);
