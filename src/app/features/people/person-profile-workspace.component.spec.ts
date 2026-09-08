@@ -177,20 +177,19 @@ describe('Person profile workspace', () => {
     expect(host.querySelector('dialog .form-error')?.textContent).toContain('LinkedIn URL: Enter a valid URL.');
   });
 
-  it('keeps Archive/Restore inside the overflow and preserves archive confirmation', async () => {
+  it('shows Archive directly beside Edit and preserves archive confirmation', async () => {
     const host = await render();
-    const overflow = host.querySelector('.overflow') as HTMLDetailsElement;
-    expect(overflow.open).toBe(false);
-    (overflow.querySelector('summary') as HTMLElement).click();
-    expect(overflow.open).toBe(true);
-    (overflow.querySelector('button') as HTMLElement).click(); await settle();
+    const actions = host.querySelector('app-person-lifecycle-actions')!;
+    expect(actions.querySelector('summary')).toBeNull();
+    expect(host.querySelector('.profile-actions .edit-person')).not.toBeNull();
+    (actions.querySelector('.archive-button') as HTMLElement).click(); await settle();
     expect(service.archivePerson).not.toHaveBeenCalled();
     service.getPersonOverview.mockReturnValue(of({ ...overview, person: { ...overview.person, archived_at: '2026-09-01T12:00:00Z' } }));
-    (overflow.querySelector('.confirmation button') as HTMLElement).click(); await settle();
+    (actions.querySelector('.confirmation button') as HTMLElement).click(); await settle();
     expect(service.archivePerson).toHaveBeenCalledExactlyOnceWith(11);
     expect(host.querySelector('.edit-person')).toBeNull();
-    expect(overflow.textContent).toContain('Restore Person');
-    (overflow.querySelector('button') as HTMLElement).click(); await settle();
+    expect(actions.textContent).toContain('Restore person');
+    (actions.querySelector('button') as HTMLElement).click(); await settle();
     expect(service.restorePerson).toHaveBeenCalledExactlyOnceWith(11);
   });
 });
