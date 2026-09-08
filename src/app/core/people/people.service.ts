@@ -21,6 +21,7 @@ import {
   PaginatedResponse,
   PaginatedPersonAuditHistoryResponse,
   PersonListItem,
+  PersonDirectoryItem,
   PersonMembership,
   PersonOverview,
   PeopleListQueryState,
@@ -39,7 +40,7 @@ export class PeopleService {
 
   listPeople(
     query: PeopleListQueryState,
-  ): Observable<PaginatedResponse<PersonListItem>> {
+  ): Observable<PaginatedResponse<PersonDirectoryItem>> {
     let params = new HttpParams()
       .set('record_state', query.record_state)
       .set('ordering', query.ordering)
@@ -55,7 +56,7 @@ export class PeopleService {
     for (const value of query.skill) { params = params.append('skill', String(value)); }
     for (const value of query.tag) { params = params.append('tag', String(value)); }
 
-    return this.http.get<PaginatedResponse<PersonListItem>>(this.buildUrl('/people/'), {
+    return this.http.get<PaginatedResponse<PersonDirectoryItem>>(this.buildUrl('/people/'), {
       params,
     });
   }

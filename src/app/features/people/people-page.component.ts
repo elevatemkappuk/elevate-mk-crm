@@ -11,12 +11,14 @@ import { AuthService } from '../../core/auth/auth.service';
 import {
   PaginatedResponse,
   PersonListItem,
+  PersonDirectoryItem,
   PeopleDirectoryQuery,
   PeopleOrdering,
   PeoplePageSize,
 } from '../../core/people/people.types';
 import { arePeopleDirectoryQueriesEqual, DEFAULT_PEOPLE_DIRECTORY_QUERY, parsePeopleDirectoryQuery, serializePeopleDirectoryQuery, withPeopleDirectoryQueryChange } from '../../core/people/people-directory-query';
 import { PeopleDirectoryFiltersComponent } from './people-directory-filters.component';
+import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 
 const VALID_PAGE_SIZES: PeoplePageSize[] = [25, 50, 100];
 
@@ -27,7 +29,7 @@ interface OrderingOption {
 
 @Component({
   selector: 'app-people-page',
-  imports: [CommonModule, RouterLink, PeopleDirectoryFiltersComponent],
+  imports: [CommonModule, RouterLink, PeopleDirectoryFiltersComponent, StatusBadgeComponent],
   template: `
     <section class="page">
       @if (canManagePeople()) {
@@ -93,7 +95,11 @@ interface OrderingOption {
                   <th scope="col">Name</th>
                   <th scope="col">Email</th>
                   <th scope="col">Mobile</th>
+                  <th scope="col">Job title</th>
+                  <th scope="col">Type</th>
                   <th scope="col">Location</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -106,7 +112,11 @@ interface OrderingOption {
                     </td>
                     <td data-label="Email">{{ person.primary_email || '-' }}</td>
                     <td data-label="Mobile">{{ person.mobile || '-' }}</td>
+                    <td data-label="Job title">{{ person.job_title?.trim() || '-' }}</td>
+                    <td data-label="Type"><app-status-badge [label]="relationshipLabels[person.relationship] || '-'" /></td>
                     <td data-label="Location">{{ person.location || '-' }}</td>
+                    <td data-label="Status"><app-status-badge [label]="person.archived_at ? 'Archived' : 'Active'" [tone]="person.archived_at ? 'archived' : 'default'" /></td>
+                    <td data-label="Actions"><a [routerLink]="['/people', person.id]" class="row-link" [attr.aria-label]="'View ' + fullName(person)">View</a></td>
                   </tr>
                 }
               </tbody>
@@ -243,6 +253,7 @@ interface OrderingOption {
     }
 
     .table-wrap {
+      min-width: 0;
       overflow-x: auto;
       border-radius: 0.9rem;
       border: 1px solid rgba(22, 39, 53, 0.08);
@@ -251,7 +262,7 @@ interface OrderingOption {
 
     table {
       width: 100%;
-      min-width: 40rem;
+      min-width: 60rem;
       border-collapse: collapse;
     }
 
@@ -273,6 +284,7 @@ interface OrderingOption {
 
     td {
       color: #274356;
+      overflow-wrap: anywhere;
     }
 
     .person-row {
@@ -432,7 +444,10 @@ export class PeoplePageComponent {
 
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
-  readonly peopleResponse = signal<PaginatedResponse<PersonListItem> | null>(null);
+  readonly peopleResponse = signal<PaginatedResponse<PersonDirectoryItem> | null>(null);
+  readonly relationshipLabels: Record<PersonDirectoryItem['relationship'], string> = {
+    ACTIVE_MEMBER: 'Member', FORMER_MEMBER: 'Former member', CONTACT: 'Contact',
+  };
   readonly queryState = signal<PeopleDirectoryQuery>(DEFAULT_PEOPLE_DIRECTORY_QUERY);
   readonly canManagePeople = computed(() => canManagePeople(this.auth.currentUser()));
 

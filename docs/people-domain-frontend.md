@@ -28,6 +28,15 @@ CRM staff authentication is required before entering the shell. `CRM_ADMIN`, `CR
 
 `PeoplePageComponent` implements a server-side directory with search, filters, ordering, page size, pagination, loading, empty, and retry states. Rows navigate with an actual router link to the Person Overview, preserving keyboard access.
 
+Directory columns are Name, Email, Mobile, Job title, Type, Location, Status, and
+Actions. The list-specific `PersonDirectoryItem` reads `job_title` and
+`relationship` from the API. Missing or blank titles display `-`. The UI maps
+`ACTIVE_MEMBER` to Member, `FORMER_MEMBER` to Former member, and `CONTACT` to
+Contact; it does not infer type from archive state or other Person fields.
+Status uses `archived_at` for Active/Archived; View links to the existing Overview
+for every permitted reader. New cells retain `data-label` values for stacked
+mobile rows. Wider tables scroll within their wrapper, and long values wrap.
+
 Directory state is URL-owned. `people-directory-query.ts` parses and serializes `q`, repeated `relationship`, `location`, `industry`, `career_stage`, `interest`, `skill`, and `tag`, plus `record_state`, `ordering`, `page`, and `page_size`. The page observes route query parameters, maps them to the typed query state, and uses `switchMap` for the API request. This keeps deep links, browser back/forward, refresh, and stale-request handling deterministic.
 
 The UI defaults to active records, last-name ordering, page 1, and 25 records per page. It uses repeated query keys for multi-select filters, matching the API contract. Do not introduce local filtering or frontend-calculated directory results.

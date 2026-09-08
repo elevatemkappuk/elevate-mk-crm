@@ -31,6 +31,11 @@ export interface PersonListItem {
   updated_at: string;
 }
 
+export interface PersonDirectoryItem extends PersonListItem {
+  job_title: string | null;
+  relationship: PersonRelationship['type'];
+}
+
 export interface PersonRelationship {
   type: 'CONTACT' | 'ACTIVE_MEMBER' | 'FORMER_MEMBER';
   label: 'Contact' | 'Active Member' | 'Former Member';
