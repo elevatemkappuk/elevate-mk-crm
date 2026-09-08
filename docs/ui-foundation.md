@@ -5,12 +5,19 @@ feature state, and workflows remain owned by their existing implementations.
 
 ## Files and tokens
 
-`src/styles.scss` loads `styles/_tokens.scss` and `styles/_patterns.scss` once.
+`src/styles.scss` loads `styles/_tokens.scss`, `styles/_fonts.scss`, and
+`styles/_patterns.scss` once.
 Tokens use the `--crm-` prefix: semantic workspace/surface/border/text/action colours,
 paired feedback foregrounds and surfaces, focus and overlay, spacing (4–48px),
 three corner radii plus pill, two elevations, control heights, content widths,
-system typography, and dialog stacking order. Feedback colours always accompany
-text; colour alone must not communicate status. The system font is unchanged.
+typography, and dialog stacking order. Feedback colours always accompany
+text; colour alone must not communicate status.
+
+Manrope is the global application font, self-hosted with `font-display: swap`.
+The Latin variable subset is preloaded; Latin Extended loads on demand. Assets,
+source URLs, and the licence live in `public/fonts/manrope/`. Typography weights
+are 400 (`normal`), 500 (`emphasis`), 600 (`medium`, labels/controls/buttons), and
+700 (`bold`, headings). Native form elements inherit the application font.
 
 `styles/_breakpoints.scss` exports `compact` (680px), `medium` (900px), and `wide`
 (1200px), expressed in rem. Import it with SCSS `@use` relative to the consuming

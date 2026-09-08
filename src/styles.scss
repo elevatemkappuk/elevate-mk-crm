@@ -1,9 +1,11 @@
 @use './styles/tokens';
+@use './styles/fonts';
 @use './styles/patterns';
 
 :root {
   color-scheme: light;
   font-family: var(--crm-font-family);
+  font-weight: var(--crm-weight-normal);
   background: var(--crm-workspace);
   color: var(--crm-text-strong);
 }
@@ -23,6 +25,8 @@ body {
 }
 
 button,
+select,
+textarea,
 input {
   font: inherit;
 }

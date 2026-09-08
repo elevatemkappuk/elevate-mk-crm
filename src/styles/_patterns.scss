@@ -40,10 +40,11 @@
   background: var(--crm-surface);
   color: var(--crm-text-strong);
   font: inherit;
+  font-weight: var(--crm-weight-medium);
   line-height: var(--crm-leading);
 }
 textarea.crm-control { min-height: 7rem; resize: vertical; }
-.crm-control::placeholder { color: var(--crm-text-muted); opacity: 1; }
+.crm-control::placeholder { color: var(--crm-text-muted); font-weight: var(--crm-weight-normal); opacity: 1; }
 .crm-control[aria-invalid='true'] { border-color: var(--crm-error); }
 .crm-check {
   width: 1.125rem;

@@ -123,10 +123,14 @@ describe('LoginPageComponent', () => {
     expect(toggle.type).toBe('button');
     expect(toggle.getAttribute('aria-controls')).toBe(input.id);
     expect(toggle.getAttribute('aria-label')).toBe('Show password');
+    expect(toggle.getAttribute('title')).toBe('Show password');
+    expect(toggle.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(toggle.querySelector('svg')?.getAttribute('focusable')).toBe('false');
     toggle.click();
     fixture.detectChanges();
     expect(input.type).toBe('text');
     expect(toggle.getAttribute('aria-label')).toBe('Hide password');
+    expect(toggle.getAttribute('title')).toBe('Hide password');
     expect(input.value).toBe('secret');
     expect(component.form.controls.password.value).toBe('secret');
     expect(auth.login).not.toHaveBeenCalled();
