@@ -52,12 +52,14 @@ interface NavigationItem {
         ></button>
       }
 
-      <main class="main">
-        <header class="header">
+      <main class="main" [class.directory-main]="isPeopleDirectory()">
+        <header class="header" [class.directory-header]="isPeopleDirectory()">
+          @if (!isPeopleDirectory()) {
           <div>
             <p class="eyebrow">Elevate MK Staff CRM</p>
             <h2>{{ pageTitle() }}</h2>
           </div>
+          }
 
           <div class="header-actions">
             <button
@@ -235,6 +237,9 @@ interface NavigationItem {
       min-width: 0;
     }
 
+    .directory-main { grid-template-rows: 1fr; }
+    .directory-header { display: none; }
+
     .backdrop {
       position: fixed;
       inset: 0;
@@ -244,6 +249,8 @@ interface NavigationItem {
     }
 
     @media (max-width: 900px) {
+      .directory-main { grid-template-rows: auto 1fr; }
+      .header.directory-header { display: flex; justify-content: flex-end; padding: 0; background: none; border: 0; box-shadow: none; backdrop-filter: none; }
       .shell {
         grid-template-columns: minmax(0, 1fr);
       }
@@ -289,6 +296,10 @@ export class StaffCrmShellPageComponent {
   fullName(): string {
     const person = this.auth.currentUser()?.person;
     return person ? `${person.first_name} ${person.last_name}` : 'Staff CRM';
+  }
+
+  isPeopleDirectory(): boolean {
+    return this.router.url.split(/[?#]/, 1)[0] === '/people';
   }
 
   pageTitle(): string {

@@ -121,4 +121,20 @@ describe('StaffCrmShellPageComponent', () => {
     expect(auth.logout).toHaveBeenCalled();
     expect(navigateSpy).toHaveBeenCalledWith('/login');
   });
+
+  it('omits only the directory heading while retaining the menu control for tablet navigation', async () => {
+    await router.navigateByUrl('/people?q=amina&record_state=all');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.header h2')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.directory-header .menu-button')).not.toBeNull();
+    (fixture.nativeElement.querySelector('.menu-button') as HTMLButtonElement).click();
+    expect(component.menuOpen()).toBe(true);
+  });
+
+  it('retains the existing heading on other pages', async () => {
+    await router.navigateByUrl('/administration');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.header h2').textContent).toBe('Administration');
+    expect(fixture.nativeElement.querySelector('.directory-header')).toBeNull();
+  });
 });

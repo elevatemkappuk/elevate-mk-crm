@@ -18,7 +18,7 @@ import {
 } from '../../core/people/people.types';
 import { arePeopleDirectoryQueriesEqual, DEFAULT_PEOPLE_DIRECTORY_QUERY, parsePeopleDirectoryQuery, serializePeopleDirectoryQuery, withPeopleDirectoryQueryChange } from '../../core/people/people-directory-query';
 import { PeopleDirectoryFiltersComponent } from './people-directory-filters.component';
-import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
+import { StatusBadgeComponent, StatusBadgeTone } from '../../shared/ui/status-badge.component';
 
 const VALID_PAGE_SIZES: PeoplePageSize[] = [25, 50, 100];
 
@@ -32,15 +32,10 @@ interface OrderingOption {
   imports: [CommonModule, RouterLink, PeopleDirectoryFiltersComponent, StatusBadgeComponent],
   template: `
     <section class="page">
-      @if (canManagePeople()) {
-        <div class="page-actions">
-          <a routerLink="/people/new/member" class="button-primary">Add Member</a>
-          <a routerLink="/people/new/contact" class="button-secondary">Add Contact</a>
-        </div>
-      }
       <app-people-directory-filters [query]="queryState()" (changed)="changeDirectoryQuery($event)" (cleared)="clearFilters()" />
       <div class="controls" aria-label="People list display controls">
-        <label>
+        <div class="display-controls">
+        <label class="record-control">
           <span>Record state</span>
           <select [value]="queryState().record_state" (change)="changeDirectoryQuery({ record_state: $any($event.target).value })">
             <option value="active">Active</option>
@@ -49,7 +44,7 @@ interface OrderingOption {
           </select>
         </label>
 
-        <label>
+        <label class="ordering-control">
           <span>Order by</span>
           <select [value]="queryState().ordering" (change)="changeDirectoryQuery({ ordering: $any($event.target).value })">
             @for (option of orderingOptions; track option.value) {
@@ -58,7 +53,7 @@ interface OrderingOption {
           </select>
         </label>
 
-        <label>
+        <label class="size-control">
           <span>Page size</span>
           <select [value]="queryState().page_size" (change)="changeDirectoryQuery({ page_size: parsePageSize($any($event.target).value) })">
             @for (size of pageSizes; track size) {
@@ -66,6 +61,13 @@ interface OrderingOption {
             }
           </select>
         </label>
+        </div>
+        @if (canManagePeople()) {
+          <div class="page-actions">
+            <a routerLink="/people/new/member" class="button-primary">Add Member</a>
+            <a routerLink="/people/new/contact" class="button-secondary">Add Contact</a>
+          </div>
+        }
       </div>
 
       @if (loading()) {
@@ -89,7 +91,7 @@ interface OrderingOption {
           </div>
 
           <div class="table-wrap">
-            <table>
+            <table aria-label="People directory">
               <thead>
                 <tr>
                   <th scope="col">Name</th>
@@ -99,24 +101,22 @@ interface OrderingOption {
                   <th scope="col">Type</th>
                   <th scope="col">Location</th>
                   <th scope="col">Status</th>
-                  <th scope="col">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 @for (person of peopleResponse()!.results; track person.id) {
-                  <tr class="person-row">
+                  <tr class="person-row" (click)="openPersonRow($event, person)">
                     <td data-label="Name">
-                      <a [routerLink]="['/people', person.id]" class="row-link">
+                      <a [routerLink]="['/people', person.id]" class="row-link" (keydown)="activatePersonLink($event, person)">
                         {{ fullName(person) }}
                       </a>
                     </td>
                     <td data-label="Email">{{ person.primary_email || '-' }}</td>
                     <td data-label="Mobile">{{ person.mobile || '-' }}</td>
                     <td data-label="Job title">{{ person.job_title?.trim() || '-' }}</td>
-                    <td data-label="Type"><app-status-badge [label]="relationshipLabels[person.relationship] || '-'" /></td>
+                    <td data-label="Type"><app-status-badge [label]="relationshipLabels[person.relationship] || '-'" [tone]="relationshipTones[person.relationship] || 'neutral'" /></td>
                     <td data-label="Location">{{ person.location || '-' }}</td>
-                    <td data-label="Status"><app-status-badge [label]="person.archived_at ? 'Archived' : 'Active'" [tone]="person.archived_at ? 'archived' : 'default'" /></td>
-                    <td data-label="Actions"><a [routerLink]="['/people', person.id]" class="row-link" [attr.aria-label]="'View ' + fullName(person)">View</a></td>
+                    <td data-label="Status"><app-status-badge [label]="person.archived_at ? 'Archived' : 'Active'" [tone]="person.archived_at ? 'muted' : 'success'" /></td>
                   </tr>
                 }
               </tbody>
@@ -155,7 +155,7 @@ interface OrderingOption {
       gap: 0.9rem;
     }
 
-    .page-actions { display:flex; justify-content:flex-end; gap:.7rem; flex-wrap:wrap; }
+    .page-actions { display:flex; margin-left:auto; gap:.7rem; flex-wrap:wrap; }
     .button-primary,.button-secondary { border-radius:999px; padding:.72rem 1.05rem; font-weight:700; text-decoration:none; }
     .button-primary { background:#1d6077; color:#fff; } .button-secondary { background:#edf3f6; color:#234257; }
 
@@ -184,10 +184,24 @@ interface OrderingOption {
     }
 
     .controls {
-      grid-template-columns: repeat(3, minmax(8.75rem, 0.95fr));
+      display: flex;
+      flex-wrap: wrap;
       align-items: end;
       gap: 0.85rem 1rem;
     }
+    .display-controls {
+      display: flex;
+      flex: 1 1 31.5rem;
+      min-width: 0;
+      flex-wrap: wrap;
+      align-items: end;
+      gap: 0.85rem 1rem;
+    }
+    .controls label { min-width: 0; max-width: 100%; }
+    .controls select { width: 100%; min-width: 0; }
+    .record-control { width: 8.5rem; }
+    .ordering-control { width: 15rem; }
+    .size-control { width: 6rem; }
 
     label {
       display: grid;
@@ -262,7 +276,7 @@ interface OrderingOption {
 
     table {
       width: 100%;
-      min-width: 60rem;
+      min-width: 56rem;
       border-collapse: collapse;
     }
 
@@ -288,6 +302,7 @@ interface OrderingOption {
     }
 
     .person-row {
+      cursor: pointer;
       transition: background-color 120ms ease;
     }
 
@@ -295,6 +310,7 @@ interface OrderingOption {
     .person-row:focus-within {
       background: rgba(240, 246, 249, 0.96);
     }
+    .person-row:focus-within { outline: 2px solid var(--crm-focus-ring); outline-offset: -2px; }
 
     .row-link {
       display: inline-block;
@@ -355,18 +371,7 @@ interface OrderingOption {
       font-weight: 600;
     }
 
-    @media (max-width: 900px) {
-      .controls {
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      }
-
-    }
-
     @media (max-width: 680px) {
-      .controls {
-        grid-template-columns: 1fr;
-      }
-
       .table-wrap {
         border: 0;
         background: transparent;
@@ -448,6 +453,9 @@ export class PeoplePageComponent {
   readonly relationshipLabels: Record<PersonDirectoryItem['relationship'], string> = {
     ACTIVE_MEMBER: 'Member', FORMER_MEMBER: 'Former member', CONTACT: 'Contact',
   };
+  readonly relationshipTones: Record<PersonDirectoryItem['relationship'], StatusBadgeTone> = {
+    ACTIVE_MEMBER: 'info', FORMER_MEMBER: 'warning', CONTACT: 'neutral',
+  };
   readonly queryState = signal<PeopleDirectoryQuery>(DEFAULT_PEOPLE_DIRECTORY_QUERY);
   readonly canManagePeople = computed(() => canManagePeople(this.auth.currentUser()));
 
@@ -503,6 +511,21 @@ export class PeoplePageComponent {
 
   fullName(person: PersonListItem): string {
     return `${person.first_name} ${person.last_name}`;
+  }
+
+  openPersonRow(event: MouseEvent, person: PersonListItem): void {
+    const target = event.target as Element;
+    if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    // Keep native link behavior and allow future child controls to own their interactions.
+    if (target.closest('a,button,input,select,textarea,label,[role="button"],[role="link"],[contenteditable],[tabindex],[data-row-interactive]')) return;
+    if (target.ownerDocument.getSelection()?.toString()) return;
+    void this.router.navigate(['/people', person.id]);
+  }
+
+  activatePersonLink(event: KeyboardEvent, person: PersonListItem): void {
+    if (!['Enter', ' '].includes(event.key) || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    if (!event.repeat) void this.router.navigate(['/people', person.id]);
   }
 
   goToPage(page: number): void {

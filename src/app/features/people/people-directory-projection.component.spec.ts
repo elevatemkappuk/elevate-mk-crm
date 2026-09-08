@@ -2,7 +2,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
+import { vi } from 'vitest';
 import { RouterTestingHarness } from '@angular/router/testing';
 
 import { AuthService } from '../../core/auth/auth.service';
@@ -51,12 +52,13 @@ describe('People directory projected columns', () => {
 
   it('renders the requested column order and labels every cell for stacked rows', async () => {
     const host = await render([basePerson]);
-    const columns = ['Name', 'Email', 'Mobile', 'Job title', 'Type', 'Location', 'Status', 'Actions'];
+    const columns = ['Name', 'Email', 'Mobile', 'Job title', 'Type', 'Location', 'Status'];
     expect(Array.from(host.querySelectorAll('th'), th => th.textContent?.trim())).toEqual(columns);
     expect(Array.from(host.querySelectorAll('tbody td'), td => td.getAttribute('data-label'))).toEqual(columns);
     expect(host.querySelector('[data-label="Job title"]')?.textContent?.trim()).toBe('Programme Manager');
-    expect(host.querySelector('[data-label="Actions"] a')?.getAttribute('href')).toBe('/people/11');
-    expect(host.querySelector('[data-label="Actions"] a')?.getAttribute('aria-label')).toBe('View Amina Zulu');
+    expect(host.querySelector('[data-label="Actions"]')).toBeNull();
+    expect(host.querySelector('.row-link')?.getAttribute('href')).toBe('/people/11');
+    expect(host.querySelectorAll('tbody a')).toHaveLength(1);
   });
 
   it('maps authoritative types independently of archive status and handles missing job titles', async () => {
@@ -72,14 +74,58 @@ describe('People directory projected columns', () => {
       .toEqual(['Programme Manager', '-', '-', '-']);
     expect(Array.from(host.querySelectorAll('[data-label="Status"]'), td => td.textContent?.trim()))
       .toEqual(['Archived', 'Active', 'Active', 'Archived']);
+    expect(Array.from(host.querySelectorAll('[data-label="Type"] [data-tone]'), badge => badge.getAttribute('data-tone')))
+      .toEqual(['info', 'warning', 'neutral', 'neutral']);
+    expect(Array.from(host.querySelectorAll('[data-label="Status"] [data-tone]'), badge => badge.getAttribute('data-tone')))
+      .toEqual(['muted', 'success', 'success', 'muted']);
   });
 
-  it.each(['CRM_ADMIN', 'CRM_MANAGER', 'CRM_VIEWER'] as const)('shows projected values and View to %s without granting write actions', async role => {
+  it.each(['CRM_ADMIN', 'CRM_MANAGER', 'CRM_VIEWER'] as const)('shows linked rows to %s without granting write actions', async role => {
     currentUser.update(user => ({ ...user!, staff_roles: [role] }));
     const host = await render([basePerson]);
     expect(host.querySelector('[data-label="Type"]')?.textContent?.trim()).toBe('Member');
-    expect(host.querySelector('[data-label="Actions"] a')?.textContent).toBe('View');
+    expect(host.querySelector('.row-link')?.getAttribute('href')).toBe('/people/11');
     expect(!!host.querySelector('.page-actions')).toBe(role !== 'CRM_VIEWER');
-    expect(host.querySelector('[data-label="Actions"] button')).toBeNull();
+    expect(host.querySelector('tbody button')).toBeNull();
+  });
+
+  it('navigates from a non-interactive row cell', async () => {
+    const host = await render([basePerson]);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    (host.querySelector('[data-label="Job title"]') as HTMLElement).click();
+    expect(navigate).toHaveBeenCalledExactlyOnceWith(['/people', 11]);
+  });
+
+  it.each(['Enter', ' '])('activates the native name link with %s without adding a row tab stop', async key => {
+    const host = await render([basePerson]);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const link = host.querySelector('.row-link') as HTMLAnchorElement;
+    expect(link.tabIndex).toBe(0);
+    expect(host.querySelector('tbody tr')?.hasAttribute('tabindex')).toBe(false);
+    expect(host.querySelector('tbody tr')?.getAttribute('role')).toBeNull();
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+    link.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    expect(navigate).toHaveBeenCalledExactlyOnceWith(['/people', 11]);
+    link.dispatchEvent(new KeyboardEvent('keydown', { key, repeat: true, bubbles: true, cancelable: true }));
+    expect(navigate).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves child controls, stopped clicks, and modified links to their own handlers', async () => {
+    const host = await render([basePerson]);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const cell = host.querySelector('[data-label="Job title"]') as HTMLElement;
+    const button = document.createElement('button');
+    cell.append(button);
+    button.click();
+    const ownAction = document.createElement('span');
+    ownAction.addEventListener('click', event => event.stopPropagation());
+    cell.append(ownAction);
+    ownAction.click();
+    cell.dispatchEvent(new MouseEvent('click', { bubbles: true, ctrlKey: true }));
+    const modifiedEnter = new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true, cancelable: true });
+    host.querySelector('.row-link')!.dispatchEvent(modifiedEnter);
+    expect(modifiedEnter.defaultPrevented).toBe(false);
+    expect(navigate).not.toHaveBeenCalled();
   });
 });
