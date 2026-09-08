@@ -55,6 +55,7 @@ describe('StaffCrmShellPageComponent', () => {
   let router: Router;
 
   beforeEach(async () => {
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })));
     await TestBed.configureTestingModule({
       imports: [StaffCrmShellPageComponent],
       providers: [
@@ -76,6 +77,8 @@ describe('StaffCrmShellPageComponent', () => {
     auth = TestBed.inject(AuthService) as unknown as MockAuthService;
     fixture.detectChanges();
   });
+
+  afterEach(() => vi.unstubAllGlobals());
 
   it('shows the administration navigation entry for CRM admins', () => {
     const host = fixture.nativeElement as HTMLElement;
@@ -111,6 +114,7 @@ describe('StaffCrmShellPageComponent', () => {
     const activeLink = fixture.nativeElement.querySelector('.nav-link-active') as HTMLElement;
 
     expect(activeLink?.textContent).toContain('People');
+    expect(activeLink?.getAttribute('aria-current')).toBe('page');
   });
 
   it('keeps logout functional from the shell', () => {
@@ -122,19 +126,60 @@ describe('StaffCrmShellPageComponent', () => {
     expect(navigateSpy).toHaveBeenCalledWith('/login');
   });
 
-  it('omits only the directory heading while retaining the menu control for tablet navigation', async () => {
+  it('keeps a compact app bar without a duplicate feature heading', async () => {
     await router.navigateByUrl('/people?q=amina&record_state=all');
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.header h2')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.directory-header .menu-button')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.app-bar .menu-button')).not.toBeNull();
     (fixture.nativeElement.querySelector('.menu-button') as HTMLButtonElement).click();
     expect(component.menuOpen()).toBe(true);
   });
 
-  it('retains the existing heading on other pages', async () => {
+  it('lets other pages own their headings and marks their navigation active', async () => {
     await router.navigateByUrl('/administration');
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.header h2').textContent).toBe('Administration');
-    expect(fixture.nativeElement.querySelector('.directory-header')).toBeNull();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.header')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[aria-current="page"]').textContent).toContain('Administration');
+  });
+
+  it('opens a modal drawer, contains keyboard focus, and returns focus on Escape', async () => {
+    component.narrow.set(true);
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    const trigger = host.querySelector('.menu-button') as HTMLButtonElement;
+    expect(host.querySelector('.sidebar')?.hasAttribute('inert')).toBe(true);
+    trigger.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    expect(host.querySelector('.sidebar')?.getAttribute('aria-modal')).toBe('true');
+    expect(host.querySelector('main')?.hasAttribute('inert')).toBe(true);
+    expect(document.activeElement).toBe(host.querySelector('.nav-link-active'));
+    const first = host.querySelector('.drawer-close') as HTMLButtonElement;
+    const last = host.querySelector('.sign-out') as HTMLButtonElement;
+    last.focus();
+    last.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
+    expect(document.activeElement).toBe(first);
+    first.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }));
+    expect(document.activeElement).toBe(last);
+    last.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(component.menuOpen()).toBe(false);
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('closes the drawer using its backdrop or a navigation link', async () => {
+    component.narrow.set(true);
+    component.toggleMenu();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.backdrop') as HTMLElement).click();
+    expect(component.menuOpen()).toBe(false);
+    component.toggleMenu();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.nav-link') as HTMLElement).click();
+    expect(component.menuOpen()).toBe(false);
   });
 });

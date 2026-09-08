@@ -1,0 +1,50 @@
+@use '../../../styles/breakpoints' as bp;
+
+:host { display: block; min-height: 100vh; }
+.shell { display: grid; grid-template-columns: 15rem minmax(0, 1fr); min-height: 100vh; background: var(--crm-shell-workspace); }
+.sidebar { position: sticky; top: 0; height: 100dvh; display: flex; flex-direction: column; gap: 2.5rem; padding: 2rem .875rem 1.25rem; overflow-y: auto; background: var(--crm-shell-sidebar); color: #fff; z-index: 3; }
+.brand { text-align: center; }
+.logo { position: relative; width: 12rem; max-width: 100%; height: 2.75rem; margin: 0 auto; overflow: hidden; }
+.logo img { position: absolute; width: 149.7%; max-width: none; height: auto; left: -23.35%; top: 50%; transform: translateY(-48.6%); filter: brightness(0) invert(1); }
+.brand p { margin: .65rem 0 0; color: #c1ccda; text-transform: uppercase; letter-spacing: .24em; font-size: .7rem; }
+.nav { display: grid; gap: 1.75rem; }
+.nav-group { display: grid; gap: .35rem; }
+.group-label { margin: 0 .875rem .45rem; color: #bdcada; text-transform: uppercase; letter-spacing: .12em; font-size: .6875rem; font-weight: 600; }
+.nav-link, .sign-out { display: flex; align-items: center; gap: .875rem; min-height: 3rem; padding: .75rem .875rem; border-radius: var(--crm-radius-sm); color: #edf1f7; text-decoration: none; font-size: .875rem; }
+.nav-link { position: relative; font-weight: 600; }
+.nav-link:hover, .sign-out:hover { background: rgb(255 255 255 / 7%); }
+.nav-link-active { background: rgb(255 255 255 / 10%); color: #fff; }
+.nav-link-active::before { content: ''; position: absolute; inset: .6rem auto .6rem 0; width: 3px; border-radius: 3px; background: var(--crm-shell-accent); }
+.nav-link-active svg { color: var(--crm-shell-accent); }
+svg { width: 1.375rem; height: 1.375rem; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.user-panel { margin-top: auto; border-top: 1px solid rgb(255 255 255 / 16%); padding-top: 1.25rem; }
+.identity { display: flex; align-items: center; gap: .75rem; padding: 0 .5rem; }
+.avatar { display: grid; place-items: center; flex: none; width: 2.5rem; height: 2.5rem; border-radius: 50%; background: var(--crm-shell-accent); color: var(--crm-text-strong); font-weight: 600; }
+.user-details { min-width: 0; }
+.user-name, .user-email { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .8125rem; }
+.user-name { font-weight: 600; }
+.user-email { margin-top: .25rem; color: #bdcada; font-size: .75rem; }
+button { font: inherit; cursor: pointer; border: 0; }
+.sign-out { width: 100%; margin-top: .75rem; background: transparent; text-align: left; }
+button:disabled { opacity: .5; cursor: wait; }
+.sidebar :is(a, button):focus-visible { outline: 2px solid var(--crm-shell-accent); outline-offset: 2px; }
+.main { min-width: 0; padding: var(--crm-space-8); }
+.content { min-width: 0; }
+.app-bar, .drawer-close { display: none; }
+.backdrop { position: fixed; inset: 0; z-index: 2; background: var(--crm-overlay); }
+@media (max-width: bp.$wide) {
+  .shell { grid-template-columns: 13.75rem minmax(0, 1fr); }
+  .main { padding: var(--crm-space-6); }
+}
+@media (max-width: bp.$medium) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .sidebar { position: fixed; left: 0; width: min(17rem, calc(100vw - 3rem)); visibility: hidden; transform: translateX(-100%); }
+  .sidebar-open { visibility: visible; transform: none; }
+  .drawer-close { display: block; align-self: flex-end; margin-top: -1.5rem; padding: .65rem; background: transparent; color: #fff; }
+  .app-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; color: var(--crm-text-strong); font-weight: 700; }
+  .app-bar small { display: block; font-size: .625rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 500; }
+  .menu-button { display: flex; align-items: center; gap: .5rem; min-height: 2.75rem; padding: .6rem .75rem; background: var(--crm-surface); color: var(--crm-text-strong); border: 1px solid var(--crm-border); border-radius: var(--crm-radius-sm); }
+  .menu-button:focus-visible { outline: 2px solid var(--crm-focus-ring); outline-offset: 2px; }
+}
+@media (max-width: bp.$compact) { .main { padding: var(--crm-space-4); } }
+
