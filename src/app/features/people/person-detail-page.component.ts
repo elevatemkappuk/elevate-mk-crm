@@ -529,6 +529,7 @@ interface AssignSkillFormValue {
 
               @if (canEndMembership()) {
                 <div class="membership-actions">
+                  <h4>Membership actions</h4>
                   @if (showEndMembershipForm()) {
                     <form class="membership-form end-membership-form" [formGroup]="endMembershipForm" (ngSubmit)="submitEndMembership()">
                       <label>
@@ -568,12 +569,12 @@ interface AssignSkillFormValue {
               }
             } @else {
               <div class="membership-empty-state">
-                <p class="empty-section-copy">No membership record</p>
+                <p class="empty-section-copy">This person is not currently a member.</p>
 
                 @if (canMakeMember()) {
                   @if (showMakeMemberForm()) {
                     <form class="membership-form" [formGroup]="makeMemberForm" (ngSubmit)="submitMakeMember()">
-                      <label>
+                      <label class="join-date">
                         <span>Join date</span>
                         <input type="date" formControlName="joined_at" />
                       </label>
