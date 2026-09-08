@@ -19,6 +19,7 @@ import {
 import { arePeopleDirectoryQueriesEqual, DEFAULT_PEOPLE_DIRECTORY_QUERY, parsePeopleDirectoryQuery, serializePeopleDirectoryQuery, withPeopleDirectoryQueryChange } from '../../core/people/people-directory-query';
 import { PeopleDirectoryFiltersComponent } from './people-directory-filters.component';
 import { StatusBadgeComponent, StatusBadgeTone } from '../../shared/ui/status-badge.component';
+import { AddPersonDrawerComponent } from './add-person-drawer.component';
 
 const VALID_PAGE_SIZES: PeoplePageSize[] = [25, 50, 100];
 
@@ -29,7 +30,7 @@ interface OrderingOption {
 
 @Component({
   selector: 'app-people-page',
-  imports: [CommonModule, RouterLink, PeopleDirectoryFiltersComponent, StatusBadgeComponent],
+  imports: [CommonModule, RouterLink, PeopleDirectoryFiltersComponent, StatusBadgeComponent, AddPersonDrawerComponent],
   template: `
     <section class="page">
       <app-people-directory-filters [query]="queryState()" (changed)="changeDirectoryQuery($event)" (cleared)="clearFilters()" />
@@ -64,8 +65,7 @@ interface OrderingOption {
         </div>
         @if (canManagePeople()) {
           <div class="page-actions">
-            <a routerLink="/people/new/member" class="button-primary">Add Member</a>
-            <a routerLink="/people/new/contact" class="button-secondary">Add Contact</a>
+            <button type="button" class="add-person crm-button" (click)="addPersonOpen.set(true)">Add person</button>
           </div>
         }
       </div>
@@ -144,6 +144,9 @@ interface OrderingOption {
         </section>
       }
     </section>
+    @if (addPersonOpen() && canManagePeople()) {
+      <app-add-person-drawer (closed)="addPersonOpen.set(false)" />
+    }
   `,
   styles: `
     :host {
@@ -156,8 +159,8 @@ interface OrderingOption {
     }
 
     .page-actions { display:flex; margin-left:auto; gap:.7rem; flex-wrap:wrap; }
-    .button-primary,.button-secondary { border-radius:999px; padding:.72rem 1.05rem; font-weight:700; text-decoration:none; }
-    .button-primary { background:#1d6077; color:#fff; } .button-secondary { background:#edf3f6; color:#234257; }
+    .add-person { background:var(--crm-shell-accent); color:var(--crm-text-strong); }
+    .add-person:hover { background:#f3c64c; }
 
     .controls,
     .results-card,
@@ -428,6 +431,7 @@ interface OrderingOption {
   `,
 })
 export class PeoplePageComponent {
+  readonly addPersonOpen = signal(false);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);

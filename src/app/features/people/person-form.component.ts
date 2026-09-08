@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, effect, input, output } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { PersonListItem, PersonWriteFields } from '../../core/people/people.types';
@@ -19,7 +20,8 @@ export interface PersonFormSubmission {
   selector: 'app-person-form',
   imports: [CommonModule, ReactiveFormsModule],
   template: `
-    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <form [formGroup]="form" [class.drawer-layout]="drawer()" (ngSubmit)="submit()" novalidate>
+      <fieldset [disabled]="pending()">
       <section class="field-group">
         <h3>Personal details</h3>
         <div class="fields">
@@ -48,6 +50,7 @@ export interface PersonFormSubmission {
           <label>Join date <input type="date" formControlName="joined_at" /> @if (invalid('joined_at')) { <small>Join date is required.</small> }</label>
         </section>
       }
+      </fieldset>
       <div class="actions">
         <button type="submit" class="button-primary" [disabled]="pending()">{{ pending() ? 'Saving...' : submitLabel() }}</button>
         <button type="button" class="button-secondary" [disabled]="pending()" (click)="cancelled.emit()">Cancel</button>
@@ -61,6 +64,15 @@ export interface PersonFormSubmission {
     input:focus-visible,select:focus-visible { outline:0; border-color:#5d88a0; box-shadow:0 0 0 3px rgba(108,154,180,.2); } small { color:#a12929; font-weight:600; }
     .membership { max-width:22rem; } .actions { display:flex; gap:.7rem; flex-wrap:wrap; } button { border:0; border-radius:999px; padding:.72rem 1.1rem; font:inherit; font-weight:700; cursor:pointer; }
     .button-primary { color:#fff; background:#1d6077; } .button-secondary { color:#244359; background:#edf3f6; } button:disabled { opacity:.6; cursor:not-allowed; }
+    fieldset { display:grid; gap:1rem; border:0; margin:0; padding:0; min-width:0; }
+    .drawer-layout .field-group { padding:0; border:0; border-radius:0; }
+    .drawer-layout h3 { font-size:.75rem; text-transform:uppercase; letter-spacing:.08em; }
+    .drawer-layout input,.drawer-layout select { min-height:2.75rem; border-radius:var(--crm-radius-sm); }
+    .drawer-layout .actions { position:sticky; bottom:0; padding:1rem 0; background:var(--crm-surface); border-top:1px solid var(--crm-border); justify-content:space-between; }
+    .drawer-layout .button-primary { order:1; background:var(--crm-shell-accent); color:var(--crm-text-strong); }
+    .drawer-layout .button-primary:hover:not(:disabled) { background:#f3c64c; }
+    .drawer-layout button { border-radius:var(--crm-radius-sm); min-height:2.75rem; }
+    button:focus-visible { outline:2px solid var(--crm-focus-ring); outline-offset:3px; }
     @media (max-width:650px) { .fields { grid-template-columns:1fr; } }
   `,
 })
@@ -69,6 +81,8 @@ export class PersonFormComponent {
   readonly member = input(false);
   readonly submitLabel = input('Save person');
   readonly pending = input(false);
+  readonly drawer = input(false);
+  readonly edited = output<void>();
   readonly submitted = output<PersonFormSubmission>();
   readonly cancelled = output<void>();
   readonly ageRangeOptions = AGE_RANGE_OPTIONS;
@@ -79,8 +93,10 @@ export class PersonFormComponent {
     primary_email: ['', Validators.email], mobile: [''], location: [''], age_range: [''], gender: [''],
     joined_at: [getLocalTodayDateInputValue()],
   });
+  private readonly initialValues = this.form.getRawValue();
 
   constructor() {
+    this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.edited.emit());
     effect(() => {
       const person = this.initialPerson();
       if (person) {
@@ -92,6 +108,16 @@ export class PersonFormComponent {
         }, { emitEvent: false });
       }
     });
+    effect(() => {
+      const joinedAt = this.form.controls.joined_at;
+      joinedAt.setValidators(this.member() ? [Validators.required] : []);
+      joinedAt.updateValueAndValidity({ emitEvent: false });
+    });
+  }
+
+  hasUnsavedEdits(): boolean {
+    const values = this.form.getRawValue();
+    return (Object.keys(values) as (keyof typeof values)[]).some(key => values[key].trim() !== this.initialValues[key]);
   }
 
   invalid(name: keyof typeof this.form.controls): boolean {

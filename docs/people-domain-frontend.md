@@ -45,8 +45,8 @@ rows. Wider tables scroll within their wrapper, and long values wrap.
 
 Search remains wide; Record state, Order by, and Page size use compact widths
 and wrap as space narrows. The redundant shell title card is hidden only on the
-directory, with the tablet/mobile Menu button retained. Add Member and Add
-Contact sit on the right of the compact display-control panel for permitted
+directory, with the tablet/mobile Menu button retained. Add person
+sits on the right of the compact display-control panel for permitted
 staff, wrapping below the controls when space narrows. Search starts the directory.
 
 Directory state is URL-owned. `people-directory-query.ts` parses and serializes `q`, repeated `relationship`, `location`, `industry`, `career_stage`, `interest`, `skill`, and `tag`, plus `record_state`, `ordering`, `page`, and `page_size`. The page observes route query parameters, maps them to the typed query state, and uses `switchMap` for the API request. This keeps deep links, browser back/forward, refresh, and stale-request handling deterministic.
@@ -59,10 +59,23 @@ Because filter state is shareable in the URL, future CRM areas can link directly
 
 ## Create and Edit
 
-The write page supports two explicit creation modes:
+The directory opens `AddPersonDrawerComponent`, a native modal dialog containing
+the existing `PersonWritePageComponent` in drawer mode. It shares the same
+`PersonFormComponent`, requests, and collision-review controller as the retained
+`/people/new/member` and `/people/new/contact` routes. The drawer defaults to
+Member and offers a labelled radio-card choice between two creation modes:
 
 - **Add Contact** creates a Person without a Membership.
 - **Add Member** creates the Person and active Membership in the backend's single authoritative workflow.
+
+The Member join date is required. Switching to Contact hides Membership and
+omits its fields from the request, while preserving the date locally if staff
+switch back. Edits and type changes invalidate any pending collision review.
+Closing a drawer with unsaved values asks for confirmation; pending requests
+block closing and repeat submissions. Native modal focus containment, initial
+title focus, Escape handling, and focus restoration support keyboard use.
+Successful creation closes the drawer and retains navigation to the new Person.
+Opening or cancelling the drawer leaves the directory URL untouched.
 
 Editing changes only Person-owned demographics and contact fields. Professional Profile is not edited through the general Person form. The UI sends the API's canonical demographic values; presentation helpers handle labels and accepted user-facing values.
 

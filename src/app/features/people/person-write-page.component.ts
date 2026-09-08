@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, input, output, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -27,7 +27,13 @@ type WriteMode = 'contact' | 'member' | 'edit';
       <app-state-message title="Person not found" message="The requested person record is not available in the CRM People domain." tone="error" />
     } @else {
       <section class="page">
-        <div class="intro"><p>{{ intro() }}</p></div>
+        @if (drawer()) {
+          <fieldset class="person-types" [disabled]="submitting()">
+            <legend>Person type</legend>
+            <label [class.selected]="mode() === 'member'"><input type="radio" name="person-type" value="member" [checked]="mode() === 'member'" (change)="changeType('member')" /><span><strong>Member</strong><small>Person + active Membership</small></span></label>
+            <label [class.selected]="mode() === 'contact'"><input type="radio" name="person-type" value="contact" [checked]="mode() === 'contact'" (change)="changeType('contact')" /><span><strong>Contact</strong><small>Person only</small></span></label>
+          </fieldset>
+        } @else { <div class="intro"><p>{{ intro() }}</p></div> }
         @if (errorMessage()) { <p class="error" aria-live="assertive">{{ errorMessage() }}</p> }
         @if (duplicateConflict()) {
           <app-person-duplicate-conflict [conflict]="duplicateConflict()!" [message]="duplicateMessage()" (createSeparatePerson)="openIdentityOverrideConfirmation()" />
@@ -37,11 +43,14 @@ type WriteMode = 'contact' | 'member' | 'edit';
           [member]="mode() === 'member'"
           [submitLabel]="submitLabel()"
           [pending]="submitting()"
+          [drawer]="drawer()"
+          (edited)="clearCollisionReview()"
           (submitted)="submit($event)"
           (cancelled)="cancel()"
         />
       </section>
     }
+    <div (keydown.escape)="$event.preventDefault(); $event.stopPropagation()">
     <app-confirmation-dialog
       [open]="identityOverrideConfirmationOpen()"
       title="Create a separate CRM Person?"
@@ -51,10 +60,18 @@ type WriteMode = 'contact' | 'member' | 'edit';
       (cancelled)="cancelIdentityOverrideConfirmation()"
       (confirmed)="confirmIdentityOverride()"
     />
+    </div>
   `,
   styles: `
     .page { display:grid; gap:1rem; max-width:58rem; } .intro { color:#526f81; } .intro p,.error { margin:0; line-height:1.5; }
     .error { padding:.85rem 1rem; border-radius:.75rem; background:#fff5f5; color:#9b1c1c; font-weight:600; }
+    .person-types { display:flex; flex-wrap:wrap; gap:.75rem; padding:0; margin:0 0 .5rem; border:0; min-width:0; }
+    legend { padding:0; margin-bottom:.75rem; font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
+    .person-types label { display:flex; flex:1 1 12rem; align-items:start; gap:.65rem; padding:1rem; border:1px solid var(--crm-border); border-radius:var(--crm-radius-md); cursor:pointer; }
+    .person-types .selected { background:#fff9e7; border-color:#ad8422; }
+    .person-types small { display:block; margin-top:.3rem; font-size:.75rem; color:var(--crm-text-secondary); }
+    .person-types input { margin:.2rem 0 0; accent-color:var(--crm-shell-sidebar); }
+    .person-types label:focus-within { outline:2px solid var(--crm-focus-ring); outline-offset:2px; }
   `,
 })
 export class PersonWritePageComponent {
@@ -63,7 +80,11 @@ export class PersonWritePageComponent {
   private readonly auth = inject(AuthService);
   private readonly peopleService = inject(PeopleService);
   private readonly destroyRef = inject(DestroyRef);
-  readonly mode = signal<WriteMode>(this.route.snapshot.data['mode'] as WriteMode);
+  readonly drawer = input(false);
+  readonly cancelled = output<void>();
+  readonly saved = output<PersonListItem>();
+  readonly personForm = viewChild(PersonFormComponent);
+  readonly mode = signal<WriteMode>((this.route.snapshot.data['mode'] as WriteMode) || 'member');
   readonly person = signal<PersonListItem | null>(null);
   readonly loading = signal(this.mode() === 'edit');
   readonly notFound = signal(false);
@@ -73,7 +94,7 @@ export class PersonWritePageComponent {
   readonly pendingSubmission = signal<PersonFormSubmission | null>(null);
   readonly identityOverrideConfirmationOpen = signal(false);
   readonly canManagePeople = computed(() => canManagePeople(this.auth.currentUser()));
-  readonly submitLabel = computed(() => this.mode() === 'contact' ? 'Create Contact' : this.mode() === 'member' ? 'Create Member' : 'Save changes');
+  readonly submitLabel = computed(() => this.drawer() ? 'Add person' : this.mode() === 'contact' ? 'Create Contact' : this.mode() === 'member' ? 'Create Member' : 'Save changes');
   readonly intro = computed(() => this.mode() === 'member' ? 'Create a new Person and active Membership in one step.' : this.mode() === 'contact' ? 'Create a new CRM Person without a Membership.' : 'Update the Person-owned details for this CRM record.');
   readonly duplicateMessage = computed(() => this.mode() === 'edit' ? 'The new email or mobile number matches another existing Person. Review the existing record before saving this change.' : 'A Person with the same email or mobile number already exists. Review the existing record before creating another one.');
 
@@ -94,8 +115,24 @@ export class PersonWritePageComponent {
     this.submitCreation(submission);
   }
 
+  changeType(type: 'member' | 'contact'): void {
+    if (this.submitting() || this.mode() === type) return;
+    this.mode.set(type);
+    this.clearCollisionReview();
+  }
+
+  clearCollisionReview(): void {
+    this.pendingSubmission.set(null);
+    this.duplicateConflict.set(null);
+    this.identityOverrideConfirmationOpen.set(false);
+  }
+
+  hasUnsavedEdits(): boolean {
+    return this.mode() === 'contact' || !!this.personForm()?.hasUnsavedEdits();
+  }
+
   openIdentityOverrideConfirmation(): void {
-    if (this.pendingSubmission() && this.duplicateConflict()) {
+    if (!this.submitting() && this.pendingSubmission() && this.duplicateConflict()) {
       this.identityOverrideConfirmationOpen.set(true);
     }
   }
@@ -107,7 +144,7 @@ export class PersonWritePageComponent {
   confirmIdentityOverride(): void {
     const submission = this.pendingSubmission();
     const conflict = this.duplicateConflict();
-    if (!submission || !conflict) return;
+    if (this.submitting() || !this.canManagePeople() || !submission || !conflict) return;
     this.identityOverrideConfirmationOpen.set(false);
     this.submitCreation(submission, {
       confirm_identity_override: true,
@@ -137,12 +174,14 @@ export class PersonWritePageComponent {
           : { ...submission.person, joined_at: submission.joined_at!, membership_source: 'STAFF' } satisfies CreateMemberRequest)
         : this.peopleService.updatePerson(this.person()!.id, submission.person satisfies UpdatePersonRequest);
     request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (person) => { this.submitting.set(false); void this.router.navigate(['/people', person.id]); },
+      next: (person) => { this.submitting.set(false); this.saved.emit(person); void this.router.navigate(['/people', person.id]); },
       error: (error: HttpErrorResponse) => { this.submitting.set(false); this.handleError(error); },
     });
   }
 
   cancel(): void {
+    if (this.submitting()) return;
+    if (this.drawer()) { this.cancelled.emit(); return; }
     void this.router.navigate(this.mode() === 'edit' && this.person() ? ['/people', this.person()!.id] : ['/people']);
   }
 

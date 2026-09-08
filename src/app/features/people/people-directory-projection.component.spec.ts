@@ -86,6 +86,10 @@ describe('People directory projected columns', () => {
     expect(host.querySelector('[data-label="Type"]')?.textContent?.trim()).toBe('Member');
     expect(host.querySelector('.row-link')?.getAttribute('href')).toBe('/people/11');
     expect(!!host.querySelector('.page-actions')).toBe(role !== 'CRM_VIEWER');
+    expect(host.querySelector('.page-actions a')).toBeNull();
+    if (role !== 'CRM_VIEWER') {
+      expect(host.querySelector('.controls .page-actions button')?.textContent?.trim()).toBe('Add person');
+    }
     expect(host.querySelector('tbody button')).toBeNull();
   });
 
