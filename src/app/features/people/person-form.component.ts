@@ -93,7 +93,7 @@ export class PersonFormComponent {
     primary_email: ['', Validators.email], mobile: [''], location: [''], age_range: [''], gender: [''],
     joined_at: [getLocalTodayDateInputValue()],
   });
-  private readonly initialValues = this.form.getRawValue();
+  private initialValues = this.form.getRawValue();
 
   constructor() {
     this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.edited.emit());
@@ -106,6 +106,7 @@ export class PersonFormComponent {
           age_range: toAgeRange(person.age_range),
           gender: toGender(person.gender),
         }, { emitEvent: false });
+        this.initialValues = this.form.getRawValue();
       }
     });
     effect(() => {

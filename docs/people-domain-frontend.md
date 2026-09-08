@@ -59,7 +59,7 @@ Because filter state is shareable in the URL, future CRM areas can link directly
 
 ## Create and Edit
 
-The directory opens `AddPersonDrawerComponent`, a native modal dialog containing
+The directory opens `AddPersonDrawerComponent`, using the shared `CrmDrawerComponent` native modal and containing
 the existing `PersonWritePageComponent` in drawer mode. It shares the same
 `PersonFormComponent`, requests, and collision-review controller as the retained
 `/people/new/member` and `/people/new/contact` routes. The drawer defaults to
@@ -85,6 +85,26 @@ The write workflow composes `PersonFormComponent`, `PersonDuplicateConflictCompo
 
 ## Person Overview
 
+Person Detail is a profile workspace with an initials avatar, authoritative
+relationship badge, available job/location details, contact details, and Edit
+person. Archive/Restore live in the keyboard-accessible overflow disclosure,
+retaining the existing archive confirmation and lifecycle handlers.
+
+Overview, Membership, Notes, and History use URL fragments (for example
+`/people/11#membership`); absent or unavailable fragments show Overview.
+Overview uses two columns above the shared medium breakpoint and one below it.
+It contains Personal details, a Membership summary, Professional Profile, Skills,
+Interests, and Tags. Detailed membership controls live in Membership. Notes and
+History retain their permission gates; sections remain mounted across navigation
+to preserve drafts/filter state. Record metadata is collapsed in History, whose
+events use a compact timeline presentation.
+
+Edit person reuses the existing write controller and Person form in
+`CrmDrawerComponent`. The server's saved Person response updates the displayed
+Person fields without leaving the profile. The existing edit route still works.
+Professional Profile uses the same drawer with its existing form/controller and
+overview refresh. Both retain pending/error handling and confirm dirty closes.
+
 The detail route loads `GET /people/{id}/overview/` and renders the current aggregate projection. It contains:
 
 - Identity and Person-owned details, record status, and archive/restore controls where permitted.
@@ -94,7 +114,7 @@ The detail route loads `GET /people/{id}/overview/` and renders the current aggr
 - Internal Notes: visible and mutable only for Admin/Manager.
 - Audit History: read-only history; the backend omits sensitive Internal Note audit events for Viewer access.
 
-After a successful mutation, the view refreshes the authoritative overview rather than attempting to manually rebuild the aggregate client-side. Archived records remain viewable but the UI does not offer normal mutation actions.
+After domain mutations, the view refreshes the authoritative overview. Person-only drawer saves replace the Person projection with the API response. Archived records remain viewable but the UI does not offer normal mutation actions.
 
 The screen uses the shared `CrmSectionCardComponent`, status badge, state-message, and Person lifecycle-action patterns. Taxonomy assignment components load their catalogs only when an authorized user opens the relevant assignment UI, and reuse the current overview after the mutation succeeds.
 

@@ -311,9 +311,9 @@ const NOTES_PAGE_SIZE = 25;
 
     .note-card {
       padding: 1rem 1.05rem;
-      border-radius: 1rem;
-      border: 1px solid rgba(22, 39, 53, 0.08);
-      background: rgba(247, 250, 252, 0.78);
+      border-radius: var(--crm-radius-md);
+      border: 1px solid var(--crm-border);
+      background: var(--crm-surface);
     }
 
     .note-card-header {
@@ -356,9 +356,10 @@ const NOTES_PAGE_SIZE = 25;
       line-height: 1.5;
     }
 
-    button {
-      cursor: pointer;
-    }
+    button { cursor:pointer; min-height:2.75rem; padding:.6rem .9rem; border:1px solid var(--crm-border); border-radius:var(--crm-radius-sm); background:var(--crm-surface); color:var(--crm-text-strong); font:inherit; font-weight:600; }
+    button[type=submit],.button-primary { background:var(--crm-action); color:var(--crm-on-action); }
+    :is(button,select,textarea):focus-visible { outline:2px solid var(--crm-focus-ring); outline-offset:3px; }
+    .note-body { overflow-wrap:anywhere; }
 
     button[disabled] {
       cursor: not-allowed;

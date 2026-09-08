@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
+import { vi } from 'vitest';
 import { provideRouter, Router, RouterOutlet } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 
@@ -235,11 +236,15 @@ class MockAuthService {
 class DummyShellComponent {}
 
 describe('PersonDetailPageComponent', () => {
+  const showModalDescriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'showModal');
+  const closeDescriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'close');
   let httpTesting: HttpTestingController;
   let router: Router;
   let auth: MockAuthService;
 
   beforeEach(async () => {
+    Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value: vi.fn(function(this: HTMLDialogElement) { this.open = true; }) });
+    Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value: vi.fn(function(this: HTMLDialogElement) { this.open = false; }) });
     await TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -263,6 +268,11 @@ describe('PersonDetailPageComponent', () => {
 
   afterEach(() => {
     httpTesting.verify();
+    TestBed.resetTestingModule();
+    for (const [key, descriptor] of [['showModal', showModalDescriptor], ['close', closeDescriptor]] as const) {
+      if (descriptor) Object.defineProperty(HTMLDialogElement.prototype, key, descriptor);
+      else Reflect.deleteProperty(HTMLDialogElement.prototype, key);
+    }
   });
 
   async function stabilize(harness: RouterTestingHarness) {
@@ -354,7 +364,7 @@ describe('PersonDetailPageComponent', () => {
 
   function editProfessionalProfileButton(host: Element | null): HTMLButtonElement | undefined {
     return Array.from(host?.querySelectorAll('button') ?? []).find((button) =>
-      button.textContent?.trim() === 'Edit',
+      button.getAttribute('aria-label') === 'Edit professional profile',
     ) as HTMLButtonElement | undefined;
   }
 

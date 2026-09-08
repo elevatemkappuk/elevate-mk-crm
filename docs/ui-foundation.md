@@ -81,3 +81,18 @@ workspace background are the only immediate visual effects outside the dialog.
 
 Focused dialog behavior specs accompany Phase 1. Do not run tests unless requested.
 Validate implementation with `npm run build` and `git diff --check`.
+
+## Shared editing drawer
+
+`CrmDrawerComponent` extracts the Add Person modal layout for Add Person, Edit
+Person, and Professional Profile. Render it conditionally while open and project
+the feature form into it. Supply `title`, `description`, `busy`, and `dirty`;
+handle `closed` by removing it. Feature Cancel buttons call `requestClose()`.
+`closeBlocked` prevents dismissal while a nested identity confirmation is open.
+
+The drawer owns native `dialog.showModal()` focus containment, initial title
+focus, Escape/backdrop/close handling, scroll locking, unique accessible IDs,
+and restoring the connected opener. Dirty closes use the existing confirmation
+component. It is 36rem wide and becomes full-screen below the compact threshold.
+Keep opener controls mounted behind the modal so focus can return after closing.
+Forms retain their own API requests, validation, footer actions, and business state.

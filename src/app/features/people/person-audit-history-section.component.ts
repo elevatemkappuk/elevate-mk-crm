@@ -151,10 +151,9 @@ interface RenderedAuditChange {
     }
 
     .audit-card {
-      padding: 1rem 1.05rem;
-      border-radius: 1rem;
-      border: 1px solid rgba(22, 39, 53, 0.08);
-      background: rgba(247, 250, 252, 0.78);
+      padding: .25rem 0 1rem 1.25rem;
+      border-left: 2px solid var(--crm-border);
+      background: var(--crm-surface);
     }
 
     .audit-summary,

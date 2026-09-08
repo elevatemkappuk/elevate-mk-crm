@@ -81,13 +81,14 @@ describe('Add person drawer and shared creation', () => {
     drawer.writer()!.personForm()!.form.patchValue({
       first_name: 'Ama', last_name: 'Amoah', primary_email: 'ama@example.com', joined_at: '2026-09-01',
     });
+    fixture.detectChanges();
   }
 
   it('opens a native modal with initial focus, then closes on Escape and restores focus', async () => {
     await openDrawer();
     const dialog = fixture.nativeElement.querySelector('dialog') as HTMLDialogElement;
     expect(dialog.showModal).toHaveBeenCalledOnce();
-    expect(dialog.getAttribute('aria-labelledby')).toBe('add-person-title');
+    expect(dialog.getAttribute('aria-labelledby')).toBe(dialog.querySelector('h2')?.id);
     expect(document.activeElement).toBe(dialog.querySelector('h2'));
     // Browsers dispatch cancel when Escape is pressed in a native dialog.
     const cancel = new Event('cancel', { cancelable: true });

@@ -25,6 +25,8 @@ import {
   SkillSummary,
   TagSummary,
 } from '../../core/people/people.types';
+import { CrmDrawerComponent } from '../../shared/ui/crm-drawer.component';
+import { PersonWritePageComponent } from './person-write-page.component';
 import { CrmSectionCardComponent } from '../../shared/ui/crm-section-card.component';
 import { DetailListComponent, DetailListItem } from '../../shared/ui/detail-list.component';
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
@@ -63,6 +65,8 @@ interface AssignSkillFormValue {
     PersonAuditHistorySectionComponent,
     PersonNotesSectionComponent,
     PersonLifecycleActionsComponent,
+    CrmDrawerComponent,
+    PersonWritePageComponent,
   ],
   template: `
     <section class="detail-page">
@@ -89,41 +93,52 @@ interface AssignSkillFormValue {
           <a routerLink="/people" class="state-link">Return to People</a>
         </app-state-message>
       } @else if (person()) {
-        <div class="detail-grid">
-          <section class="identity-card">
-            <div class="identity-topline">
-              <div class="identity-copy">
-                <h3>{{ fullName() }}</h3>
-                <p>{{ primaryContactLine() }}</p>
-              </div>
-
-              <div class="identity-badges">
-                <app-status-badge [label]="relationshipLabel()" />
-
-                @if (person()!.archived_at) {
-                  <app-status-badge label="Archived" tone="archived" />
-                }
-              </div>
+        <header class="identity-card">
+          <span class="avatar" aria-hidden="true">{{ initials() }}</span>
+          <div class="identity-copy">
+            <div class="identity-heading">
+              <h1>{{ fullName() }}</h1>
+              <app-status-badge [label]="relationshipLabel()" [tone]="membership()?.status === 'ACTIVE' ? 'info' : membership() ? 'warning' : 'neutral'" />
+              @if (person()!.archived_at) { <app-status-badge label="Archived" tone="muted" /> }
             </div>
-
             <div class="identity-meta">
-              <p><span>Mobile</span>{{ displayValue(person()!.mobile) }}</p>
-              <p><span>Location</span>{{ displayValue(person()!.location) }}</p>
+              @if (professionalProfile()?.job_title) { <span>{{ professionalProfile()!.job_title }}</span> }
+              @if (person()!.location) { <span>{{ person()!.location }}</span> }
             </div>
-
-            @if (canManagePeople()) {
+            <div class="identity-meta">
+              <span>Email: {{ displayValue(person()!.primary_email) }}</span>
+              <span>Mobile: {{ displayValue(person()!.mobile) }}</span>
+            </div>
+          </div>
+          @if (canManagePeople()) {
+            <div class="profile-actions">
+              @if (!person()!.archived_at) {
+                <button type="button" class="button-primary edit-person" (click)="editPersonOpen.set(true)">Edit person</button>
+              }
               <app-person-lifecycle-actions [person]="person()!" [submitting]="personLifecycleSubmitting()" [errorMessage]="personLifecycleErrorMessage()" (archive)="archivePerson()" (restore)="restorePerson()" />
-            }
-          </section>
-
+            </div>
+          }
+        </header>
+        <nav class="profile-nav" aria-label="Person profile">
+          @for (tab of profileTabs(); track tab.id) {
+            <a [routerLink]="[]" [fragment]="tab.id" queryParamsHandling="preserve"
+              [attr.aria-current]="selectedTab() === tab.id ? 'location' : null">{{ tab.label }}</a>
+          }
+        </nav>
+        <div class="detail-grid" [hidden]="selectedTab() !== 'overview'" aria-label="Overview">
           <app-crm-section-card title="Personal details">
             <app-detail-list [items]="personalDetails()" />
+            @if (canManagePeople() && !person()!.archived_at) {
+              <button type="button" class="button-secondary" aria-label="Edit personal details" (click)="editPersonOpen.set(true)">Edit</button>
+            }
           </app-crm-section-card>
 
-          <app-crm-section-card title="Record information">
-            <app-detail-list [items]="recordInformation()" />
+          <app-crm-section-card title="Membership">
+            <p class="membership-summary"><app-status-badge [label]="relationshipLabel()" [tone]="membership()?.status === 'ACTIVE' ? 'info' : membership() ? 'warning' : 'neutral'" /></p>
+            @if (membership()) { <app-detail-list [items]="membershipDetails()" /> }
+            @else { <p class="empty-section-copy">No membership record</p> }
+            <a class="section-link" [routerLink]="[]" fragment="membership" queryParamsHandling="preserve">{{ canMakeMember() || canEndMembership() ? 'Manage membership' : 'View membership' }}</a>
           </app-crm-section-card>
-
           <app-crm-section-card title="Professional Profile">
             @if (professionalProfile()) {
               <app-detail-list [items]="professionalProfileDetails()" />
@@ -145,16 +160,16 @@ interface AssignSkillFormValue {
                 }
               </div>
 
-              @if (canEditProfessionalProfile() && !showProfessionalProfileForm()) {
+              @if (canEditProfessionalProfile()) {
                 <div class="section-actions">
-                  <button type="button" class="button-primary" (click)="openEditProfessionalProfileForm()">Edit</button>
+                  <button type="button" class="button-secondary" aria-label="Edit professional profile" (click)="openEditProfessionalProfileForm()">Edit</button>
                 </div>
               }
             } @else {
               <div class="professional-profile-empty-state">
                 <p class="empty-section-copy">No professional profile recorded.</p>
 
-                @if (canAddProfessionalProfile() && !showProfessionalProfileForm()) {
+                @if (canAddProfessionalProfile()) {
                   <button type="button" class="button-primary" (click)="openCreateProfessionalProfileForm()">
                     Add Professional Profile
                   </button>
@@ -162,77 +177,6 @@ interface AssignSkillFormValue {
               </div>
             }
 
-            @if (showProfessionalProfileForm()) {
-              <form
-                class="professional-profile-form"
-                [formGroup]="professionalProfileForm"
-                (ngSubmit)="submitProfessionalProfile()"
-              >
-                <label>
-                  <span>Job title</span>
-                  <input type="text" formControlName="job_title" />
-                </label>
-
-                <label>
-                  <span>Company</span>
-                  <input type="text" formControlName="company" />
-                </label>
-
-                <label>
-                  <span>Industry</span>
-                  <select formControlName="industry" [disabled]="industriesLoading() || !!industriesLoadErrorMessage()">
-                    <option value="">No industry</option>
-                    @for (industry of industries(); track industry.id) {
-                      <option [value]="industry.id">{{ industry.name }}</option>
-                    }
-                  </select>
-                </label>
-
-                <label>
-                  <span>Career stage</span>
-                  <select formControlName="career_stage">
-                    <option value="">Not specified</option>
-                    @for (option of careerStageOptions; track option.value) {
-                      <option [value]="option.value">{{ option.label }}</option>
-                    }
-                  </select>
-                </label>
-
-                <label>
-                  <span>LinkedIn URL</span>
-                  <input type="url" formControlName="linkedin_url" />
-                </label>
-
-                @if (industriesLoading()) {
-                  <p class="form-note">Loading industry options.</p>
-                }
-
-                @if (industriesLoadErrorMessage()) {
-                  <p class="form-error">{{ industriesLoadErrorMessage() }}</p>
-                }
-
-                @if (professionalProfileErrorMessage()) {
-                  <p class="form-error">{{ professionalProfileErrorMessage() }}</p>
-                }
-
-                <div class="form-actions">
-                  <button
-                    type="submit"
-                    [disabled]="professionalProfileSubmitting() || industriesLoading() || !!industriesLoadErrorMessage()"
-                  >
-                    {{ professionalProfileSubmitting() ? 'Saving...' : 'Save' }}
-                  </button>
-                  <button
-                    type="button"
-                    class="button-secondary"
-                    [disabled]="professionalProfileSubmitting()"
-                    (click)="cancelProfessionalProfileForm()"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            }
           </app-crm-section-card>
 
           <app-crm-section-card title="Skills">
@@ -575,6 +519,10 @@ interface AssignSkillFormValue {
             }
           </app-crm-section-card>
 
+
+
+        </div>
+        <section [hidden]="selectedTab() !== 'membership'" aria-label="Membership">
           <app-crm-section-card title="Membership">
             @if (membershipDetails().length) {
               <app-detail-list [items]="membershipDetails()" />
@@ -582,7 +530,7 @@ interface AssignSkillFormValue {
               @if (canEndMembership()) {
                 <div class="membership-actions">
                   @if (showEndMembershipForm()) {
-                    <form class="membership-form" [formGroup]="endMembershipForm" (ngSubmit)="submitEndMembership()">
+                    <form class="membership-form end-membership-form" [formGroup]="endMembershipForm" (ngSubmit)="submitEndMembership()">
                       <label>
                         <span>End date</span>
                         <input type="date" formControlName="ended_at" [attr.min]="membership()?.joined_at ?? null" />
@@ -614,7 +562,7 @@ interface AssignSkillFormValue {
                       </div>
                     </form>
                   } @else {
-                    <button type="button" class="button-primary" (click)="openEndMembershipForm()">End Membership</button>
+                    <button type="button" class="button-secondary destructive" (click)="openEndMembershipForm()">End Membership</button>
                   }
                 </div>
               }
@@ -654,297 +602,124 @@ interface AssignSkillFormValue {
               </div>
             }
           </app-crm-section-card>
-
-          @if (canAccessInternalNotes()) {
-            <app-person-notes-section
-              [personId]="person()!.id"
-              [canMutateInternalNotes]="canMutateInternalNotes()"
-            />
-          }
-
-          @if (canAccessAuditHistory()) {
+        </section>
+        @if (canAccessInternalNotes()) {
+          <section [hidden]="selectedTab() !== 'notes'" aria-label="Notes">
+            <app-person-notes-section [personId]="person()!.id" [canMutateInternalNotes]="canMutateInternalNotes()" />
+          </section>
+        }
+        @if (canAccessAuditHistory()) {
+          <section class="history-panel" [hidden]="selectedTab() !== 'history'" aria-label="History">
+            <details class="record-metadata"><summary>Record information</summary><app-detail-list [items]="recordInformation()" /></details>
             <app-person-audit-history-section [personId]="person()!.id" />
-          }
-        </div>
+          </section>
+        }
+        @if (editPersonOpen() && canManagePeople() && !person()!.archived_at) {
+          <app-crm-drawer #personDrawer title="Edit person" description="Update personal details."
+            [busy]="personWriter.submitting()" [dirty]="personWriter.hasUnsavedEdits()"
+            [closeBlocked]="personWriter.identityOverrideConfirmationOpen()" (closed)="editPersonOpen.set(false)">
+            <app-person-write-page #personWriter [drawer]="true" [existingPerson]="person()!"
+              (cancelled)="personDrawer.requestClose()" (saved)="personSaved($event)" />
+          </app-crm-drawer>
+        }
+        @if (showProfessionalProfileForm()) {
+          <app-crm-drawer #profileDrawer [title]="professionalProfile() ? 'Edit professional profile' : 'Add professional profile'"
+            description="Update professional details for this person." [busy]="professionalProfileSubmitting()"
+            [dirty]="professionalProfileForm.dirty" (closed)="cancelProfessionalProfileForm()">
+              <form
+                class="professional-profile-form"
+                [formGroup]="professionalProfileForm"
+                (ngSubmit)="submitProfessionalProfile()"
+              >
+                <fieldset [disabled]="professionalProfileSubmitting()">
+                <label>
+                  <span>Job title</span>
+                  <input type="text" formControlName="job_title" />
+                </label>
+
+                <label>
+                  <span>Company</span>
+                  <input type="text" formControlName="company" />
+                </label>
+
+                <label>
+                  <span>Industry</span>
+                  <select formControlName="industry" [disabled]="industriesLoading() || !!industriesLoadErrorMessage()">
+                    <option value="">No industry</option>
+                    @for (industry of industries(); track industry.id) {
+                      <option [value]="industry.id">{{ industry.name }}</option>
+                    }
+                  </select>
+                </label>
+
+                <label>
+                  <span>Career stage</span>
+                  <select formControlName="career_stage">
+                    <option value="">Not specified</option>
+                    @for (option of careerStageOptions; track option.value) {
+                      <option [value]="option.value">{{ option.label }}</option>
+                    }
+                  </select>
+                </label>
+
+                <label>
+                  <span>LinkedIn URL</span>
+                  <input type="url" formControlName="linkedin_url" />
+                </label>
+
+                @if (industriesLoading()) {
+                  <p class="form-note">Loading industry options.</p>
+                }
+
+                @if (industriesLoadErrorMessage()) {
+                  <p class="form-error">{{ industriesLoadErrorMessage() }}</p>
+                }
+
+                @if (professionalProfileErrorMessage()) {
+                  <p class="form-error" role="alert">{{ professionalProfileErrorMessage() }}</p>
+                }
+
+                </fieldset>
+                <div class="form-actions">
+                  <button
+                    type="submit"
+                    [disabled]="professionalProfileSubmitting() || industriesLoading() || !!industriesLoadErrorMessage()"
+                  >
+                    {{ professionalProfileSubmitting() ? 'Saving...' : 'Save' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="button-secondary"
+                    [disabled]="professionalProfileSubmitting()"
+                    (click)="profileDrawer.requestClose()"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+              </app-crm-drawer>
+        }
       }
     </section>
   `,
-  styles: `
-    :host {
-      display: block;
-    }
-
-    .detail-page {
-      display: grid;
-      gap: 0.9rem;
-    }
-
-    .detail-grid {
-      display: grid;
-      gap: 0.9rem;
-    }
-
-    .back-link,
-    .state-link,
-    .external-link {
-      width: fit-content;
-      color: #1b546b;
-      font-weight: 700;
-      text-decoration: none;
-    }
-
-    .back-link:hover,
-    .back-link:focus-visible,
-    .state-link:hover,
-    .state-link:focus-visible,
-    .external-link:hover,
-    .external-link:focus-visible {
-      text-decoration: underline;
-      outline: none;
-    }
-
-    .identity-card {
-      display: grid;
-      gap: 1rem;
-      padding: 1.2rem 1.25rem;
-      border-radius: 1.1rem;
-      border: 1px solid rgba(22, 39, 53, 0.08);
-      background: rgba(255, 255, 255, 0.88);
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.85),
-        0 10px 24px rgba(17, 29, 40, 0.04);
-    }
-
-    .identity-topline {
-      display: flex;
-      justify-content: space-between;
-      align-items: start;
-      gap: 1rem;
-      flex-wrap: wrap;
-    }
-
-    .identity-copy {
-      display: grid;
-      gap: 0.35rem;
-    }
-
-    .identity-copy h3,
-    .identity-copy p,
-    .identity-meta p,
-    .identity-meta span,
-    .detail-label,
-    .detail-value {
-      margin: 0;
-    }
-
-    .identity-copy h3 {
-      font-size: clamp(1.45rem, 3vw, 2rem);
-      line-height: 1.1;
-      color: #1a3142;
-    }
-
-    .identity-copy p,
-    .identity-meta p,
-    .detail-value {
-      color: #4f697b;
-      line-height: 1.5;
-    }
-
-    .identity-badges {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: end;
-      gap: 0.45rem;
-    }
-
-    .identity-meta {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.85rem 1.2rem;
-    }
-
-    .identity-meta p {
-      display: grid;
-      gap: 0.18rem;
-    }
-
-
-    .identity-meta span,
-    .detail-label {
-      font-size: 0.8rem;
-      font-weight: 700;
-      color: #617b8c;
-    }
-
-    .empty-section-copy {
-      margin: 0;
-      color: #4f697b;
-      line-height: 1.5;
-    }
-
-    .taxonomy-supporting-copy {
-      margin: 0 0 0.9rem;
-      color: #617b8c;
-      line-height: 1.5;
-    }
-
-    .membership-empty-state,
-    .skills-empty-state,
-    .professional-profile-empty-state {
-      display: grid;
-      gap: 0.9rem;
-      align-items: start;
-    }
-
-    .membership-actions,
-    .section-actions {
-      margin-top: 0.9rem;
-    }
-
-    .professional-profile-link-row {
-      display: grid;
-      gap: 0.22rem;
-      margin-top: 0.9rem;
-    }
-
-    .skills-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.65rem;
-    }
-
-    .skill-chip-row {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-    }
-
-    .skill-chip {
-      display: inline-flex;
-      align-items: center;
-      min-height: 2.1rem;
-      padding: 0.3rem 0.8rem;
-      border-radius: 999px;
-      background: #edf4f7;
-      border: 1px solid #cddbe4;
-      color: #1d3a4d;
-      font-weight: 600;
-      line-height: 1.2;
-    }
-
-    .skill-remove-button {
-      border: 0;
-      background: transparent;
-      color: #1b546b;
-      font: inherit;
-      font-weight: 700;
-      cursor: pointer;
-      padding: 0.2rem 0.1rem;
-    }
-
-    .skill-remove-button:disabled {
-      cursor: wait;
-      opacity: 0.7;
-    }
-
-    .skill-remove-button:hover,
-    .skill-remove-button:focus-visible {
-      text-decoration: underline;
-      outline: none;
-    }
-
-    .inline-confirmation {
-      display: grid;
-      gap: 0.8rem;
-      margin-top: 0.9rem;
-    }
-
-    .skills-inline-error {
-      margin-top: 0.9rem;
-    }
-
-    :is(.membership-form, .professional-profile-form, .skills-form, .interests-form, .tags-form) {
-      display: grid;
-      gap: 0.85rem;
-      width: min(100%, 32rem);
-      margin-top: 0.9rem;
-    }
-
-    :is(.membership-form, .professional-profile-form, .skills-form, .interests-form, .tags-form) label {
-      display: grid;
-      gap: 0.4rem;
-      color: #1c3344;
-      font-weight: 600;
-    }
-
-    :is(.membership-form, .professional-profile-form, .skills-form, .interests-form, .tags-form) :is(input, select) {
-      width: 100%;
-      border: 1px solid #b7c7d4;
-      border-radius: 0.85rem;
-      padding: 0.8rem 0.95rem;
-      font: inherit;
-      background: #fdfefe;
-      color: #203a4c;
-    }
-
-    .form-note {
-      margin: 0;
-      color: #4f697b;
-      line-height: 1.5;
-    }
-
-    .form-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.7rem;
-    }
-
-    :is(.button-primary, .button-secondary, .membership-form button, .professional-profile-form button, .skills-form button, .interests-form button, .tags-form button) {
-      width: fit-content;
-      border-radius: 999px;
-      padding: 0.75rem 1.1rem;
-      font: inherit;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    :is(.button-primary, .membership-form button[type='submit'], .professional-profile-form button[type='submit'], .skills-form button[type='submit'], .interests-form button[type='submit'], .tags-form button[type='submit']) {
-      border: 0;
-      color: #fff;
-      background: linear-gradient(135deg, #16354a, #2f6f84);
-    }
-
-    .button-secondary {
-      border: 1px solid #b7c7d4;
-      color: #203a4c;
-      background: #fff;
-    }
-
-
-    :is(.button-primary, .button-secondary, .membership-form button, .professional-profile-form button, .skills-form button, .interests-form button, .tags-form button):disabled {
-      cursor: wait;
-      opacity: 0.7;
-    }
-
-    .form-error {
-      margin: 0;
-      color: #9b1c1c;
-      font-weight: 600;
-      line-height: 1.5;
-    }
-
-    @media (max-width: 680px) {
-      .identity-badges {
-        justify-content: start;
-      }
-
-      .identity-meta {
-        grid-template-columns: 1fr;
-      }
-    }
-  `,
+  styleUrl: './person-detail-page.component.scss',
 })
 export class PersonDetailPageComponent {
+  readonly editPersonOpen = signal(false);
+  readonly activeTab = signal('overview');
+  readonly profileTabs = computed(() => [
+    { id: 'overview', label: 'Overview' }, { id: 'membership', label: 'Membership' },
+    ...(this.canAccessInternalNotes() ? [{ id: 'notes', label: 'Notes' }] : []),
+    ...(this.canAccessAuditHistory() ? [{ id: 'history', label: 'History' }] : []),
+  ]);
+  readonly selectedTab = computed(() => this.profileTabs().some(tab => tab.id === this.activeTab()) ? this.activeTab() : 'overview');
+  readonly initials = computed(() => ((this.person()?.first_name?.[0] ?? '') + (this.person()?.last_name?.[0] ?? '')).toUpperCase());
+
+  personSaved(person: PersonListItem): void {
+    this.overview.update(overview => overview ? { ...overview, person } : overview);
+    this.editPersonOpen.set(false);
+  }
+
   readonly careerStageOptions = CAREER_STAGE_OPTIONS;
 
   private readonly fb = inject(FormBuilder);
@@ -1227,6 +1002,7 @@ export class PersonDetailPageComponent {
   });
 
   constructor() {
+    this.route.fragment.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(fragment => this.activeTab.set(fragment || 'overview'));
     this.route.paramMap
       .pipe(
         map((params) => Number(params.get('id'))),
@@ -1995,6 +1771,7 @@ export class PersonDetailPageComponent {
   }
 
   private loadOverview(personId: number): void {
+    this.editPersonOpen.set(false);
     this.loading.set(true);
     this.notFound.set(false);
     this.errorMessage.set(null);

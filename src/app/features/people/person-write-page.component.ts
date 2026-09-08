@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, DestroyRef, inject, input, output, signal, viewChild } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, input, output, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -27,13 +27,13 @@ type WriteMode = 'contact' | 'member' | 'edit';
       <app-state-message title="Person not found" message="The requested person record is not available in the CRM People domain." tone="error" />
     } @else {
       <section class="page">
-        @if (drawer()) {
+        @if (drawer() && mode() !== 'edit') {
           <fieldset class="person-types" [disabled]="submitting()">
             <legend>Person type</legend>
             <label [class.selected]="mode() === 'member'"><input type="radio" name="person-type" value="member" [checked]="mode() === 'member'" (change)="changeType('member')" /><span><strong>Member</strong><small>Person + active Membership</small></span></label>
             <label [class.selected]="mode() === 'contact'"><input type="radio" name="person-type" value="contact" [checked]="mode() === 'contact'" (change)="changeType('contact')" /><span><strong>Contact</strong><small>Person only</small></span></label>
           </fieldset>
-        } @else { <div class="intro"><p>{{ intro() }}</p></div> }
+        } @else if (!drawer()) { <div class="intro"><p>{{ intro() }}</p></div> }
         @if (errorMessage()) { <p class="error" aria-live="assertive">{{ errorMessage() }}</p> }
         @if (duplicateConflict()) {
           <app-person-duplicate-conflict [conflict]="duplicateConflict()!" [message]="duplicateMessage()" (createSeparatePerson)="openIdentityOverrideConfirmation()" />
@@ -81,6 +81,7 @@ export class PersonWritePageComponent {
   private readonly peopleService = inject(PeopleService);
   private readonly destroyRef = inject(DestroyRef);
   readonly drawer = input(false);
+  readonly existingPerson = input<PersonListItem | null>(null);
   readonly cancelled = output<void>();
   readonly saved = output<PersonListItem>();
   readonly personForm = viewChild(PersonFormComponent);
@@ -94,11 +95,15 @@ export class PersonWritePageComponent {
   readonly pendingSubmission = signal<PersonFormSubmission | null>(null);
   readonly identityOverrideConfirmationOpen = signal(false);
   readonly canManagePeople = computed(() => canManagePeople(this.auth.currentUser()));
-  readonly submitLabel = computed(() => this.drawer() ? 'Add person' : this.mode() === 'contact' ? 'Create Contact' : this.mode() === 'member' ? 'Create Member' : 'Save changes');
+  readonly submitLabel = computed(() => this.mode() === 'edit' ? 'Save changes' : this.drawer() ? 'Add person' : this.mode() === 'contact' ? 'Create Contact' : 'Create Member');
   readonly intro = computed(() => this.mode() === 'member' ? 'Create a new Person and active Membership in one step.' : this.mode() === 'contact' ? 'Create a new CRM Person without a Membership.' : 'Update the Person-owned details for this CRM record.');
   readonly duplicateMessage = computed(() => this.mode() === 'edit' ? 'The new email or mobile number matches another existing Person. Review the existing record before saving this change.' : 'A Person with the same email or mobile number already exists. Review the existing record before creating another one.');
 
   constructor() {
+    effect(() => {
+      const person = this.existingPerson();
+      if (person) { this.mode.set('edit'); this.person.set(person); this.loading.set(false); }
+    });
     if (this.mode() === 'edit') {
       const personId = Number(this.route.snapshot.paramMap.get('id'));
       if (!Number.isInteger(personId) || personId < 1) { this.notFound.set(true); this.loading.set(false); return; }
@@ -174,7 +179,7 @@ export class PersonWritePageComponent {
           : { ...submission.person, joined_at: submission.joined_at!, membership_source: 'STAFF' } satisfies CreateMemberRequest)
         : this.peopleService.updatePerson(this.person()!.id, submission.person satisfies UpdatePersonRequest);
     request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (person) => { this.submitting.set(false); this.saved.emit(person); void this.router.navigate(['/people', person.id]); },
+      next: (person) => { this.submitting.set(false); this.saved.emit(person); if (!this.drawer() || this.mode() !== 'edit') void this.router.navigate(['/people', person.id]); },
       error: (error: HttpErrorResponse) => { this.submitting.set(false); this.handleError(error); },
     });
   }
