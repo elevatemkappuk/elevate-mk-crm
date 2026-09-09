@@ -23,7 +23,7 @@ import { Component, input } from '@angular/core';
       display: grid;
       align-content: var(--crm-card-align, normal);
       gap: var(--crm-space-4);
-      padding: var(--crm-space-4) var(--crm-space-5);
+      padding: var(--crm-card-padding, var(--crm-space-4) var(--crm-space-5));
       border: 1px solid var(--crm-border);
       border-radius: var(--crm-radius-lg);
       background: var(--crm-surface);
