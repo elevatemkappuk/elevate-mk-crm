@@ -1,0 +1,21 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "buildCommand": "npm run build:production"
+  },
+  "deploy": {
+    "startCommand": "npm run start:railway"
+  },
+  "environments": {
+    "staging": {
+      "build": {
+        "buildCommand": "npm run build:staging"
+      }
+    },
+    "production": {
+      "build": {
+        "buildCommand": "npm run build:production"
+      }
+    }
+  }
+}
