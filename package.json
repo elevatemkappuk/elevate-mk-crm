@@ -5,9 +5,9 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
-    "build:staging": "ng build --configuration staging",
-    "build:production": "ng build --configuration production",
+    "build:railway": "node scripts/write-environment.mjs && ng build --configuration production",
     "start:railway": "serve -s dist/elevate-mk-crm/browser -l tcp://0.0.0.0:$PORT",
+    "test:config": "node --test scripts/write-environment.test.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
