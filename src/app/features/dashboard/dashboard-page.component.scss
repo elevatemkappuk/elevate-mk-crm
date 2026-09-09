@@ -1,6 +1,7 @@
 @use '../../../styles/breakpoints' as bp;
 :host { display:block; min-width:0; }
-.dashboard { display:grid; gap:var(--crm-space-5); }
+// Dashboard uses the full shell workspace; keep the shared page cap for other screens.
+.dashboard { display:grid; width:100%; max-width:none; margin-inline:0; gap:var(--crm-space-5); }
 .overview { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:var(--crm-space-4); }
 .metric { display:grid; grid-template-columns:1fr auto; gap:var(--crm-space-2); padding:var(--crm-space-5); border:1px solid var(--crm-border); border-radius:var(--crm-radius-lg); background:var(--crm-surface); color:var(--crm-text-strong); }
 .metric>span:first-child { grid-column:1/-1; font-size:var(--crm-font-md); color:var(--crm-text-secondary); }
