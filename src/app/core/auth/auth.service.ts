@@ -4,6 +4,7 @@ import { firstValueFrom, Observable, of } from 'rxjs';
 import { catchError, map, switchMap, tap } from 'rxjs/operators';
 
 import { API_CONFIG } from '../http/api-config';
+import { setCsrfToken } from '../http/auth-http.interceptors';
 import { hasStaffCrmAccess, isCrmAdmin } from './auth-access';
 import { AuthenticatedUser, CsrfBootstrapResponse, DetailResponse, LoginCredentials, PasswordResetConfirmRequest, PasswordResetRequest } from './auth.types';
 
@@ -32,7 +33,9 @@ export class AuthService {
   }
 
   bootstrapCsrf(): Observable<CsrfBootstrapResponse> {
-    return this.http.get<CsrfBootstrapResponse>(this.buildUrl('/auth/csrf/'));
+    return this.http.get<CsrfBootstrapResponse>(this.buildUrl('/auth/csrf/')).pipe(
+      tap(({ csrf_token }) => setCsrfToken(csrf_token)),
+    );
   }
 
   login(credentials: LoginCredentials): Observable<AuthenticatedUser> {

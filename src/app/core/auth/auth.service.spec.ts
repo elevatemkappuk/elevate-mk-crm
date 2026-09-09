@@ -87,8 +87,7 @@ describe('AuthService', () => {
     const csrfRequest = httpTesting.expectOne(`${apiBaseUrl}/auth/csrf/`);
     expect(csrfRequest.request.method).toBe('GET');
     expect(csrfRequest.request.withCredentials).toBe(true);
-    mockDocument.cookie = 'csrftoken=test-token';
-    csrfRequest.flush({ detail: 'CSRF cookie set.' });
+    csrfRequest.flush({ detail: 'CSRF cookie set.', csrf_token: 'test-token' });
 
     const loginRequest = httpTesting.expectOne(`${apiBaseUrl}/auth/login/`);
     expect(loginRequest.request.method).toBe('POST');
@@ -116,7 +115,7 @@ describe('AuthService', () => {
 
     const csrfRequest = httpTesting.expectOne(`${apiBaseUrl}/auth/csrf/`);
     mockDocument.cookie = 'csrftoken=test-token';
-    csrfRequest.flush({ detail: 'CSRF cookie set.' });
+    csrfRequest.flush({ detail: 'CSRF cookie set.', csrf_token: 'test-token' });
 
     const loginRequest = httpTesting.expectOne(`${apiBaseUrl}/auth/login/`);
     loginRequest.flush(staffUser);
@@ -140,7 +139,7 @@ describe('AuthService', () => {
 
     const csrfRequest = httpTesting.expectOne(`${apiBaseUrl}/auth/csrf/`);
     mockDocument.cookie = 'csrftoken=test-token';
-    csrfRequest.flush({ detail: 'CSRF cookie set.' });
+    csrfRequest.flush({ detail: 'CSRF cookie set.', csrf_token: 'test-token' });
 
     const loginRequest = httpTesting.expectOne(`${apiBaseUrl}/auth/login/`);
     loginRequest.flush(loginUser);
@@ -188,7 +187,7 @@ describe('AuthService', () => {
     authService.requestPasswordReset({ email: ' ADA@EXAMPLE.COM ' }).subscribe();
     const csrfRequest = httpTesting.expectOne(`${apiBaseUrl}/auth/csrf/`);
     mockDocument.cookie = 'csrftoken=test-token';
-    csrfRequest.flush({ detail: 'CSRF cookie set.' });
+    csrfRequest.flush({ detail: 'CSRF cookie set.', csrf_token: 'test-token' });
     const request = httpTesting.expectOne(`${apiBaseUrl}/auth/password-reset/`);
     expect(request.request.body).toEqual({ email: 'ada@example.com' });
     request.flush({ detail: 'If an account exists for that email address, password reset instructions have been sent.' });
@@ -199,7 +198,7 @@ describe('AuthService', () => {
     authService.confirmPasswordReset({ uid: 'uid', token: 'token', new_password: 'Password-123!', confirm_password: 'Password-123!' }).subscribe();
     const csrfRequest = httpTesting.expectOne(`${apiBaseUrl}/auth/csrf/`);
     mockDocument.cookie = 'csrftoken=test-token';
-    csrfRequest.flush({ detail: 'CSRF cookie set.' });
+    csrfRequest.flush({ detail: 'CSRF cookie set.', csrf_token: 'test-token' });
     const request = httpTesting.expectOne(`${apiBaseUrl}/auth/password-reset/confirm/`);
     expect(request.request.body.token).toBe('token');
     request.flush({ detail: 'Your password has been reset successfully.' });

@@ -34,4 +34,5 @@ export interface DetailResponse {
 
 export interface CsrfBootstrapResponse {
   detail: string;
+  csrf_token: string;
 }

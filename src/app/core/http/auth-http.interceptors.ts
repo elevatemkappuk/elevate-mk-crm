@@ -5,6 +5,11 @@ import { inject } from '@angular/core';
 import { API_CONFIG } from './api-config';
 
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+let csrfToken: string | null = null;
+
+export function setCsrfToken(token: string | null): void {
+  csrfToken = token;
+}
 
 function isApiRequest(url: string, apiBaseUrl: string): boolean {
   return url.startsWith(apiBaseUrl);
@@ -41,15 +46,15 @@ export const csrfHeaderInterceptor: HttpInterceptorFn = (request, next) => {
   }
 
   const document = inject(DOCUMENT);
-  const csrfToken = readCookie(document, 'csrftoken');
+  const token = csrfToken ?? readCookie(document, 'csrftoken');
 
-  if (!csrfToken || request.headers.has('X-CSRFToken')) {
+  if (!token || request.headers.has('X-CSRFToken')) {
     return next(request);
   }
 
   return next(
     request.clone({
-      headers: request.headers.set('X-CSRFToken', csrfToken),
+      headers: request.headers.set('X-CSRFToken', token),
     }),
   );
 };
