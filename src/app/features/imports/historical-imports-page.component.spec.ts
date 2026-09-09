@@ -2,7 +2,7 @@ import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ImportReconciliationService } from '../../core/imports/import-reconciliation.service';
 import { ImportBatchSummary } from '../../core/imports/import-reconciliation.types';
@@ -27,7 +27,18 @@ class MockAuthService {
 describe('HistoricalImportsPageComponent', () => {
   let service: MockImportReconciliationService;
 
+  const showModal = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'showModal');
+  const close = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'close');
+  afterEach(() => {
+    TestBed.resetTestingModule();
+    for (const [key, descriptor] of [['showModal', showModal], ['close', close]] as const) {
+      if (descriptor) Object.defineProperty(HTMLDialogElement.prototype, key, descriptor);
+      else delete (HTMLDialogElement.prototype as unknown as Record<string, unknown>)[key];
+    }
+  });
   beforeEach(async () => {
+    Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value: vi.fn(function(this: HTMLDialogElement) { this.open = true; }) });
+    Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value: vi.fn(function(this: HTMLDialogElement) { this.open = false; }) });
     await TestBed.configureTestingModule({
       imports: [HistoricalImportsPageComponent],
       providers: [
@@ -69,7 +80,7 @@ describe('HistoricalImportsPageComponent', () => {
     expect(content).toContain('Ready for Review');
     expect(content).toContain('Review');
     expect(content).toContain('3');
-    expect(content).toContain('Review 3 records');
+    expect(content).toContain('View import');
     expect(content).not.toContain('david@example.com');
   });
 
@@ -94,7 +105,7 @@ describe('HistoricalImportsPageComponent', () => {
     const content = fixture.nativeElement.textContent as string;
 
     expect(content).toContain('Ready to add to CRM');
-    expect(content).toContain('View batch');
+    expect(content).toContain('View import');
     expect(content).not.toContain('Review 0 records');
     expect(Array.from(fixture.nativeElement.querySelectorAll('button')).map((button: HTMLButtonElement) => button.textContent)).not.toContain('Import');
   });
@@ -123,4 +134,42 @@ describe('HistoricalImportsPageComponent', () => {
     const fixture = createComponent();
     expect(fixture.nativeElement.textContent).not.toContain('Upload historical records');
   });
+  it('opens upload from its action and closes the pristine drawer with Cancel', () => {
+    const fixture = createComponent();
+    fixture.nativeElement.querySelector('.page-intro button').click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-crm-drawer')).not.toBeNull();
+    fixture.nativeElement.querySelector('[drawerFooter] button').click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-crm-drawer')).toBeNull();
+  });
+
+  it('refreshes after upload and renders the authoritative newest-first API order', () => {
+    const older: ImportBatchSummary = {
+      id: 8, source_type: 'EVENTBRITE', source_filename: 'older.xlsx', status: 'STAGED',
+      created_at: '2026-09-01T09:00:00Z', started_at: '2026-09-01T09:00:00Z', completed_at: null,
+      total_count: 10, review_required_count: 0, invalid_count: 0, resolved_count: 0,
+      committed_count: 0, auto_match_count: 0, new_person_count: 0,
+    };
+    service.batches = [older];
+    const fixture = createComponent();
+    const newest = { ...older, id: 10, source_filename: 'newest.xlsx', created_at: '2026-09-02T09:00:00Z' };
+    service.batches = [newest, { ...newest, id: 9, source_filename: 'same-time.xlsx' }, older];
+    fixture.componentInstance.uploadOpen.set(true);
+    fixture.componentInstance.handleUploadComplete(newest);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.uploadOpen()).toBe(false);
+    expect(Array.from(fixture.nativeElement.querySelectorAll('.import-card h2')).map((node) => (node as HTMLElement).textContent))
+      .toEqual(['newest.xlsx', 'same-time.xlsx', 'older.xlsx']);
+    expect(fixture.nativeElement.textContent).not.toContain('View batch');
+  });
+
+  it('uses semantic tones without changing status labels', () => {
+    const component = createComponent().componentInstance;
+    expect(component.statusTone('FAILED')).toBe('error');
+    expect(component.statusTone('READY_FOR_REVIEW')).toBe('warning');
+    expect(component.statusTone('IMPORTED')).toBe('success');
+    expect(component.statusTone('STAGED')).toBe('neutral');
+  });
+
 });

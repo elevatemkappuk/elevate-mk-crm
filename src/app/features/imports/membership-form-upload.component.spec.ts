@@ -1,6 +1,8 @@
+import { By } from '@angular/platform-browser';
+import { CrmDrawerComponent } from '../../shared/ui/crm-drawer.component';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, Subject, throwError } from 'rxjs';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ImportReconciliationService } from '../../core/imports/import-reconciliation.service';
 import { ImportBatchSummary } from '../../core/imports/import-reconciliation.types';
@@ -23,7 +25,18 @@ describe('MembershipFormUploadComponent', () => {
   let component: MembershipFormUploadComponent;
   let service: MockImportReconciliationService;
 
+  const showModal = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'showModal');
+  const close = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'close');
+  afterEach(() => {
+    TestBed.resetTestingModule();
+    for (const [key, descriptor] of [['showModal', showModal], ['close', close]] as const) {
+      if (descriptor) Object.defineProperty(HTMLDialogElement.prototype, key, descriptor);
+      else delete (HTMLDialogElement.prototype as unknown as Record<string, unknown>)[key];
+    }
+  });
   beforeEach(async () => {
+    Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value: vi.fn(function(this: HTMLDialogElement) { this.open = true; }) });
+    Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value: vi.fn(function(this: HTMLDialogElement) { this.open = false; }) });
     await TestBed.configureTestingModule({
       imports: [MembershipFormUploadComponent],
       providers: [{ provide: ImportReconciliationService, useClass: MockImportReconciliationService }],
@@ -66,6 +79,7 @@ describe('MembershipFormUploadComponent', () => {
     component.selectSource({ target: { value: 'EVENTBRITE' } } as unknown as Event);
     select(new File(['workbook'], 'eventbrite.xlsx'));
     component.submit();
+    fixture.detectChanges();
     expect(service.uploadEventbrite).toHaveBeenCalledOnce();
     expect(fixture.nativeElement.textContent).toContain('Import historical Eventbrite contacts and event records.');
   });
@@ -79,6 +93,14 @@ describe('MembershipFormUploadComponent', () => {
     expect(component.uploading()).toBe(true);
     expect(fixture.nativeElement.textContent).toContain('Uploading and analysing...');
     expect((fixture.nativeElement.querySelector('input') as HTMLInputElement).disabled).toBe(true);
+    component.submit();
+    const drawer = fixture.debugElement.query(By.directive(CrmDrawerComponent)).componentInstance as CrmDrawerComponent;
+    const cancelled = vi.fn();
+    component.cancelled.subscribe(cancelled);
+    drawer.requestClose();
+    expect(cancelled).not.toHaveBeenCalled();
+    expect(drawer.discardOpen()).toBe(false);
+    expect(service.uploadMembershipForm).toHaveBeenCalledOnce();
     pending.complete();
   });
 
@@ -94,4 +116,30 @@ describe('MembershipFormUploadComponent', () => {
     component.submit();
     expect(component.uploadError()).toContain('could not be processed');
   });
+  it('closes a pristine drawer and confirms before discarding a selected file', () => {
+    const cancelled = vi.fn();
+    component.cancelled.subscribe(cancelled);
+    const drawer = fixture.debugElement.query(By.directive(CrmDrawerComponent)).componentInstance as CrmDrawerComponent;
+    drawer.requestClose();
+    expect(cancelled).toHaveBeenCalledOnce();
+    cancelled.mockClear();
+    select(new File(['workbook'], 'members.xlsx'));
+    fixture.detectChanges();
+    drawer.requestClose();
+    expect(drawer.discardOpen()).toBe(true);
+    expect(cancelled).not.toHaveBeenCalled();
+    drawer.discard();
+    expect(cancelled).toHaveBeenCalledOnce();
+  });
+
+  it('clears selected data on source switching and treats the changed source as dirty', () => {
+    select(new File(['workbook'], 'members.xlsx'));
+    component.selectSource({ target: { value: 'EVENTBRITE' } } as unknown as Event);
+    fixture.detectChanges();
+    expect(component.selectedFile()).toBeNull();
+    const drawer = fixture.debugElement.query(By.directive(CrmDrawerComponent)).componentInstance as CrmDrawerComponent;
+    drawer.requestClose();
+    expect(drawer.discardOpen()).toBe(true);
+  });
+
 });

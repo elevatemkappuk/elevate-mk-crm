@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, input } from '@angular/core';
 
-export type StatusBadgeTone = 'default' | 'archived' | 'info' | 'warning' | 'success' | 'neutral' | 'muted';
+export type StatusBadgeTone = 'default' | 'archived' | 'info' | 'warning' | 'success' | 'neutral' | 'muted' | 'error';
 
 @Component({
   selector: 'app-status-badge',
@@ -13,6 +13,7 @@ export type StatusBadgeTone = 'default' | 'archived' | 'info' | 'warning' | 'suc
     .status-badge-archived { background: var(--crm-warning-surface); color: var(--crm-warning); }
     [data-tone='info'] { background: var(--crm-info-surface); color: var(--crm-info); }
     [data-tone='warning'] { background: var(--crm-warning-surface); color: var(--crm-warning); }
+    [data-tone='error'] { background: var(--crm-error-surface); color: var(--crm-error); }
     [data-tone='success'] { background: var(--crm-success-surface); color: var(--crm-success); }
     [data-tone='neutral'] { background: #f0f1f3; color: #4b5563; }
     [data-tone='muted'] { background: #e3e6e9; color: #39434e; }

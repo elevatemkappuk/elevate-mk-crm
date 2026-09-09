@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, output, signal } from '@angular/core';
+import { CrmDrawerComponent } from '../../shared/ui/crm-drawer.component';
 import { finalize } from 'rxjs';
 
 import { ImportReconciliationService } from '../../core/imports/import-reconciliation.service';
@@ -9,44 +10,45 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 @Component({
   selector: 'app-historical-import-upload',
+  imports: [CrmDrawerComponent],
   template: `
-    <section class="upload-panel" aria-labelledby="historical-import-upload-title">
-      <div>
-        <h3 id="historical-import-upload-title">Upload historical records</h3>
-        <p>{{ sourceDescription() }}</p>
-      </div>
-
-      <label class="field" for="historical-import-source"><span class="label">Source</span><select id="historical-import-source" [disabled]="uploading()" [value]="source()" (change)="selectSource($event)"><option value="MEMBERSHIP_FORM">Membership Form</option><option value="EVENTBRITE">Eventbrite</option></select></label>
+    <app-crm-drawer #drawer title="Upload historical records" description="Import historical records into the CRM."
+      [busy]="uploading()" [dirty]="selectedFile() !== null || source() !== 'MEMBERSHIP_FORM'" (closed)="cancelled.emit()">
+      <div class="upload-panel" [attr.aria-busy]="uploading()">
+      <label class="field" for="historical-import-source"><span class="label">Source</span><select class="crm-control" id="historical-import-source" [disabled]="uploading()" [value]="source()" (change)="selectSource($event)"><option value="MEMBERSHIP_FORM">Membership Form</option><option value="EVENTBRITE">Eventbrite</option></select></label>
+      <p>{{ sourceDescription() }}</p>
 
       <label class="field" for="historical-import-file">
-        <span class="label">File</span>
-        <input id="historical-import-file" type="file" accept=".xlsx" [disabled]="uploading()" (change)="selectFile($event)" />
-        <small>Accepted: .xlsx. Maximum size: 10 MB.</small>
+        <span class="label">Workbook</span>
+        <input id="historical-import-file" class="crm-control" type="file" aria-describedby="workbook-help workbook-errors" [attr.aria-invalid]="validationError() ? true : null" accept=".xlsx" [disabled]="uploading()" (change)="selectFile($event)" />
+        <small id="workbook-help">Accepted: .xlsx. Maximum size: 10 MiB.</small>
       </label>
 
       @if (selectedFile()) { <p class="selected-file">Selected: {{ selectedFile()!.name }}</p> }
-      @if (validationError()) { <p class="error" role="alert">{{ validationError() }}</p> }
+      <div id="workbook-errors">@if (validationError()) { <p class="error" role="alert">{{ validationError() }}</p> }
       @if (uploadError()) { <p class="error" role="alert">{{ uploadError() }}</p> }
 
-      <div class="actions">
-        <button type="button" class="button-primary" [disabled]="uploading()" (click)="submit()">
+      </div></div>
+      <div drawerFooter class="actions">
+        <button type="button" class="crm-button crm-button--secondary" [disabled]="uploading()" (click)="drawer.requestClose()">Cancel</button>
+        <button type="button" class="crm-button upload-action" [disabled]="uploading()" (click)="submit()">
           {{ uploading() ? uploadLabel() : 'Upload workbook' }}
         </button>
-        <button type="button" class="button-secondary" [disabled]="uploading()" (click)="cancelled.emit()">Cancel</button>
       </div>
-    </section>
+    </app-crm-drawer>
   `,
   styles: `
-    .upload-panel { display: grid; gap: 1rem; padding: 1.15rem; border: 1px solid rgba(22,39,53,.1); border-radius: 1rem; background: #fff; }
-    h3, p { margin: 0; } h3 { color: #173248; } p, small { color: #526f81; }
-    .field { display: grid; gap: .4rem; color: #294456; font-weight: 650; }
-    .label { font-size: .82rem; color: #526f81; font-weight: 700; }
-    input { max-width: 30rem; padding: .6rem; border: 1px solid #b7c7d4; border-radius: .7rem; font: inherit; }
-    .selected-file { color: #173248; font-weight: 600; }.error { color: #9b1c1c; font-weight: 600; }
-    .actions { display: flex; flex-wrap: wrap; gap: .7rem; }
-    button { border: 0; border-radius: 999px; padding: .72rem 1.1rem; font: inherit; font-weight: 700; cursor: pointer; }
-    .button-primary { color: #fff; background: #1d6077; }.button-secondary { color: #244359; background: #edf3f6; }
-    button:disabled, input:disabled { cursor: not-allowed; opacity: .6; }
+    .upload-panel { display:grid; gap:1rem; padding-bottom:1.5rem; }
+    p { margin:0; } p,small { color:var(--crm-text-secondary); }
+    .field { display:grid; gap:.5rem; min-width:0; }
+    .label { font-weight:var(--crm-weight-medium); }
+    .crm-control { width:100%; min-width:0; min-height:2.75rem; }
+    input::file-selector-button { border:0; border-radius:var(--crm-radius-sm); padding:.4rem .6rem; margin-right:.5rem; background:var(--crm-surface-subtle); color:var(--crm-text-strong); font:inherit; cursor:pointer; }
+    .selected-file { overflow-wrap:anywhere; font-weight:600; }
+    .error { color:var(--crm-error); }
+    .actions { display:flex; justify-content:space-between; gap:.75rem; flex-wrap:wrap; }
+    .upload-action { background:var(--crm-shell-accent); color:var(--crm-text-strong); }
+    .upload-action:hover:not(:disabled) { background:#f2c94f; }
   `,
 })
 export class MembershipFormUploadComponent {
@@ -85,6 +87,7 @@ export class MembershipFormUploadComponent {
   }
 
   submit(): void {
+    if (this.uploading()) return;
     const file = this.selectedFile();
     const fileError = this.fileError(file);
     if (fileError) {
