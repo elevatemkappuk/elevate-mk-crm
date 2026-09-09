@@ -1,10 +1,10 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { firstValueFrom, Observable, of } from 'rxjs';
+import { firstValueFrom, Observable, of, throwError } from 'rxjs';
 import { catchError, map, switchMap, tap } from 'rxjs/operators';
 
 import { API_CONFIG } from '../http/api-config';
-import { setCsrfToken } from '../http/auth-http.interceptors';
+import { clearCsrfToken, setCsrfToken } from '../http/auth-http.interceptors';
 import { hasStaffCrmAccess, isCrmAdmin } from './auth-access';
 import { AuthenticatedUser, CsrfBootstrapResponse, DetailResponse, LoginCredentials, PasswordResetConfirmRequest, PasswordResetRequest } from './auth.types';
 
@@ -46,8 +46,12 @@ export class AuthService {
 
     return this.bootstrapCsrf().pipe(
       switchMap(() =>
-        this.http.post<AuthenticatedUser>(this.buildUrl('/auth/login/'), payload).pipe(
-          tap((user) => this.setAuthenticatedUser(user)),
+        this.http.post<AuthenticatedUser>(this.buildUrl('/auth/login/'), payload),
+      ),
+      switchMap((user) =>
+        this.bootstrapCsrf().pipe(
+          tap(() => this.setAuthenticatedUser(user)),
+          map(() => user),
         ),
       ),
     );
@@ -59,6 +63,7 @@ export class AuthService {
       catchError((error: { status?: number }) => {
         if (error.status === 401) {
           this.clearUserState();
+          clearCsrfToken();
           return of(null);
         }
 
@@ -70,7 +75,15 @@ export class AuthService {
   logout(): Observable<void> {
     return this.bootstrapCsrf().pipe(
       switchMap(() => this.http.post<void>(this.buildUrl('/auth/logout/'), null)),
-      tap(() => this.clearUserState()),
+      tap(() => {
+        this.clearUserState();
+        clearCsrfToken();
+      }),
+      catchError((error) => {
+        this.clearUserState();
+        clearCsrfToken();
+        return throwError(() => error);
+      }),
     );
   }
 

@@ -6,6 +6,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { of, switchMap, tap } from 'rxjs';
 
 import { PeopleService } from '../../core/people/people.service';
+import { formatForbiddenError } from '../../core/http/forbidden-error';
 import {
   ArchiveInternalNoteRequest,
   InternalNote,
@@ -820,7 +821,7 @@ function formatNoteMutationError(
   }
 
   if (error.status === 403) {
-    return 'You do not have permission to manage internal notes.';
+    return formatForbiddenError(error, 'You do not have permission to manage internal notes.');
   }
 
   if (error.status === 404) {

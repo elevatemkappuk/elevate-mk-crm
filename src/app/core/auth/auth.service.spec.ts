@@ -25,6 +25,7 @@ const staffUser: AuthenticatedUser = {
 
 describe('AuthService', () => {
   let authService: AuthService;
+  let http: HttpClient;
   let httpTesting: HttpTestingController;
   let mockDocument: Document;
 
@@ -41,6 +42,7 @@ describe('AuthService', () => {
     });
 
     authService = TestBed.inject(AuthService);
+    http = TestBed.inject(HttpClient);
     httpTesting = TestBed.inject(HttpTestingController);
   });
 
@@ -99,6 +101,16 @@ describe('AuthService', () => {
     });
     loginRequest.flush(staffUser);
 
+    const refreshedCsrfRequest = httpTesting.expectOne(`${apiBaseUrl}/auth/csrf/`);
+    expect(refreshedCsrfRequest.request.method).toBe('GET');
+    expect(refreshedCsrfRequest.request.withCredentials).toBe(true);
+    refreshedCsrfRequest.flush({ detail: 'CSRF cookie set.', csrf_token: 'post-login-token' });
+
+    http.post(`${apiBaseUrl}/members/`, {}).subscribe();
+    const memberRequest = httpTesting.expectOne(`${apiBaseUrl}/members/`);
+    expect(memberRequest.request.headers.get('X-CSRFToken')).toBe('post-login-token');
+    memberRequest.flush({});
+
     expect(authService.currentUser()).toEqual(staffUser);
     expect(localStorageSpy).not.toHaveBeenCalled();
     expect(sessionStorageSpy).not.toHaveBeenCalled();
@@ -119,6 +131,9 @@ describe('AuthService', () => {
 
     const loginRequest = httpTesting.expectOne(`${apiBaseUrl}/auth/login/`);
     loginRequest.flush(staffUser);
+
+    const refreshedCsrfRequest = httpTesting.expectOne(`${apiBaseUrl}/auth/csrf/`);
+    refreshedCsrfRequest.flush({ detail: 'CSRF cookie set.', csrf_token: 'post-login-token' });
 
     expect(currentUserDuringNext).toEqual(staffUser);
     expect(routeDuringNext).toBe('/');
@@ -143,6 +158,9 @@ describe('AuthService', () => {
 
     const loginRequest = httpTesting.expectOne(`${apiBaseUrl}/auth/login/`);
     loginRequest.flush(loginUser);
+
+    const refreshedCsrfRequest = httpTesting.expectOne(`${apiBaseUrl}/auth/csrf/`);
+    refreshedCsrfRequest.flush({ detail: 'CSRF cookie set.', csrf_token: 'post-login-token' });
 
     expect(currentUserDuringNext).toEqual({
       ...staffUser,

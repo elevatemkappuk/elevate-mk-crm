@@ -4,6 +4,7 @@ import { Component, DestroyRef, computed, effect, inject, input, signal, untrack
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { PeopleService } from '../../core/people/people.service';
+import { formatForbiddenError } from '../../core/http/forbidden-error';
 import {
   PaginatedPersonAuditHistoryResponse,
   PersonAuditFieldChange,
@@ -455,7 +456,7 @@ function formatAuditValue(value: string | number | boolean | null | undefined): 
 
 function formatAuditHistoryError(error: HttpErrorResponse): string {
   if (error.status === 403) {
-    return "We couldn't load audit history for this account.";
+    return formatForbiddenError(error, "We couldn't load audit history for this account.");
   }
 
   if (error.status === 404) {

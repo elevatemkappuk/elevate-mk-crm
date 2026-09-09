@@ -9,6 +9,7 @@ import { distinctUntilChanged, map } from 'rxjs/operators';
 
 import { canManagePeople, hasStaffCrmAccess, hasStaffRole } from '../../core/auth/auth-access';
 import { AuthService } from '../../core/auth/auth.service';
+import { formatForbiddenError } from '../../core/http/forbidden-error';
 import { PeopleService } from '../../core/people/people.service';
 import { ageRangeLabel, genderLabel } from '../../core/people/person-demographics';
 import {
@@ -1229,7 +1230,9 @@ export class PersonDetailPageComponent {
       this.loadOverview(personId);
       return;
     }
-    this.personLifecycleErrorMessage.set(error.status === 403 ? 'You no longer have permission to manage this Person.' : 'The Person lifecycle change could not be completed right now. Try again.');
+    this.personLifecycleErrorMessage.set(error.status === 403
+      ? formatForbiddenError(error, 'You no longer have permission to manage this Person.')
+      : 'The Person lifecycle change could not be completed right now. Try again.');
   }
 
   showEndMembershipRequiredError(): boolean {
@@ -1915,7 +1918,7 @@ function formatMakeMemberError(error: HttpErrorResponse): string {
   }
 
   if (error.status === 403) {
-    return 'You no longer have permission to make this person a member.';
+    return formatForbiddenError(error, 'You no longer have permission to make this person a member.');
   }
 
   if (error.status === 409) {
@@ -1939,7 +1942,7 @@ function formatEndMembershipError(error: HttpErrorResponse): string {
   }
 
   if (error.status === 403) {
-    return 'You no longer have permission to end this membership.';
+    return formatForbiddenError(error, 'You no longer have permission to end this membership.');
   }
 
   if (error.status === 409) {
@@ -1963,7 +1966,7 @@ function formatProfessionalProfileError(error: HttpErrorResponse): string {
   }
 
   if (error.status === 403) {
-    return 'You no longer have permission to change this professional profile.';
+    return formatForbiddenError(error, 'You no longer have permission to change this professional profile.');
   }
 
   if (error.status === 404) {
@@ -1995,7 +1998,7 @@ function formatAssignSkillError(error: HttpErrorResponse, refreshFailedAfterSucc
   }
 
   if (error.status === 403) {
-    return 'You no longer have permission to assign skills.';
+    return formatForbiddenError(error, 'You no longer have permission to assign skills.');
   }
 
   if (error.status === 404) {
@@ -2015,7 +2018,7 @@ function formatRemoveSkillError(error: HttpErrorResponse, refreshFailedAfterSucc
   }
 
   if (error.status === 403) {
-    return 'You no longer have permission to remove skills.';
+    return formatForbiddenError(error, 'You no longer have permission to remove skills.');
   }
 
   if (error.status === 404) {
@@ -2047,7 +2050,7 @@ function formatAssignInterestError(error: HttpErrorResponse, refreshFailedAfterS
   }
 
   if (error.status === 403) {
-    return 'You no longer have permission to assign interests.';
+    return formatForbiddenError(error, 'You no longer have permission to assign interests.');
   }
 
   if (error.status === 404) {
@@ -2067,7 +2070,7 @@ function formatRemoveInterestError(error: HttpErrorResponse, refreshFailedAfterS
   }
 
   if (error.status === 403) {
-    return 'You no longer have permission to remove interests.';
+    return formatForbiddenError(error, 'You no longer have permission to remove interests.');
   }
 
   if (error.status === 404) {
@@ -2099,7 +2102,7 @@ function formatAssignTagError(error: HttpErrorResponse, refreshFailedAfterSucces
   }
 
   if (error.status === 403) {
-    return 'You no longer have permission to assign tags.';
+    return formatForbiddenError(error, 'You no longer have permission to assign tags.');
   }
 
   if (error.status === 404) {
@@ -2119,7 +2122,7 @@ function formatRemoveTagError(error: HttpErrorResponse, refreshFailedAfterSucces
   }
 
   if (error.status === 403) {
-    return 'You no longer have permission to remove tags.';
+    return formatForbiddenError(error, 'You no longer have permission to remove tags.');
   }
 
   if (error.status === 404) {

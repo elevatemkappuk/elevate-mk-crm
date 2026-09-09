@@ -11,6 +11,10 @@ export function setCsrfToken(token: string | null): void {
   csrfToken = token;
 }
 
+export function clearCsrfToken(): void {
+  csrfToken = null;
+}
+
 function isApiRequest(url: string, apiBaseUrl: string): boolean {
   return url.startsWith(apiBaseUrl);
 }

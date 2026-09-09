@@ -6,6 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { canManagePeople } from '../../core/auth/auth-access';
 import { AuthService } from '../../core/auth/auth.service';
+import { formatForbiddenError } from '../../core/http/forbidden-error';
 import { PeopleService } from '../../core/people/people.service';
 import { CreateMemberRequest, DuplicatePersonConflict, IdentityOverrideRequest, PersonListItem, UpdatePersonRequest } from '../../core/people/people.types';
 import { ConfirmationDialogComponent } from '../../shared/ui/confirmation-dialog.component';
@@ -197,7 +198,10 @@ export class PersonWritePageComponent {
       return;
     }
     if (error.status === 400) { this.errorMessage.set('Person details need to be corrected before they can be saved.'); return; }
-    if (error.status === 403) { this.errorMessage.set('You no longer have permission to manage People.'); return; }
+    if (error.status === 403) {
+      this.errorMessage.set(formatForbiddenError(error, 'You no longer have permission to manage People.'));
+      return;
+    }
     if (error.status === 404) { this.notFound.set(true); return; }
     if (error.status === 409) { this.errorMessage.set('This person state changed. Refresh the record and try again.'); return; }
     this.errorMessage.set('The person could not be saved right now. Try again.');
