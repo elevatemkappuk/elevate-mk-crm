@@ -68,7 +68,8 @@ export class AuthService {
   }
 
   logout(): Observable<void> {
-    return this.http.post<void>(this.buildUrl('/auth/logout/'), null).pipe(
+    return this.bootstrapCsrf().pipe(
+      switchMap(() => this.http.post<void>(this.buildUrl('/auth/logout/'), null)),
       tap(() => this.clearUserState()),
     );
   }

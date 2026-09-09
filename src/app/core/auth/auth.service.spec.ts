@@ -160,6 +160,11 @@ describe('AuthService', () => {
 
     authService.logout().subscribe();
 
+    const csrfRequest = httpTesting.expectOne(`${apiBaseUrl}/auth/csrf/`);
+    expect(csrfRequest.request.method).toBe('GET');
+    expect(csrfRequest.request.withCredentials).toBe(true);
+    csrfRequest.flush({ detail: 'CSRF cookie set.', csrf_token: 'rotated-token' });
+
     const request = httpTesting.expectOne(`${apiBaseUrl}/auth/logout/`);
     expect(request.request.method).toBe('POST');
     expect(request.request.withCredentials).toBe(true);

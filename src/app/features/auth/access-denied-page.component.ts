@@ -1,62 +1,94 @@
-import { Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
+import { catchError, of } from 'rxjs';
+import { finalize } from 'rxjs/operators';
+
+import { AuthService } from '../../core/auth/auth.service';
+import { AuthPageShellComponent } from './auth-page-shell.component';
 
 @Component({
   selector: 'app-access-denied-page',
-  imports: [RouterLink],
+  imports: [AuthPageShellComponent],
   template: `
-    <section class="denied">
-      <div class="card">
+    <app-auth-page-shell>
+      <div class="auth-heading access-denied-heading">
         <p class="eyebrow">Access denied</p>
         <h1>Staff CRM access is not assigned.</h1>
         <p>
           Your account is authenticated, but it does not currently hold one of the CRM staff roles
           required for this application.
         </p>
-        <a routerLink="/login">Return to sign-in</a>
       </div>
-    </section>
+      <div class="access-denied-actions">
+        <button
+          class="crm-button crm-button--primary auth-submit crm-focusable"
+          type="button"
+          (click)="returnToSignIn()"
+          [disabled]="signingOut()"
+          [attr.aria-busy]="signingOut()"
+          aria-live="polite"
+        >
+          {{ signingOut() ? 'Signing out…' : 'Return to sign-in' }}
+        </button>
+      </div>
+    </app-auth-page-shell>
   `,
   styles: `
-    .denied {
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      padding: 2rem;
-    }
-
-    .card {
-      width: min(100%, 34rem);
-      padding: 2rem;
-      border-radius: 1.25rem;
-      background: rgba(255, 251, 247, 0.92);
-      border: 1px solid rgba(128, 75, 17, 0.16);
-      box-shadow: 0 28px 60px rgba(49, 35, 18, 0.12);
-    }
-
     .eyebrow {
-      margin: 0 0 0.75rem;
+      margin: 0 0 var(--crm-space-2);
       text-transform: uppercase;
-      letter-spacing: 0.14em;
-      font-size: 0.72rem;
-      color: #8c611b;
+      letter-spacing: 0.16em;
+      font-size: var(--crm-font-sm);
+      font-weight: var(--crm-weight-medium);
+      color: var(--crm-warning);
     }
 
-    h1 {
-      margin: 0 0 0.75rem;
-      color: #3d2a0f;
+    .access-denied-heading {
+      margin-bottom: var(--crm-space-6);
     }
 
-    p {
-      margin: 0 0 1rem;
-      line-height: 1.65;
-      color: #68461a;
+    .access-denied-heading h1 {
+      max-width: 18ch;
     }
 
-    a {
-      color: #5c3d14;
-      font-weight: 700;
+    .access-denied-heading p:last-child {
+      max-width: 30rem;
+    }
+
+    .access-denied-actions {
+      display: grid;
+      gap: var(--crm-space-3);
+    }
+
+    @media (max-width: 34rem) {
+      .access-denied-heading h1 {
+        max-width: none;
+      }
     }
   `,
 })
-export class AccessDeniedPageComponent {}
+export class AccessDeniedPageComponent {
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+
+  readonly signingOut = signal(false);
+
+  returnToSignIn(): void {
+    if (this.signingOut()) {
+      return;
+    }
+
+    this.signingOut.set(true);
+    this.auth.logout().pipe(
+      catchError(() => {
+        // The server session may already be gone. Clear local state so the
+        // user can still choose another account instead of being trapped.
+        this.auth.clearUserState();
+        return of(void 0);
+      }),
+      finalize(() => this.signingOut.set(false)),
+    ).subscribe(() => {
+      void this.router.navigateByUrl('/login');
+    });
+  }
+}
