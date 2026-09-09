@@ -29,6 +29,7 @@ export const routes: Routes = [
         pathMatch: 'full',
         redirectTo: 'people',
       },
+      { path: 'dashboard', loadComponent: () => import('./features/dashboard/dashboard-page.component').then(module => module.DashboardPageComponent) },
       {
         path: 'people',
         loadComponent: () => import('./features/people/people-page.component').then((module) => module.PeoplePageComponent),

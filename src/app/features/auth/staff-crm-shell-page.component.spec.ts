@@ -86,6 +86,7 @@ describe('StaffCrmShellPageComponent', () => {
       (link) => link.textContent?.trim(),
     );
 
+    expect(links).toContain('Dashboard');
     expect(links).toContain('People');
     expect(links).toContain('Administration');
     expect(links).toContain('Historical Imports');
@@ -102,6 +103,7 @@ describe('StaffCrmShellPageComponent', () => {
       (link) => link.textContent?.trim(),
     );
 
+    expect(links).toContain('Dashboard');
     expect(links).toContain('People');
     expect(links).not.toContain('Administration');
     expect(links).not.toContain('Historical Imports');
