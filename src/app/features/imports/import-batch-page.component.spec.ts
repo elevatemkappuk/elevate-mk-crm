@@ -376,4 +376,68 @@ describe('ImportBatchPageComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Source record failed validation.');
     expect(component.resolutionLabel(record).detail).toBe('A new CRM Person will be created.');
   });
+  it('renders the filename, friendly source, created date, status and authoritative counts', () => {
+    const header = fixture.nativeElement.querySelector('header') as HTMLElement;
+    expect(header.querySelector('h1')?.textContent).toBe('members.xlsx');
+    expect(header.textContent).toContain('Membership Form');
+    expect(header.querySelector('time')?.getAttribute('datetime')).toBe(readyForImportBatch.created_at);
+    expect(header.querySelector('app-status-badge')?.textContent).toContain('Ready to add to CRM');
+    expect(Array.from(header.querySelectorAll('dd')).map(node => node.textContent?.trim())).toEqual(['2', '1', '1', '0', '0', '0']);
+  });
+
+  it('offers review only on review-required rows and removes the duplicated queue', () => {
+    const component = fixture.componentInstance;
+    const record = component.recordPage()!.results[0];
+    component.batch.set({ ...readyForImportBatch, status: 'READY_FOR_REVIEW', review_required_count: 1 });
+    component.recordPage.set({ count: 2, next: null, previous: null, results: [
+      { ...record, status: 'REVIEW_REQUIRED', resolution_method: null },
+      { ...record, id: 10 },
+    ] });
+    fixture.detectChanges();
+    const links = fixture.nativeElement.querySelectorAll('.review-action') as NodeListOf<HTMLAnchorElement>;
+    expect(links.length).toBe(1);
+    expect(links[0].getAttribute('href')).toBe('/imports/3/review/9');
+    expect(links[0].getAttribute('aria-label')).toBe('Review Source Person');
+    expect(fixture.nativeElement.querySelector('.batch-message').textContent).toContain('1 record');
+    expect(fixture.nativeElement.textContent).not.toContain('Records requiring review');
+    expect(service.getReviewQueue).not.toHaveBeenCalled();
+    component.batch.set(importedResponse.batch);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.review-action')).toBeNull();
+    expect(button('Analyze buyers')).toBeFalsy();
+    expect(button('Add to CRM')).toBeFalsy();
+    expect(fixture.nativeElement.textContent).toContain('This import has been completed and is now read-only.');
+  });
+
+  it('preserves preview pagination parameters and disabled boundaries', () => {
+    expect(button('Previous').disabled).toBe(true);
+    expect(button('Next').disabled).toBe(true);
+    const page = fixture.componentInstance.recordPage()!;
+    fixture.componentInstance.recordPage.set({ ...page, next: '/api/v1/imports/3/records/?page=2' });
+    service.getBatchRecords.mockReturnValueOnce(of({ ...page, previous: '/api/v1/imports/3/records/?page=1', next: null }));
+    fixture.detectChanges();
+    button('Next').click();
+    fixture.detectChanges();
+    expect(service.getBatchRecords).toHaveBeenLastCalledWith(3, { page: 2, page_size: 25 });
+    expect(fixture.nativeElement.querySelector('nav').textContent).toContain('Page 2');
+    expect(button('Previous').disabled).toBe(false);
+    expect(button('Next').disabled).toBe(true);
+  });
+
+  it('links authoritative destination IDs and retains semantic decision badges', () => {
+    const component = fixture.componentInstance;
+    const record = component.recordPage()!.results[0];
+    component.recordPage.set({ count: 1, previous: null, next: null, results: [{
+      ...record, status: 'COMMITTED',
+      resolved_person: { id: 77, first_name: 'Created', last_name: 'Person', primary_email: null, mobile: '', record_state: 'active' },
+    }] });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('td a').getAttribute('href')).toBe('/people/77');
+    expect(fixture.nativeElement.querySelector('td [data-tone="success"]').textContent).toContain('Added to CRM');
+    expect(component.decisionTone({ ...record, status: 'INVALID' })).toBe('error');
+    expect(component.decisionTone({ ...record, status: 'REVIEW_REQUIRED' })).toBe('warning');
+    expect(component.decisionTone({ ...record, resolution_method: 'AUTO_MATCH' })).toBe('info');
+    expect(component.decisionTone(record)).toBe('neutral');
+  });
+
 });
