@@ -96,3 +96,10 @@ and restoring the connected opener. Dirty closes use the existing confirmation
 component. It is 36rem wide and becomes full-screen below the compact threshold.
 Keep opener controls mounted behind the modal so focus can return after closing.
 Forms retain their own API requests, validation, footer actions, and business state.
+
+The filter drawer uses an optional `[drawerFooter]` projection for actions outside
+the scrolling body. Existing drawers without projected footer content retain
+their form-owned actions. `dialogId` optionally supplies an ID for an opener's
+`aria-controls`; `--crm-drawer-width` can refine the desktop width (Filters uses
+34rem). Filter drafts intentionally use `dirty=false`, so safe close discards
+unapplied selections without the business-form discard confirmation.

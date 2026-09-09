@@ -53,7 +53,30 @@ Directory state is URL-owned. `people-directory-query.ts` parses and serializes 
 
 The UI defaults to active records, last-name ordering, page 1, and 25 records per page. It uses repeated query keys for multi-select filters, matching the API contract. Do not introduce local filtering or frontend-calculated directory results.
 
-`PeopleDirectoryFiltersComponent` provides explicit search, relationship and career-stage multi-selects, catalog multi-selects, exact-location chips, and clear filters. If a catalog option no longer loads, an unresolved ID remains visible as a removable fallback chip so an existing deep link is not silently changed. Clearing filters retains the selected page size.
+`PeopleDirectoryFiltersComponent` keeps explicit Search and the Filters button
+on the directory, with applied filter chips beneath Search. Record state,
+Order by, Page size, and Add person remain in the existing action panel.
+
+Filters opens the shared `CrmDrawerComponent` with a temporary copy of the seven
+advanced filter categories. Checkbox, exact-location, and taxonomy edits affect
+only that draft. Apply emits a patch through the existing URL serializer and
+request flow; closing discards the draft. Clear all clears only draft categories
+until Apply. An external URL change closes an obsolete draft.
+
+`FilterMultiselectComponent` provides locally searchable native checkbox lists
+for Industry, Interests, Skills, and Tags. Selected IDs appear as removable chips,
+including unresolved IDs with their existing fallback labels. Search never
+creates taxonomy values or triggers directory requests. Relationship and Career
+stage remain compact visible checkbox groups. Exact-location trimming and
+matching semantics are unchanged.
+
+Applied chips derive exclusively from the URL-backed query. Removing one emits
+only its category patch, retains unrelated selections/page size, and uses the
+existing page-reset behavior. The main Clear filters action retains its original
+reset semantics, including resetting Search, Record state, and Order by while
+preserving page size. Filters (N) also retains its established definition:
+individual advanced selections plus non-empty Search, non-default Record state,
+and non-default Order by; page/page size are not counted.
 
 Because filter state is shareable in the URL, future CRM areas can link directly to a meaningful People view without inventing a second directory-state mechanism. No Dashboard feature is implied by this readiness.
 

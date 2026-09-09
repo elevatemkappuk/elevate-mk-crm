@@ -10,7 +10,7 @@ let nextDrawerId = 0;
   selector: 'app-crm-drawer',
   imports: [ConfirmationDialogComponent],
   template: `
-    <dialog #dialog [attr.aria-labelledby]="titleId" [attr.aria-describedby]="descriptionId"
+    <dialog #dialog [id]="dialogId() || titleId + '-panel'" [attr.aria-labelledby]="titleId" [attr.aria-describedby]="descriptionId"
       (cancel)="$event.preventDefault(); requestClose()" (click)="backdropClick($event)">
       <header [attr.inert]="discardOpen() ? '' : null">
         <div>
@@ -25,6 +25,7 @@ let nextDrawerId = 0;
       <div class="body" [attr.inert]="discardOpen() ? '' : null">
         <ng-content />
       </div>
+      <footer [attr.inert]="discardOpen() ? '' : null"><ng-content select="[drawerFooter]" /></footer>
       <div (keydown.escape)="$event.preventDefault(); $event.stopPropagation()">
         <app-confirmation-dialog [open]="discardOpen()" title="Discard changes?"
           message="Your unsaved details will be lost." confirmLabel="Discard changes"
@@ -33,7 +34,7 @@ let nextDrawerId = 0;
     </dialog>
   `,
   styles: `
-    dialog { position:fixed; inset:0 0 0 auto; width:min(36rem,100%); height:100dvh; max-width:100%; max-height:100dvh; margin:0; padding:0; border:0; border-left:1px solid var(--crm-border); background:var(--crm-surface); color:var(--crm-text-strong); box-shadow:var(--crm-shadow-dialog); overflow:hidden; }
+    dialog { position:fixed; inset:0 0 0 auto; width:min(var(--crm-drawer-width,36rem),100%); height:100dvh; max-width:100%; max-height:100dvh; margin:0; padding:0; border:0; border-left:1px solid var(--crm-border); background:var(--crm-surface); color:var(--crm-text-strong); box-shadow:var(--crm-shadow-dialog); overflow:hidden; }
     dialog[open] { display:flex; flex-direction:column; }
     dialog::backdrop { background:var(--crm-overlay); }
     header { display:flex; flex:none; align-items:start; justify-content:space-between; gap:1rem; padding:1.5rem; border-bottom:1px solid var(--crm-border); }
@@ -43,6 +44,8 @@ let nextDrawerId = 0;
     .close { min-width:2.75rem; min-height:2.75rem; padding:.6rem; }
     svg { width:1.25rem; height:1.25rem; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; }
     .body { min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:1.5rem 1.5rem 0; }
+    footer { margin-top:auto; flex:none; padding:1rem 1.5rem; border-top:1px solid var(--crm-border); }
+    footer:empty { display:none; }
     @media(max-width:42.5rem) { dialog { width:100%; border:0; } header { padding:1.25rem; } .body { padding:1.25rem 1.25rem 0; } }
   `,
 })
@@ -51,6 +54,7 @@ export class CrmDrawerComponent implements OnDestroy {
   private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
   readonly title = input.required<string>();
   readonly description = input('');
+  readonly dialogId = input('');
   readonly busy = input(false);
   readonly dirty = input(false);
   readonly closeBlocked = input(false);

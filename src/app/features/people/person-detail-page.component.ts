@@ -33,7 +33,7 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 import { PersonAuditHistorySectionComponent } from './person-audit-history-section.component';
 import { PersonNotesSectionComponent } from './person-notes-section.component';
-import { PersonLifecycleActionsComponent } from './person-lifecycle-actions.component';
+import { PersonProfileHeaderComponent } from './person-profile-header.component';
 
 type ProfessionalProfileFormMode = 'create' | 'edit' | null;
 type SkillRemovalState = number | null;
@@ -64,7 +64,7 @@ interface AssignSkillFormValue {
     StatusBadgeComponent,
     PersonAuditHistorySectionComponent,
     PersonNotesSectionComponent,
-    PersonLifecycleActionsComponent,
+    PersonProfileHeaderComponent,
     CrmDrawerComponent,
     PersonWritePageComponent,
   ],
@@ -93,32 +93,11 @@ interface AssignSkillFormValue {
           <a routerLink="/people" class="state-link">Return to People</a>
         </app-state-message>
       } @else if (person()) {
-        <header class="identity-card">
-          <span class="avatar" aria-hidden="true">{{ initials() }}</span>
-          <div class="identity-copy">
-            <div class="identity-heading">
-              <h1>{{ fullName() }}</h1>
-              <app-status-badge [label]="relationshipLabel()" [tone]="membership()?.status === 'ACTIVE' ? 'info' : membership() ? 'warning' : 'neutral'" />
-              @if (person()!.archived_at) { <app-status-badge label="Archived" tone="muted" /> }
-            </div>
-            <div class="identity-meta">
-              @if (professionalProfile()?.job_title) { <span>{{ professionalProfile()!.job_title }}</span> }
-              @if (person()!.location) { <span>{{ person()!.location }}</span> }
-            </div>
-            <div class="identity-meta">
-              <span>Email: {{ displayValue(person()!.primary_email) }}</span>
-              <span>Mobile: {{ displayValue(person()!.mobile) }}</span>
-            </div>
-          </div>
-          @if (canManagePeople()) {
-            <div class="profile-actions">
-              @if (!person()!.archived_at) {
-                <button type="button" class="button-primary edit-person" (click)="editPersonOpen.set(true)">Edit person</button>
-              }
-              <app-person-lifecycle-actions [person]="person()!" [submitting]="personLifecycleSubmitting()" [errorMessage]="personLifecycleErrorMessage()" (archive)="archivePerson()" (restore)="restorePerson()" />
-            </div>
-          }
-        </header>
+        <app-person-profile-header [person]="person()!" [relationshipLabel]="relationshipLabel()"
+          [relationshipTone]="membership()?.status === 'ACTIVE' ? 'info' : membership() ? 'warning' : 'neutral'"
+          [jobTitle]="professionalProfile()?.job_title || ''" [canManagePeople]="canManagePeople()"
+          [submitting]="personLifecycleSubmitting()" [errorMessage]="personLifecycleErrorMessage()"
+          (edit)="editPersonOpen.set(true)" (archive)="archivePerson()" (restore)="restorePerson()" />
         <nav class="profile-nav" aria-label="Person profile">
           @for (tab of profileTabs(); track tab.id) {
             <a [routerLink]="[]" [fragment]="tab.id" queryParamsHandling="preserve"

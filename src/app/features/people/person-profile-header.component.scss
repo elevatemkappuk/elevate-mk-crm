@@ -1,0 +1,14 @@
+@use '../../../styles/breakpoints' as bp;
+:host { display:block; min-width:0; }
+.identity-card { display:flex; align-items:start; flex-wrap:wrap; gap:1rem; padding:1.5rem; background:var(--crm-surface); border:1px solid var(--crm-border); border-radius:var(--crm-radius-lg); }
+.avatar { display:grid; place-items:center; flex:none; width:3.5rem; height:3.5rem; border-radius:50%; background:var(--crm-shell-accent); color:var(--crm-shell-sidebar); font-weight:700; font-size:1.25rem; }
+.identity-copy { flex:1 1 20rem; min-width:0; display:grid; gap:.5rem; }
+.identity-heading,.identity-meta,.profile-actions { display:flex; flex-wrap:wrap; align-items:center; gap:.65rem 1rem; }
+h1 { margin:0; font-size:clamp(1.4rem,2.5vw,1.9rem); line-height:1.25; }
+.identity-meta { color:var(--crm-text-secondary); font-size:var(--crm-font-sm); overflow-wrap:anywhere; }
+.profile-actions { margin-left:auto; }
+.edit-person { background:var(--crm-shell-accent); color:var(--crm-text-strong); }
+.edit-person:hover { background:#f3c64c; }
+button { min-height:2.75rem; width:fit-content; padding:.65rem 1rem; border:1px solid transparent; border-radius:var(--crm-radius-sm); font:inherit; font-weight:600; cursor:pointer; }
+button:focus-visible { outline:2px solid var(--crm-focus-ring); outline-offset:3px; }
+@media(max-width:bp.$medium) { .identity-card { padding:1.25rem; } }
