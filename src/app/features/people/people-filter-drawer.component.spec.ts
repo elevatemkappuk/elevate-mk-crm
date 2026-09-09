@@ -193,6 +193,27 @@ describe('People filter drawer', () => {
     expect(params().get('industry')).toBe('999');
   });
 
+  it('keeps taxonomy lists compact until opened and closes options before the drawer on Escape', async () => {
+    await render();
+    const dialog = await open();
+    const picker = dialog.querySelector('app-filter-multiselect')!;
+    const search = picker.querySelector('input[type=search]') as HTMLInputElement;
+    expect(search.placeholder).toBe('Search industries...');
+    expect(picker.querySelector('.options')?.hasAttribute('hidden')).toBe(true);
+    search.focus(); await settle();
+    expect(picker.querySelector('.options')?.hasAttribute('hidden')).toBe(false);
+    const checkbox = picker.querySelector('input[type=checkbox]') as HTMLInputElement;
+    checkbox.focus(); checkbox.click(); await settle();
+    expect(filters().draft()!.industry).toEqual([1]);
+    const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    checkbox.dispatchEvent(escape); await settle();
+    expect(escape.defaultPrevented).toBe(true);
+    expect(picker.querySelector('.options')?.hasAttribute('hidden')).toBe(true);
+    expect(document.activeElement).toBe(search);
+    expect(filters().expanded()).toBe(true);
+    expect(service.listPeople).toHaveBeenCalledOnce();
+  });
+
   it('keeps unresolved applied selections removable when catalogs fail', async () => {
     service.getSkills.mockReturnValue(throwError(() => new Error('unavailable')));
     const host = await render('/people?skill=999');

@@ -53,9 +53,8 @@ let nextFilterDrawerId = 0;
           <fieldset>
             <legend>Location</legend>
             <form class="location-entry" (submit)="$event.preventDefault(); addLocation()">
-              <label for="filter-exact-location">Exact location</label>
-              <input id="filter-exact-location" class="crm-control" [value]="locationValue()" (input)="locationValue.set($any($event.target).value)" placeholder="Exact location" />
-              <button type="submit" class="crm-button crm-button--secondary">Add location</button>
+              <input id="filter-exact-location" class="crm-control" aria-label="Exact location" [value]="locationValue()" (input)="locationValue.set($any($event.target).value)" placeholder="Exact location" />
+              <button type="submit" class="crm-button crm-button--secondary">Add</button>
             </form>
             <div class="chips">
               @for (location of values.location; track location) {
