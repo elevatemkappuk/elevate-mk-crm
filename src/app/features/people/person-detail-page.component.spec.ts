@@ -1688,6 +1688,19 @@ describe('PersonDetailPageComponent', () => {
     expect(endMembershipButton(harness.routeNativeElement)).toBeUndefined();
   });
 
+  it('renders Membership Form for imported membership records', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/12');
+
+    httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush({
+      ...activeMemberOverview,
+      membership: { ...activeMemberOverview.membership, membership_source: 'MEMBERSHIP_FORM' },
+    });
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent).toContain('Membership Form');
+  });
+
   it('renders former membership including the ended date', async () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/people/13');

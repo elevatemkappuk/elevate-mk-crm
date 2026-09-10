@@ -11,6 +11,7 @@ import { canManagePeople, hasStaffCrmAccess, hasStaffRole } from '../../core/aut
 import { AuthService } from '../../core/auth/auth.service';
 import { formatForbiddenError } from '../../core/http/forbidden-error';
 import { PeopleService } from '../../core/people/people.service';
+import { membershipSourceLabel } from '../../core/people/membership-source';
 import { ageRangeLabel, genderLabel } from '../../core/people/person-demographics';
 import {
   EndMembershipRequest,
@@ -977,7 +978,7 @@ export class PersonDetailPageComponent {
       items.push({ label: 'Ended', value: formatBusinessDate(membership.ended_at) });
     }
 
-    items.push({ label: 'Source', value: getMembershipSourceLabel(membership.membership_source) });
+    items.push({ label: 'Source', value: membershipSourceLabel(membership.membership_source) });
 
     return items;
   });
@@ -1849,19 +1850,6 @@ function formatBusinessDate(value: string): string {
     month: 'short',
     year: 'numeric',
   }).format(date);
-}
-
-function getMembershipSourceLabel(value: PersonMembership['membership_source']): string {
-  switch (value) {
-    case 'WEBSITE_FORM':
-      return 'Website Form';
-    case 'STAFF':
-      return 'Staff';
-    case 'COMMUNITY_PLATFORM':
-      return 'Community Platform';
-    case 'OTHER':
-      return 'Other';
-  }
 }
 
 function getCareerStageLabel(value: ProfessionalProfile['career_stage']): string | null {

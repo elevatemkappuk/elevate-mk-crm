@@ -46,7 +46,7 @@ export interface PersonMembership {
   status: 'ACTIVE' | 'FORMER';
   joined_at: string;
   ended_at: string | null;
-  membership_source: 'WEBSITE_FORM' | 'STAFF' | 'COMMUNITY_PLATFORM' | 'OTHER';
+  membership_source: 'WEBSITE_FORM' | 'MEMBERSHIP_FORM' | 'STAFF' | 'COMMUNITY_PLATFORM' | 'OTHER';
   created_at: string;
   updated_at: string;
 }
