@@ -115,7 +115,7 @@ describe('PersonNotesSectionComponent', () => {
     flushActiveNotesList();
     fixture.detectChanges();
 
-    const addButton = Array.from(fixture.nativeElement.querySelectorAll('button')).find((button: HTMLButtonElement) =>
+    const addButton = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('button')).find((button) =>
       button.textContent?.includes('Add Note'),
     ) as HTMLButtonElement | undefined;
     addButton?.click();
@@ -188,7 +188,7 @@ describe('PersonNotesSectionComponent', () => {
     flushActiveNotesList();
     fixture.detectChanges();
 
-    const buttons = Array.from(fixture.nativeElement.querySelectorAll('button')).map((button: HTMLButtonElement) =>
+    const buttons = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('button')).map((button) =>
       button.textContent?.trim(),
     );
 

@@ -107,7 +107,7 @@ describe('HistoricalImportsPageComponent', () => {
     expect(content).toContain('Ready to add to CRM');
     expect(content).toContain('View import');
     expect(content).not.toContain('Review 0 records');
-    expect(Array.from(fixture.nativeElement.querySelectorAll('button')).map((button: HTMLButtonElement) => button.textContent)).not.toContain('Import');
+    expect(Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('button')).map((button) => button.textContent)).not.toContain('Import');
   });
 
   it('labels Eventbrite staged batches without exposing source-row data', () => {

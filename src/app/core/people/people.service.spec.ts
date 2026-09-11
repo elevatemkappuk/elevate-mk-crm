@@ -6,6 +6,7 @@ import { TestBed } from '@angular/core/testing';
 import { apiCredentialsInterceptor, csrfHeaderInterceptor } from '../http/auth-http.interceptors';
 import { API_CONFIG } from '../http/api-config';
 import { PeopleService } from './people.service';
+import { CreateContactRequest } from './people.types';
 
 describe('PeopleService', () => {
   let service: PeopleService;
@@ -95,7 +96,7 @@ describe('PeopleService', () => {
   });
 
   it('sends Person write lifecycle requests to their authoritative endpoints', () => {
-    const person = { first_name: 'Ama', last_name: 'Amoah', primary_email: null, mobile: '', location: '', age_range: '', gender: '' };
+    const person: CreateContactRequest = { first_name: 'Ama', last_name: 'Amoah', primary_email: null, mobile: '', location: '', age_range: '', gender: '' };
     service.createContact(person).subscribe();
     let request = httpTesting.expectOne('http://localhost:8000/api/v1/people/');
     expect(request.request.method).toBe('POST');

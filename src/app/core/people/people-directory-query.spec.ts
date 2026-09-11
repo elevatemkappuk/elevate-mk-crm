@@ -1,6 +1,7 @@
 import { convertToParamMap } from '@angular/router';
 
 import { DEFAULT_PEOPLE_DIRECTORY_QUERY, parsePeopleDirectoryQuery, serializePeopleDirectoryQuery, withPeopleDirectoryQueryChange } from './people-directory-query';
+import { PeopleDirectoryQuery } from './people.types';
 
 describe('People directory query helpers', () => {
   it('parses repeated canonical filters while safely ignoring malformed IDs', () => {
@@ -22,7 +23,7 @@ describe('People directory query helpers', () => {
   });
 
   it('preserves unrelated state and resets page for filter changes only', () => {
-    const query = { ...DEFAULT_PEOPLE_DIRECTORY_QUERY, page: 4, page_size: 50, tag: [6] };
+    const query: PeopleDirectoryQuery = { ...DEFAULT_PEOPLE_DIRECTORY_QUERY, page: 4, page_size: 50, tag: [6] };
     expect(withPeopleDirectoryQueryChange(query, { interest: [2] })).toEqual({ ...query, interest: [2], page: 1 });
     expect(withPeopleDirectoryQueryChange(query, { page: 3 }, false)).toEqual({ ...query, page: 3 });
   });

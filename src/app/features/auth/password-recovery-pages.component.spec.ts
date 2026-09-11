@@ -47,7 +47,7 @@ describe('password recovery pages', () => {
     fixture.detectChanges();
     const password: HTMLInputElement = fixture.nativeElement.querySelector('#reset-password');
     const confirmation: HTMLInputElement = fixture.nativeElement.querySelector('#reset-confirm');
-    const toggles: NodeListOf<HTMLButtonElement> = fixture.nativeElement.querySelectorAll('[appPasswordVisibility]');
+    const toggles: NodeListOf<HTMLButtonElement> = fixture.nativeElement.querySelectorAll('.auth-password-toggle');
     expect(confirmation.getAttribute('aria-invalid')).toBe('true');
     expect(confirmation.getAttribute('aria-describedby')).toBe('reset-mismatch');
     expect(toggles[1].getAttribute('aria-label')).toBe('Show password confirmation');

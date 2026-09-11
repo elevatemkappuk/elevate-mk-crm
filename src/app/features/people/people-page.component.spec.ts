@@ -94,9 +94,13 @@ describe('PeoplePageComponent', () => {
   });
 
   afterEach(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-    httpTesting.verify();
+    try {
+      httpTesting.verify();
+    } finally {
+      window.localStorage.clear();
+      window.sessionStorage.clear();
+      TestBed.resetTestingModule();
+    }
   });
 
   function expectPeopleRequest(expected: {
@@ -106,10 +110,13 @@ describe('PeoplePageComponent', () => {
     page: string;
     page_size: string;
   }) {
+    for (const path of ['industries', 'interests', 'skills', 'tags']) {
+      for (const request of httpTesting.match(`${apiBaseUrl}/${path}/`)) request.flush([]);
+    }
     return httpTesting.expectOne((request) => {
       return (
         request.url === `${apiBaseUrl}/people/` &&
-        request.params.get('q') === expected.q &&
+        (expected.q ? request.params.get('q') === expected.q : !request.params.has('q')) &&
         request.params.get('record_state') === expected.record_state &&
         request.params.get('ordering') === expected.ordering &&
         request.params.get('page') === expected.page &&
@@ -119,6 +126,14 @@ describe('PeoplePageComponent', () => {
   }
 
   async function stabilize(harness: RouterTestingHarness) {
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    for (const request of httpTesting.match((candidate) => candidate.url.includes('/audit-history/'))) {
+      request.flush({ count: 0, next: null, previous: null, results: [] });
+    }
+    for (const request of httpTesting.match((candidate) => candidate.url.includes('/notes/'))) {
+      request.flush({ count: 0, next: null, previous: null, results: [] });
+    }
     await harness.fixture.whenStable();
     harness.detectChanges();
   }
@@ -168,10 +183,10 @@ describe('PeoplePageComponent', () => {
     });
 
     harness.detectChanges();
-    const input = harness.routeNativeElement?.querySelector('input[type="search"]') as HTMLInputElement;
+    const input = harness.routeNativeElement?.querySelector('#people-search') as HTMLInputElement;
     input.value = 'ama';
     input.dispatchEvent(new Event('input'));
-    await new Promise((resolve) => window.setTimeout(resolve, 300));
+    harness.routeNativeElement?.querySelector('form.search')?.dispatchEvent(new Event('submit', { cancelable: true }));
     await stabilize(harness);
 
     expect(router.url).toBe('/people?q=ama');
@@ -208,17 +223,17 @@ describe('PeoplePageComponent', () => {
       results: [secondPerson],
     });
 
-    harness.detectChanges();
+    await stabilize(harness);
     const host = harness.routeNativeElement as HTMLElement;
 
-    expect((host.querySelector('input[type="search"]') as HTMLInputElement).value).toBe('ama');
-    expect((host.querySelector('select[formcontrolname="record_state"]') as HTMLSelectElement).value).toBe(
+    expect((host.querySelector('#people-search') as HTMLInputElement).value).toBe('ama');
+    expect((host.querySelector('.record-control select') as HTMLSelectElement).value).toBe(
       'archived',
     );
-    expect((host.querySelector('select[formcontrolname="ordering"]') as HTMLSelectElement).value).toBe(
+    expect((host.querySelector('.ordering-control select') as HTMLSelectElement).value).toBe(
       '-updated_at',
     );
-    expect((host.querySelector('select[formcontrolname="page_size"]') as HTMLSelectElement).value).toBe(
+    expect((host.querySelector('.size-control select') as HTMLSelectElement).value).toBe(
       '50',
     );
     expect(host.textContent).toContain('Page 2 of 2');
@@ -243,7 +258,7 @@ describe('PeoplePageComponent', () => {
 
     harness.detectChanges();
     const host = harness.routeNativeElement as HTMLElement;
-    const recordState = host.querySelector('select[formcontrolname="record_state"]') as HTMLSelectElement;
+    const recordState = host.querySelector('.record-control select') as HTMLSelectElement;
     recordState.value = 'all';
     recordState.dispatchEvent(new Event('change'));
     await stabilize(harness);
@@ -263,7 +278,7 @@ describe('PeoplePageComponent', () => {
       results: [firstPerson, secondPerson],
     });
 
-    const ordering = host.querySelector('select[formcontrolname="ordering"]') as HTMLSelectElement;
+    const ordering = host.querySelector('.ordering-control select') as HTMLSelectElement;
     ordering.value = '-updated_at';
     ordering.dispatchEvent(new Event('change'));
     await stabilize(harness);
@@ -303,7 +318,7 @@ describe('PeoplePageComponent', () => {
 
     harness.detectChanges();
     let host = harness.routeNativeElement as HTMLElement;
-    const pageSize = host.querySelector('select[formcontrolname="page_size"]') as HTMLSelectElement;
+    const pageSize = host.querySelector('.size-control select') as HTMLSelectElement;
     pageSize.value = '50';
     pageSize.dispatchEvent(new Event('change'));
     await stabilize(harness);
@@ -366,7 +381,7 @@ describe('PeoplePageComponent', () => {
     });
 
     harness.detectChanges();
-    expect(harness.routeNativeElement?.textContent).toContain('No people matched the current search.');
+    expect(harness.routeNativeElement?.textContent).toContain('No people match these filters.');
   });
 
   it('shows an inline API error state', async () => {

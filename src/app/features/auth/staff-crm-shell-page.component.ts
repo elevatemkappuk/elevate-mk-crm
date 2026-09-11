@@ -85,7 +85,7 @@ export class StaffCrmShellPageComponent {
   readonly submitting = signal(false);
   readonly menuOpen = signal(false);
   // Matches the shared SCSS medium breakpoint.
-  readonly narrow = signal(this.document.defaultView?.matchMedia('(max-width: 900px)').matches ?? false);
+  readonly narrow = signal(this.document.defaultView?.matchMedia?.('(max-width: 900px)').matches ?? false);
   readonly groups = ['Workspace', 'Management'] as const;
 
   readonly navigationItems = computed<NavigationItem[]>(() => {
@@ -116,7 +116,7 @@ export class StaffCrmShellPageComponent {
 
   @HostListener('window:resize')
   updateViewport(): void {
-    this.narrow.set(this.document.defaultView?.matchMedia('(max-width: 900px)').matches ?? false);
+    this.narrow.set(this.document.defaultView?.matchMedia?.('(max-width: 900px)').matches ?? false);
     if (!this.narrow()) this.menuOpen.set(false);
   }
 
@@ -127,7 +127,13 @@ export class StaffCrmShellPageComponent {
     }
     this.menuOpen.set(true);
     afterNextRender(() => {
-      if (this.menuOpen() && this.narrow()) this.sidebar()?.nativeElement.querySelector<HTMLElement>('.nav-link-active, .nav-link')?.focus();
+      if (this.menuOpen() && this.narrow()) {
+        const sidebar = this.sidebar()?.nativeElement;
+        const currentPath = this.router.url.split(/[?#]/, 1)[0];
+        const currentLink = Array.from(sidebar?.querySelectorAll<HTMLAnchorElement>('.nav-link') ?? [])
+          .find((link) => link.getAttribute('href') === currentPath);
+        (currentLink ?? sidebar?.querySelector<HTMLElement>('.nav-link'))?.focus();
+      }
     }, { injector: this.injector });
   }
 
@@ -146,8 +152,8 @@ export class StaffCrmShellPageComponent {
     } else if (event.key === 'Tab') {
       const controls = this.sidebar()?.nativeElement.querySelectorAll<HTMLElement>('a[href], button:not(:disabled)');
       if (!controls?.length) return;
-      const first = controls[0];
-      const last = controls[controls.length - 1];
+      const first = this.sidebar()?.nativeElement.querySelector<HTMLElement>('.drawer-close') ?? controls[0];
+      const last = this.sidebar()?.nativeElement.querySelector<HTMLElement>('.sign-out') ?? controls[controls.length - 1];
       if (event.shiftKey && this.document.activeElement === first) {
         event.preventDefault();
         last.focus();

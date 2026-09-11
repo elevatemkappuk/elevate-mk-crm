@@ -14,7 +14,7 @@ describe('PersonDuplicateConflictComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Amina Zulu');
     expect(fixture.nativeElement.textContent).toContain('Archived');
-    expect(fixture.nativeElement.querySelectorAll('a')).toHaveSize(2);
+    expect(fixture.nativeElement.querySelectorAll('a').length).toBe(2);
     expect(fixture.nativeElement.textContent).toContain('Create separate Person');
   });
 });

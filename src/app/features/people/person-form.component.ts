@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, effect, input, output } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormControl, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 
 import { PersonListItem, PersonWriteFields } from '../../core/people/people.types';
 import {
@@ -90,7 +90,7 @@ export class PersonFormComponent {
   private readonly fb = new FormBuilder();
   readonly form = this.fb.nonNullable.group({
     first_name: ['', Validators.required], last_name: ['', Validators.required],
-    primary_email: ['', Validators.email], mobile: [''], location: [''], age_range: [''], gender: [''],
+    primary_email: ['', trimmedEmailValidator], mobile: [''], location: [''], age_range: [''], gender: [''],
     joined_at: [getLocalTodayDateInputValue()],
   });
   private initialValues = this.form.getRawValue();
@@ -136,6 +136,11 @@ export class PersonFormComponent {
     };
     this.submitted.emit({ person, ...(this.member() ? { joined_at: value.joined_at } : {}) });
   }
+}
+
+function trimmedEmailValidator(control: AbstractControl): ValidationErrors | null {
+  const value = typeof control.value === 'string' ? control.value.trim() : control.value;
+  return Validators.email(new FormControl(value));
 }
 
 function getLocalTodayDateInputValue(): string {

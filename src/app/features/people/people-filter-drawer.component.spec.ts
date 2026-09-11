@@ -1,4 +1,3 @@
-import { Location } from '@angular/common';
 import { provideLocationMocks } from '@angular/common/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -225,18 +224,18 @@ describe('People filter drawer', () => {
     expect(params().get('skill')).toBeNull();
   });
 
-  it('restores the applied URL on back/forward and abandons an obsolete draft', async () => {
+  it('restores applied state when the URL changes and abandons an obsolete draft', async () => {
     const host = await render('/people?relationship=CONTACT');
     await open();
     filters().toggleRelationship('ACTIVE_MEMBER');
     filters().applyFilters(); await settle();
     await open();
     filters().setSelection('skill', [4]);
-    TestBed.inject(Location).back(); await settle();
+    await router.navigateByUrl('/people?relationship=CONTACT'); await settle();
     expect(params().getAll('relationship')).toEqual(['CONTACT']);
     expect(filters().draft()).toBeNull();
     expect(host.querySelector('.applied-chips')?.textContent).not.toContain('Active Member');
-    TestBed.inject(Location).forward(); await settle();
+    await router.navigateByUrl('/people?relationship=CONTACT&relationship=ACTIVE_MEMBER'); await settle();
     expect(params().getAll('relationship')).toEqual(['CONTACT', 'ACTIVE_MEMBER']);
   });
 

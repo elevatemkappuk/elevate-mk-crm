@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { AuthService } from '../../core/auth/auth.service';
@@ -44,12 +44,14 @@ describe('AccessDeniedPageComponent', () => {
   });
 
   it('guards repeated clicks while logout is pending', () => {
-    auth.logout.mockReturnValue(of(void 0));
+    const pendingLogout = new Subject<void>();
+    auth.logout.mockReturnValue(pendingLogout);
 
     component.returnToSignIn();
     component.returnToSignIn();
 
     expect(auth.logout).toHaveBeenCalledTimes(1);
+    pendingLogout.complete();
   });
 
   it('clears local state and still opens sign-in when the session is already unavailable', () => {

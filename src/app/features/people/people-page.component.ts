@@ -49,7 +49,7 @@ interface OrderingOption {
           <span>Order by</span>
           <select [value]="queryState().ordering" (change)="changeDirectoryQuery({ ordering: $any($event.target).value })">
             @for (option of orderingOptions; track option.value) {
-              <option [value]="option.value">{{ option.label }}</option>
+              <option [value]="option.value" [selected]="queryState().ordering === option.value">{{ option.label }}</option>
             }
           </select>
         </label>
@@ -58,7 +58,7 @@ interface OrderingOption {
           <span>Page size</span>
           <select [value]="queryState().page_size" (change)="changeDirectoryQuery({ page_size: parsePageSize($any($event.target).value) })">
             @for (size of pageSizes; track size) {
-              <option [value]="size">{{ size }}</option>
+              <option [value]="size" [selected]="queryState().page_size === size">{{ size }}</option>
             }
           </select>
         </label>

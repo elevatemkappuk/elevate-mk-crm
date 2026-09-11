@@ -101,19 +101,34 @@ describe('app routes', () => {
   });
 
   afterEach(() => {
-    httpTesting.verify();
+    try {
+      httpTesting.verify();
+    } finally {
+      TestBed.resetTestingModule();
+    }
   });
 
   async function stabilize(harness: RouterTestingHarness) {
     await harness.fixture.whenStable();
     harness.detectChanges();
+    for (const request of httpTesting.match((candidate) => candidate.url.includes('/audit-history/'))) {
+      request.flush({ count: 0, next: null, previous: null, results: [] });
+    }
+    for (const request of httpTesting.match((candidate) => candidate.url.includes('/notes/'))) {
+      request.flush({ count: 0, next: null, previous: null, results: [] });
+    }
+    await harness.fixture.whenStable();
+    harness.detectChanges();
   }
 
   function expectDefaultPeopleRequest() {
+    for (const path of ['industries', 'interests', 'skills', 'tags']) {
+      for (const request of httpTesting.match(`http://localhost:8000/api/v1/${path}/`)) request.flush([]);
+    }
     return httpTesting.expectOne((request) => {
       return (
         request.url === 'http://localhost:8000/api/v1/people/' &&
-        request.params.get('q') === '' &&
+        !request.params.has('q') &&
         request.params.get('record_state') === 'active' &&
         request.params.get('ordering') === 'last_name' &&
         request.params.get('page') === '1' &&

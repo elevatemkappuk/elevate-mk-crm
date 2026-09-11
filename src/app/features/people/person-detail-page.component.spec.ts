@@ -267,18 +267,34 @@ describe('PersonDetailPageComponent', () => {
   });
 
   afterEach(() => {
-    httpTesting.verify();
-    TestBed.resetTestingModule();
-    for (const [key, descriptor] of [['showModal', showModalDescriptor], ['close', closeDescriptor]] as const) {
-      if (descriptor) Object.defineProperty(HTMLDialogElement.prototype, key, descriptor);
-      else Reflect.deleteProperty(HTMLDialogElement.prototype, key);
+    try {
+      httpTesting.verify();
+    } finally {
+      TestBed.resetTestingModule();
+      for (const [key, descriptor] of [['showModal', showModalDescriptor], ['close', closeDescriptor]] as const) {
+        if (descriptor) Object.defineProperty(HTMLDialogElement.prototype, key, descriptor);
+        else Reflect.deleteProperty(HTMLDialogElement.prototype, key);
+      }
     }
   });
 
   async function stabilize(harness: RouterTestingHarness) {
-    flushPendingAuditHistoryRequests();
+    await renderSecondarySections(harness);
+    flushPendingSecondaryRequests();
     await harness.fixture.whenStable();
     harness.detectChanges();
+  }
+
+  async function renderSecondarySections(harness: RouterTestingHarness) {
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+  }
+
+  function flushPendingSecondaryRequests() {
+    flushPendingAuditHistoryRequests();
+    for (const request of httpTesting.match((candidate) => candidate.url.includes('/notes/'))) {
+      request.flush({ count: 0, next: null, previous: null, results: [] });
+    }
   }
 
   function flushPendingAuditHistoryRequests() {
@@ -662,6 +678,7 @@ describe('PersonDetailPageComponent', () => {
     await harness.navigateByUrl('/people/12');
 
     httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await renderSecondarySections(harness);
     httpTesting
       .expectOne(`${apiBaseUrl}/people/12/notes/?record_state=active&page=1&page_size=25`)
       .flush({
@@ -725,6 +742,7 @@ describe('PersonDetailPageComponent', () => {
     await harness.navigateByUrl('/people/12');
 
     httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await renderSecondarySections(harness);
     httpTesting.expectNone(`${apiBaseUrl}/people/12/notes/?record_state=active&page=1&page_size=25`);
     httpTesting.expectOne(`${apiBaseUrl}/people/12/audit-history/`).flush({
       count: 0,
@@ -743,6 +761,7 @@ describe('PersonDetailPageComponent', () => {
     await harness.navigateByUrl('/people/12');
 
     httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await renderSecondarySections(harness);
     httpTesting.expectOne(`${apiBaseUrl}/people/12/notes/?record_state=active&page=1&page_size=25`).flush({
       count: 0,
       next: null,
@@ -777,6 +796,7 @@ describe('PersonDetailPageComponent', () => {
     await harness.navigateByUrl('/people/12');
 
     httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await renderSecondarySections(harness);
     httpTesting.expectOne(`${apiBaseUrl}/people/12/notes/?record_state=active&page=1&page_size=25`).flush({
       count: 0,
       next: null,
@@ -811,6 +831,7 @@ describe('PersonDetailPageComponent', () => {
     await harness.navigateByUrl('/people/12');
 
     httpTesting.expectOne(`${apiBaseUrl}/people/12/overview/`).flush(activeMemberOverview);
+    await renderSecondarySections(harness);
     httpTesting.expectNone(`${apiBaseUrl}/people/12/notes/?record_state=active&page=1&page_size=25`);
     httpTesting.expectOne(`${apiBaseUrl}/people/12/audit-history/`).flush({
       count: 1,
@@ -842,6 +863,7 @@ describe('PersonDetailPageComponent', () => {
     await harness.navigateByUrl('/people/13');
 
     httpTesting.expectOne(`${apiBaseUrl}/people/13/overview/`).flush(formerMemberOverview);
+    await renderSecondarySections(harness);
     httpTesting.expectOne(`${apiBaseUrl}/people/13/audit-history/`).flush({
       count: 1,
       next: null,
@@ -1317,9 +1339,9 @@ describe('PersonDetailPageComponent', () => {
 
     expect(harness.routeNativeElement?.textContent).toContain('Remove Project Management?');
 
-    const removeConfirmButton = Array.from(harness.routeNativeElement?.querySelectorAll('button') ?? []).find((button) =>
-      button.textContent?.trim() === 'Remove',
-    ) as HTMLButtonElement | undefined;
+    const removeConfirmButton = harness.routeNativeElement?.querySelector<HTMLButtonElement>(
+      '.inline-confirmation button:not(.button-secondary)',
+    );
     removeConfirmButton?.click();
 
     const deleteRequest = httpTesting.expectOne(`${apiBaseUrl}/people/12/skills/16/`);
@@ -1348,9 +1370,9 @@ describe('PersonDetailPageComponent', () => {
     removeSkillButton(harness.routeNativeElement, 'Project Management')?.click();
     await stabilize(harness);
 
-    const removeConfirmButton = Array.from(harness.routeNativeElement?.querySelectorAll('button') ?? []).find((button) =>
-      button.textContent?.trim() === 'Remove',
-    ) as HTMLButtonElement | undefined;
+    const removeConfirmButton = harness.routeNativeElement?.querySelector<HTMLButtonElement>(
+      '.inline-confirmation button:not(.button-secondary)',
+    );
     removeConfirmButton?.click();
 
     httpTesting.expectOne(`${apiBaseUrl}/people/12/skills/16/`).flush(
@@ -1375,9 +1397,9 @@ describe('PersonDetailPageComponent', () => {
 
     expect(harness.routeNativeElement?.textContent).toContain('Remove Technology?');
 
-    const removeConfirmButton = Array.from(harness.routeNativeElement?.querySelectorAll('button') ?? []).find((button) =>
-      button.textContent?.trim() === 'Remove',
-    ) as HTMLButtonElement | undefined;
+    const removeConfirmButton = harness.routeNativeElement?.querySelector<HTMLButtonElement>(
+      '.inline-confirmation button:not(.button-secondary)',
+    );
     removeConfirmButton?.click();
 
     const deleteRequest = httpTesting.expectOne(`${apiBaseUrl}/people/12/interests/5/`);
@@ -1406,9 +1428,9 @@ describe('PersonDetailPageComponent', () => {
     removeInterestButton(harness.routeNativeElement, 'Technology')?.click();
     await stabilize(harness);
 
-    const removeConfirmButton = Array.from(harness.routeNativeElement?.querySelectorAll('button') ?? []).find((button) =>
-      button.textContent?.trim() === 'Remove',
-    ) as HTMLButtonElement | undefined;
+    const removeConfirmButton = harness.routeNativeElement?.querySelector<HTMLButtonElement>(
+      '.inline-confirmation button:not(.button-secondary)',
+    );
     removeConfirmButton?.click();
 
     httpTesting.expectOne(`${apiBaseUrl}/people/12/interests/5/`).flush(

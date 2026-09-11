@@ -137,7 +137,7 @@ describe('PersonAuditHistorySectionComponent', () => {
 
     expect(fixture.nativeElement.textContent).toContain("We couldn't load audit history.");
 
-    const retryButton = Array.from(fixture.nativeElement.querySelectorAll('button')).find((button: HTMLButtonElement) =>
+    const retryButton = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('button')).find((button) =>
       button.textContent?.trim() === 'Retry',
     ) as HTMLButtonElement | undefined;
 
@@ -337,7 +337,7 @@ describe('PersonAuditHistorySectionComponent', () => {
 
     httpTesting.expectNone((candidate) => candidate.url.includes('/notes/'));
 
-    const buttonLabels = Array.from(fixture.nativeElement.querySelectorAll('button')).map((button: HTMLButtonElement) =>
+    const buttonLabels = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('button')).map((button) =>
       button.textContent?.trim(),
     );
 

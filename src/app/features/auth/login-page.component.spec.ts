@@ -119,7 +119,7 @@ describe('LoginPageComponent', () => {
     component.form.setValue({ email: 'staff@example.com', password: 'secret' });
     fixture.detectChanges();
     const input: HTMLInputElement = fixture.nativeElement.querySelector('#login-password');
-    const toggle: HTMLButtonElement = fixture.nativeElement.querySelector('[appPasswordVisibility]');
+    const toggle: HTMLButtonElement = fixture.nativeElement.querySelector('.auth-password-toggle');
     expect(toggle.type).toBe('button');
     expect(toggle.getAttribute('aria-controls')).toBe(input.id);
     expect(toggle.getAttribute('aria-label')).toBe('Show password');
