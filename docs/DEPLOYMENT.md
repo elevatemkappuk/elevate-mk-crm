@@ -84,3 +84,4 @@ frontend domains belong in CORS and CSRF configuration. Backend
 header settings should remain enabled for both environments.
 
 Run `npm run test:config` to validate the generator before deploying.
+ tt
