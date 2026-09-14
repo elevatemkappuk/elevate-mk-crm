@@ -91,3 +91,20 @@ Run a production build:
 ```bash
 npm run build
 ```
+## Playwright smoke test
+
+The Playwright foundation uses Chromium and expects the Angular frontend and
+Django API to be running locally. Configure the URL and a CRM admin account in
+your shell; credentials are never stored in the repository.
+
+```text
+PLAYWRIGHT_BASE_URL=http://localhost:4200
+E2E_ADMIN_EMAIL=...
+E2E_ADMIN_PASSWORD=...
+```
+
+Run the single smoke test with:
+
+```sh
+npx playwright test
+```
