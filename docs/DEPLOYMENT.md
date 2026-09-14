@@ -6,10 +6,25 @@ static files with `serve`.
 
 Configure the Railway service root as `elevate-mk-crm`.
 
-The frontend validation workflow runs the same locked dependency install, full
-Angular test suite, production build, and Playwright test discovery checks for
-pull requests targeting `staging` or `master`, and again after pushes to either
-branch. It does not deploy to Railway or run the staging Playwright tests.
+Before a branch is deployed, GitHub Actions runs the `Frontend validation`
+workflow from `.github/workflows/frontend-validation.yml`. It performs the
+following checks:
+
+1. Installs the lockfile-defined dependencies with `npm ci`.
+2. Runs the full Angular test suite with `npm test -- --watch=false`.
+3. Builds the production application with `npm run build`.
+4. Validates Playwright test discovery with `npx playwright test --list`.
+
+The workflow runs for pull requests targeting `staging` or `master`, and again
+after pushes to either branch. The branch-to-Railway mapping is:
+
+| Git branch | Railway frontend service |
+| --- | --- |
+| `staging` | `elevate-mk-crm` |
+| `master` | `elevate-mk-crm-prod` |
+
+This GitHub Action does not deploy to Railway, install Playwright browsers, or
+run the staging Playwright tests.
 
 ```text
 Build Command: npm run build:railway
