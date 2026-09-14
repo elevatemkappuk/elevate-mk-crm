@@ -5,11 +5,9 @@ on:
 
 jobs:
   inspect-staging-deployment:
-    # Temporary inspection only: verify Railway's payload before enabling
-    # write-capable staging E2E validation.
-    if: >-
-      github.event.deployment_status.state == 'success' &&
-      github.event.deployment.environment == 'staging'
+    # Temporary inspection only: the filter is intentionally disabled so we
+    # can observe Railway's real deployment_status payload values before
+    # enabling write-capable staging E2E validation.
     runs-on: ubuntu-latest
     steps:
       - name: Print safe deployment metadata
