@@ -103,8 +103,11 @@ E2E_ADMIN_EMAIL=...
 E2E_ADMIN_PASSWORD=...
 ```
 
-Run the single smoke test with:
+Run the authenticated CRM smoke tests with:
 
 ```sh
 npx playwright test
 ```
+
+The suite covers login-to-Dashboard, People directory access, an isolated
+synthetic Contact create/archive flow, and logout session protection.
