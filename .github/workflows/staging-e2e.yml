@@ -1,0 +1,69 @@
+name: Staging E2E
+
+on:
+  deployment_status:
+
+concurrency:
+  group: staging-e2e
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  staging-e2e:
+    if: >-
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment.environment == 'positive-embrace / staging'
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      PLAYWRIGHT_BASE_URL: https://elevate-mk-crm-staging.up.railway.app
+      E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+      E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+    steps:
+      - name: Check out deployed revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.deployment.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.0'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify staging target
+        shell: bash
+        run: |
+          expected='https://elevate-mk-crm-staging.up.railway.app'
+          if [[ "$PLAYWRIGHT_BASE_URL" != "$expected" ]]; then
+            echo 'Refusing to run E2E against a non-staging target.' >&2
+            exit 1
+          fi
+
+      - name: Run staging Playwright smoke tests
+        run: npx playwright test
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-playwright-report
+          path: playwright-report
+          retention-days: 5
+
+      - name: Upload Playwright test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-playwright-test-results
+          path: test-results
+          retention-days: 5
