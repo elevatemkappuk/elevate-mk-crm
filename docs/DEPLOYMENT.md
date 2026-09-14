@@ -6,6 +6,11 @@ static files with `serve`.
 
 Configure the Railway service root as `elevate-mk-crm`.
 
+The frontend validation workflow runs the same locked dependency install, full
+Angular test suite, production build, and Playwright test discovery checks for
+pull requests targeting `staging` or `master`, and again after pushes to either
+branch. It does not deploy to Railway or run the staging Playwright tests.
+
 ```text
 Build Command: npm run build:railway
 Start Command: npm run start:railway
