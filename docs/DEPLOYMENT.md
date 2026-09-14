@@ -26,6 +26,23 @@ after pushes to either branch. The branch-to-Railway mapping is:
 This GitHub Action does not deploy to Railway, install Playwright browsers, or
 run the staging Playwright tests.
 
+## Railway deployment event inspection
+
+The temporary `Inspect Railway deployment event` workflow in
+`.github/workflows/inspect-railway-deployment.yml` listens for
+`deployment_status` events and reports only successful deployments whose
+environment is `staging`. It prints the deployment state, environment, ref,
+commit SHA, environment URL, deployment ID, and status ID. It does not check
+out code, install dependencies, call Railway, run Playwright, or modify the
+application.
+
+To verify the payload, merge the workflow to the repository default branch,
+push a harmless commit to `staging`, and wait for Frontend validation and the
+Railway staging deployment to complete. Then inspect the workflow run and
+confirm that the reported environment is `staging` and that the reported SHA
+matches the commit shown in Railway's staging deployment history. Production
+deployments must not satisfy the workflow condition.
+
 ```text
 Build Command: npm run build:railway
 Start Command: npm run start:railway
