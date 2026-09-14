@@ -26,22 +26,21 @@ after pushes to either branch. The branch-to-Railway mapping is:
 This GitHub Action does not deploy to Railway, install Playwright browsers, or
 run the staging Playwright tests.
 
-## Railway deployment event inspection
+## Post-deployment staging validation
 
-The temporary `Inspect Railway deployment event` workflow in
-`.github/workflows/inspect-railway-deployment.yml` listens for
-`deployment_status` events and reports only successful deployments whose
-environment is `staging`. It prints the deployment state, environment, ref,
-commit SHA, environment URL, deployment ID, and status ID. It does not check
-out code, install dependencies, call Railway, run Playwright, or modify the
-application.
+After the Railway staging deployment succeeds, `.github/workflows/staging-e2e.yml`
+checks out the exact deployed SHA and runs the four Playwright smoke tests:
 
-To verify the payload, merge the workflow to the repository default branch,
-push a harmless commit to `staging`, and wait for Frontend validation and the
-Railway staging deployment to complete. Then inspect the workflow run and
-confirm that the reported environment is `staging` and that the reported SHA
-matches the commit shown in Railway's staging deployment history. Production
-deployments must not satisfy the workflow condition.
+```text
+Railway staging success -> Staging E2E -> 4 Playwright smoke tests
+```
+
+The workflow runs only for the verified Railway environment
+`positive-embrace / staging` and targets
+`https://elevate-mk-crm-staging.up.railway.app`. It requires the GitHub secrets
+`E2E_ADMIN_EMAIL` and `E2E_ADMIN_PASSWORD`; production deployments are
+deliberately excluded. Failed runs retain the `playwright-report` and
+`test-results` artifacts in GitHub Actions for five days.
 
 ```text
 Build Command: npm run build:railway
