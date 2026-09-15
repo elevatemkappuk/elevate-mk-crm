@@ -18,6 +18,7 @@ import {
   InterestSummary,
   Industry,
   MakeMembershipRequest,
+  MarketingPreference,
   PersonListItem,
   PersonMembership,
   PersonOverview,
@@ -34,6 +35,7 @@ import { DetailListComponent, DetailListItem } from '../../shared/ui/detail-list
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 import { PersonAuditHistorySectionComponent } from './person-audit-history-section.component';
+import { PersonMarketingPreferenceSectionComponent } from './person-marketing-preference-section.component';
 import { PersonNotesSectionComponent } from './person-notes-section.component';
 import { PersonProfileHeaderComponent } from './person-profile-header.component';
 
@@ -65,6 +67,7 @@ interface AssignSkillFormValue {
     StateMessageComponent,
     StatusBadgeComponent,
     PersonAuditHistorySectionComponent,
+    PersonMarketingPreferenceSectionComponent,
     PersonNotesSectionComponent,
     PersonProfileHeaderComponent,
     CrmDrawerComponent,
@@ -113,6 +116,15 @@ interface AssignSkillFormValue {
               <button type="button" class="button-secondary" aria-label="Edit personal details" (click)="editPersonOpen.set(true)">Edit</button>
             }
           </app-crm-section-card>
+
+          @if (marketingPreference(); as preference) {
+            <app-person-marketing-preference-section
+              [personId]="person()!.id"
+              [preference]="preference"
+              [canEdit]="canManagePeople() && !person()!.archived_at"
+              (preferenceChanged)="marketingPreferenceChanged($event)"
+            />
+          }
 
           <app-crm-section-card title="Membership">
             <p class="membership-summary"><app-status-badge [label]="relationshipLabel()" [tone]="membership()?.status === 'ACTIVE' ? 'info' : membership() ? 'warning' : 'neutral'" /></p>
@@ -702,6 +714,10 @@ export class PersonDetailPageComponent {
     this.editPersonOpen.set(false);
   }
 
+  marketingPreferenceChanged(preference: MarketingPreference): void {
+    this.overview.update(overview => overview ? { ...overview, marketing_preference: preference } : overview);
+  }
+
   readonly careerStageOptions = CAREER_STAGE_OPTIONS;
 
   private readonly fb = inject(FormBuilder);
@@ -764,6 +780,7 @@ export class PersonDetailPageComponent {
   readonly skills = computed<SkillSummary[]>(() => this.overview()?.skills ?? []);
   readonly interests = computed<InterestSummary[]>(() => this.overview()?.interests ?? []);
   readonly tags = computed<TagSummary[]>(() => this.overview()?.tags ?? []);
+  readonly marketingPreference = computed<MarketingPreference | null>(() => this.overview()?.marketing_preference ?? null);
   readonly relationshipLabel = computed(() => this.overview()?.relationship.label ?? 'Contact');
   readonly canMakeMember = computed(() => {
     const overview = this.overview();

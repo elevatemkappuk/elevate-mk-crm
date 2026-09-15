@@ -75,6 +75,32 @@ export interface TagSummary {
   slug: string;
 }
 
+export type MarketingPreferenceState = 'UNKNOWN' | 'OPTED_IN' | 'OPTED_OUT';
+export type MarketingPreferenceSource =
+  | 'MEMBERSHIP_FORM'
+  | 'WEBSITE_SIGNUP'
+  | 'STAFF_RECORDED'
+  | 'HISTORICAL_IMPORT'
+  | 'MAILCHIMP'
+  | 'OTHER';
+
+export interface MarketingPreference {
+  channel: 'EMAIL';
+  state: MarketingPreferenceState;
+  source: MarketingPreferenceSource | null;
+  recorded_at: string | null;
+  recorded_by_id: number | null;
+}
+
+export interface MarketingPreferenceMutationRequest {
+  state: Exclude<MarketingPreferenceState, 'UNKNOWN'>;
+}
+
+export interface MarketingPreferenceWriteResponse {
+  preference: MarketingPreference;
+  changed: boolean;
+}
+
 export interface InternalNoteUserSummary {
   id: number;
   email: string;
@@ -236,6 +262,7 @@ export interface PersonOverview {
   skills: SkillSummary[];
   interests: InterestSummary[];
   tags: TagSummary[];
+  marketing_preference: MarketingPreference;
 }
 
 export interface PaginatedResponse<T> {
