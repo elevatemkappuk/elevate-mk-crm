@@ -2,7 +2,7 @@
 
 This is the plain-language operating guide for the implemented Elevate MK CRM
 and Brevo Marketing integration. It complements the
-[technical integration reference](brevo-crm-integration.md) and the
+[technical integration reference](../../elevate-mk-api/docs/brevo-crm-integration.md) and the
 [Staff CRM frontend guide](brevo-crm-frontend-guide.md).
 
 ## What the integration does
@@ -200,9 +200,10 @@ separate concern from the operational CRM roles.
 | Brevo one-Person marketing sync | Implemented through backend service/worker |
 | Brevo profile updates | Implemented for approved minimal fields |
 | Inbound marketing unsubscribe | Implemented with exact identity and replay protection |
+| CRM audience selection and EMAIL eligibility preview | Implemented as a read-only backend API and Staff CRM page |
 | Transactional Brevo email | Existing separate infrastructure, unchanged |
 | Mailchimp | Frozen rollback/reference implementation, not active automatic provider |
-| Bulk sync, campaigns, audience selection, segments, journeys | Not implemented |
+| Bulk sync, campaigns, segments, journeys | Not implemented |
 | Opens, clicks, delivery analytics, general webhooks | Not implemented |
 
 ## Planned direction and limits
@@ -212,6 +213,32 @@ operational visibility, country-aware phone normalization, or campaign
 capabilities. Each would require an explicit domain and permission decision.
 None should make Brevo authoritative for Person identity or turn a provider
 contact into proof of consent.
+
+### Audience preview available to Staff CRM users
+
+Elevate can now calculate a current marketing audience from active BUSINESS
+People using the existing CRM selection criteria. The backend separately
+classifies selected People as eligible or excluded according to CRM EMAIL
+consent and usable email presence.
+
+The preview is available through a read-only backend endpoint. It reports
+selected, eligible, and excluded counts and explains exclusions such as:
+
+- no usable primary email;
+- explicit opt-out; or
+- consent not recorded.
+
+Staff can open the read-only Audience Preview page from the Staff CRM
+navigation or from the People directory. It does not send email and does not
+contact Brevo. Previewing an audience does not create a contact,
+change consent, enqueue synchronization work, or reserve a campaign audience.
+Provider unsubscribe/blocklist state is evaluated separately during provider
+synchronization and is not confused with CRM consent eligibility.
+
+The future operating model is expected to let staff select CRM criteria in the
+Staff CRM, review the eligibility breakdown, and only then authorize a later
+bulk synchronization workflow. That bulk workflow is not implemented yet and
+must re-evaluate current CRM state before sending provider work.
 
 The current rules remain:
 

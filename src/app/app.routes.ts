@@ -31,6 +31,10 @@ export const routes: Routes = [
       },
       { path: 'dashboard', loadComponent: () => import('./features/dashboard/dashboard-page.component').then(module => module.DashboardPageComponent) },
       {
+        path: 'marketing/audience-preview',
+        loadComponent: () => import('./features/marketing/audience-preview-page.component').then((module) => module.AudiencePreviewPageComponent),
+      },
+      {
         path: 'people',
         loadComponent: () => import('./features/people/people-page.component').then((module) => module.PeoplePageComponent),
       },

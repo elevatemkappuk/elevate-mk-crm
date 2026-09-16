@@ -3,7 +3,7 @@
 This guide describes the implemented Angular Staff CRM experience for Person
 marketing preferences and the boundary between that UI and the asynchronous
 Brevo marketing integration. It is a companion to the
-[canonical Brevo integration guide](brevo-crm-integration.md) and the
+[canonical Brevo integration guide](../../elevate-mk-api/docs/brevo-crm-integration.md) and the
 [business guide](brevo-crm-business-guide.md).
 
 ## Purpose and boundary
@@ -13,11 +13,12 @@ marketing preference. It does not call Brevo directly. Elevate's Django API
 remains authoritative for Person identity, permissions, consent state, audit
 history, and the decision to enqueue Brevo synchronization work.
 
-The frontend does not provide audience selection, campaign controls, bulk
+The frontend provides a read-only audience preview but does not provide
+campaign controls, bulk
 sync, provider contact editing, webhook administration, or a “Sync to Brevo”
 button. A successful UI save records CRM state; any Brevo work is handled
 asynchronously by the backend worker described in the
-[technical integration guide](brevo-crm-integration.md).
+[technical integration guide](../../elevate-mk-api/docs/brevo-crm-integration.md).
 
 ## Actual Angular architecture
 
@@ -202,6 +203,7 @@ provider HTTP client, or hand-built consent vocabulary in a feature component.
 | View source and recorded time | Implemented when returned | API response + section card |
 | Record opt-in/opt-out | Implemented for Admin/Manager | API authorization and preference service |
 | Viewer read-only experience | Implemented | Frontend affordance + API enforcement |
+| Backend audience selection and preview | Implemented as a read-only API and Staff CRM page | Django audience preview endpoint + Angular route |
 | Provider contact creation/update | Not a UI action | Backend Brevo worker |
 | Brevo sync progress/result | Not shown in Person Overview | Durable backend job/admin inspection |
 | Webhook receipt/replay handling | Not a UI action | Django webhook service |
@@ -214,6 +216,20 @@ admin-oriented job inspection, and richer audit evidence if the backend
 exposes a stable staff-facing contract. Those additions must preserve CRM
 authority and must not turn Brevo into a second Person editor.
 
-Audience selection, campaigns, saved segments, engagement analytics, bulk
-preference editing, direct Mailchimp/Brevo calls from Angular, and automated
-journeys are not implemented by this guide.
+The backend now provides a stateless read-only audience preview at
+`POST /api/v1/marketing/audiences/preview/`. It reuses the People selection
+criteria, evaluates active BUSINESS People against CRM EMAIL consent, and
+returns selected, eligible, and excluded counts with exclusion reasons. It
+does not call Brevo or create synchronization jobs.
+
+The Staff CRM route `/marketing/audience-preview` is implemented as a
+read-only, URL-backed preview. Staff can open it from navigation or from the
+People directory; the latter preserves compatible filters while resetting the
+directory page and active/archived state. The page shows backend-selected,
+eligible, and excluded counts, exclusion reasons, result views, and backend
+pagination. It has no consent-editing, provider-contact, or synchronization
+controls, and it never calls Brevo directly.
+
+Campaigns, saved segments, engagement analytics, bulk preference editing,
+direct Mailchimp/Brevo calls from Angular, and automated journeys are not
+implemented by this guide.

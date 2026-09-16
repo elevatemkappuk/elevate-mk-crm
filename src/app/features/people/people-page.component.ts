@@ -20,6 +20,7 @@ import { arePeopleDirectoryQueriesEqual, DEFAULT_PEOPLE_DIRECTORY_QUERY, parsePe
 import { PeopleDirectoryFiltersComponent } from './people-directory-filters.component';
 import { StatusBadgeComponent, StatusBadgeTone } from '../../shared/ui/status-badge.component';
 import { AddPersonDrawerComponent } from './add-person-drawer.component';
+import { audienceQueryFromPeopleDirectory, serializeAudiencePreviewQuery } from '../../core/marketing/audience-preview-query';
 
 const VALID_PAGE_SIZES: PeoplePageSize[] = [25, 50, 100];
 
@@ -68,6 +69,9 @@ interface OrderingOption {
             <button type="button" class="add-person crm-button" (click)="addPersonOpen.set(true)">Add person</button>
           </div>
         }
+        <div class="page-actions">
+          <button type="button" class="crm-button crm-button--secondary" (click)="previewMarketingAudience()">Preview marketing audience</button>
+        </div>
       </div>
 
       @if (loading()) {
@@ -550,6 +554,13 @@ export class PeoplePageComponent {
 
   clearFilters(): void {
     this.navigateToQuery({ ...DEFAULT_PEOPLE_DIRECTORY_QUERY, page_size: this.queryState().page_size });
+  }
+
+  previewMarketingAudience(): void {
+    const audienceQuery = audienceQueryFromPeopleDirectory(this.queryState());
+    void this.router.navigate(['/marketing/audience-preview'], {
+      queryParams: serializeAudiencePreviewQuery(audienceQuery),
+    });
   }
 
   retry(): void {
