@@ -64,16 +64,12 @@ const EXCLUSION_EXPLANATIONS: Record<AudienceExclusionReason, string> = {
         <div>
           <p class="eyebrow">Marketing</p>
           <h1>Audience Preview</h1>
-          <p class="intro">Choose who you want to reach using CRM criteria. Elevate will show who is currently eligible to receive marketing email.</p>
+          <p class="intro">Check who can currently receive marketing email from the People matching your criteria.</p>
         </div>
       </header>
 
       <app-crm-section-card title="Audience criteria">
-        <app-people-directory-filters
-          [query]="directoryQuery()"
-          (changed)="selectionChanged($event)"
-          (cleared)="clearFilters()"
-        />
+        <app-people-directory-filters [query]="directoryQuery()" [compact]="true" (changed)="selectionChanged($event)" (cleared)="clearFilters()" />
         <div class="display-controls" aria-label="Audience preview display controls">
           <label>
             <span>Order by</span>
@@ -113,6 +109,8 @@ const EXCLUSION_EXPLANATIONS: Record<AudienceExclusionReason, string> = {
           </article>
         </section>
 
+        <p class="funnel-summary">{{ preview.eligible_count }} of {{ preview.selected_count }} selected People can currently receive marketing email.</p>
+
         @if (preview.excluded_count > 0) {
           <app-crm-section-card title="Exclusion breakdown">
             <dl class="breakdown">
@@ -130,8 +128,8 @@ const EXCLUSION_EXPLANATIONS: Record<AudienceExclusionReason, string> = {
       <section class="results-panel" aria-label="Audience results">
         <div class="results-heading">
           <div>
-            <p class="eyebrow">CRM eligibility</p>
-            <h2>People results</h2>
+            <p class="eyebrow">Recipient inspection</p>
+            <h2>{{ activeResultHeading() }}</h2>
           </div>
           @if (response(); as preview) {
             <p class="result-count">{{ preview.results.count }} {{ activeResultLabel().toLowerCase() }}</p>
@@ -146,7 +144,7 @@ const EXCLUSION_EXPLANATIONS: Record<AudienceExclusionReason, string> = {
               [attr.aria-selected]="queryState().result === view"
               [class.active]="queryState().result === view"
               (click)="changeResult(view)"
-            >{{ resultLabel(view) }}</button>
+            >{{ resultLabel(view, response()) }}</button>
           }
         </div>
 
@@ -217,6 +215,7 @@ const EXCLUSION_EXPLANATIONS: Record<AudienceExclusionReason, string> = {
     .summary-label { color: var(--crm-text-secondary); font-weight: 700; }
     .summary-value { color: var(--crm-text-strong); font-size: 2rem; font-weight: 700; line-height: 1; }
     .summary-card p:last-child { color: var(--crm-text-muted); font-size: var(--crm-font-sm); line-height: 1.4; }
+    .funnel-summary { margin: calc(var(--crm-space-4) * -0.35) 0 0; color: var(--crm-text-secondary); font-weight: 600; }
     .breakdown { display: grid; gap: .6rem; margin: 0; max-width: 28rem; }
     .breakdown div { display: flex; justify-content: space-between; gap: 1rem; padding-bottom: .5rem; border-bottom: 1px solid var(--crm-border); }
     .breakdown dt { color: var(--crm-text-secondary); }
@@ -253,7 +252,7 @@ export class AudiencePreviewPageComponent {
 
   readonly pageSizes = PAGE_SIZES;
   readonly orderingOptions = ORDERING_OPTIONS;
-  readonly resultViews: AudienceResultView[] = ['all', 'eligible', 'excluded'];
+  readonly resultViews: AudienceResultView[] = ['eligible', 'excluded', 'all'];
   readonly exclusionReasons: AudienceExclusionReason[] = ['EXCLUDED_CONSENT_UNKNOWN', 'EXCLUDED_OPTED_OUT', 'EXCLUDED_NO_EMAIL'];
   readonly queryState = signal<AudiencePreviewQuery>(DEFAULT_AUDIENCE_PREVIEW_QUERY);
   readonly response = signal<AudiencePreviewResponse | null>(null);
@@ -320,8 +319,13 @@ export class AudiencePreviewPageComponent {
     });
   }
 
-  resultLabel(result: AudienceResultView): string { return result === 'all' ? 'All' : result[0].toUpperCase() + result.slice(1); }
+  resultLabel(result: AudienceResultView, preview: AudiencePreviewResponse | null = this.response()): string {
+    if (result === 'eligible') return `Eligible recipients${preview ? ` (${preview.eligible_count})` : ''}`;
+    if (result === 'excluded') return `Exclusions${preview ? ` (${preview.excluded_count})` : ''}`;
+    return `All selected${preview ? ` (${preview.selected_count})` : ''}`;
+  }
   activeResultLabel(): string { return this.resultLabel(this.queryState().result); }
+  activeResultHeading(): string { return this.queryState().result === 'eligible' ? 'Eligible recipients' : this.queryState().result === 'excluded' ? 'Exclusions' : 'All selected People'; }
   fullName(person: AudiencePreviewPerson): string { return `${person.first_name} ${person.last_name}`.trim(); }
   exclusionLabel(reason: AudienceExclusionReason | undefined): string { return reason ? EXCLUSION_LABELS[reason] : 'Excluded'; }
   exclusionExplanation(reason: AudienceExclusionReason | undefined): string { return reason ? EXCLUSION_EXPLANATIONS[reason] : 'This person is not currently eligible for email marketing.'; }

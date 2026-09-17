@@ -22,7 +22,8 @@ The current integration can:
 - process synchronization durably through a backend worker rather than making
   staff wait for a provider request in the browser.
 
-It does not currently provide campaigns, audience selection, bulk sync,
+It does not currently provide campaigns or bulk sync; the Staff CRM provides a
+read-only audience eligibility preview based on People criteria.
 segments, journeys, engagement analytics, or an Angular “sync now” action.
 
 ## Why the boundary matters

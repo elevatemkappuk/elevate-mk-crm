@@ -75,8 +75,25 @@ describe('AudiencePreviewPageComponent', () => {
     expect(harness.routeNativeElement?.textContent).toContain('Selected');
     expect(harness.routeNativeElement?.textContent).toContain('Eligible');
     expect(harness.routeNativeElement?.textContent).toContain('Excluded');
+    expect(harness.routeNativeElement?.textContent).toContain('Search: mentor');
+    expect(harness.routeNativeElement?.textContent).toContain('1 of 2 selected People can currently receive marketing email.');
+    expect(harness.routeNativeElement?.textContent).toContain('Eligible recipients (1)');
+    expect(harness.routeNativeElement?.textContent).not.toContain('Sync to Brevo');
+    expect(harness.routeNativeElement?.textContent).not.toContain('Create campaign');
     expect(harness.routeNativeElement?.textContent).toContain('Opted out');
     expect(harness.routeNativeElement?.textContent).toContain('This person has opted out of email marketing.');
+    expect(harness.routeNativeElement?.querySelector('a[href="/people/1"]')).not.toBeNull();
+  });
+
+  it('makes an empty criteria set explicit as all active People', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/marketing/audience-preview');
+    flushCatalogRequests();
+    httpTesting.expectOne(`${apiBaseUrl}/marketing/audiences/preview/`).flush(response());
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+
+    expect(harness.routeNativeElement?.textContent).toContain('All active People');
   });
 
   it('requests the selected backend result view rather than filtering rows locally', async () => {
@@ -88,12 +105,29 @@ describe('AudiencePreviewPageComponent', () => {
     harness.detectChanges();
 
     const excludedTab = Array.from(harness.routeNativeElement?.querySelectorAll('button') ?? [])
-      .find((button) => button.textContent?.trim() === 'Excluded') as HTMLButtonElement;
+      .find((button) => button.textContent?.trim() === 'Exclusions (1)') as HTMLButtonElement;
     excludedTab.click();
     await harness.fixture.whenStable();
     const request = httpTesting.expectOne(`${apiBaseUrl}/marketing/audiences/preview/`);
     expect(request.request.body.result).toBe('excluded');
     expect(request.request.body.page).toBe(1);
     request.flush(response('excluded'));
+  });
+
+  it('opens the reusable filter drawer from the compact criteria summary', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/marketing/audience-preview');
+    flushCatalogRequests();
+    httpTesting.expectOne(`${apiBaseUrl}/marketing/audiences/preview/`).flush(response());
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+
+    const editButton = Array.from(harness.routeNativeElement?.querySelectorAll('button') ?? [])
+      .find((button) => button.textContent?.trim() === 'Edit criteria') as HTMLButtonElement;
+    editButton.click();
+    harness.detectChanges();
+
+    expect(harness.routeNativeElement?.textContent).toContain('Audience criteria');
+    expect(harness.routeNativeElement?.textContent).toContain('Search People');
   });
 });

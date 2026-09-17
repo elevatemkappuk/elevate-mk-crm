@@ -13,6 +13,10 @@ marketing preference. It does not call Brevo directly. Elevate's Django API
 remains authoritative for Person identity, permissions, consent state, audit
 history, and the decision to enqueue Brevo synchronization work.
 
+People is the canonical CRM directory. Audience Preview is a temporary,
+read-only marketing workflow built on People criteria: it evaluates current
+eligibility and does not duplicate or store People or create provider data.
+
 The frontend provides a read-only audience preview but does not provide
 campaign controls, bulk
 sync, provider contact editing, webhook administration, or a “Sync to Brevo”
