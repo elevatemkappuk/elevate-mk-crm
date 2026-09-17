@@ -21,7 +21,7 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
       } @else if (error()) {
         <app-state-message title="Review record unavailable" [message]="error()!" tone="error" />
       } @else if (record()) {
-        <header><h1>Identity review</h1><p>{{ record()!.blocking_conflict ? 'This source record cannot be safely resolved in this import.' : 'Compare the historical record with possible CRM matches before deciding.' }}</p></header>
+        <header><h1>Identity review</h1><p>Compare the historical record with possible CRM matches before deciding.</p></header>
         <div class="compare">
           <section class="surface" aria-labelledby="source-title">
             <h2 id="source-title">Source record</h2>
@@ -36,13 +36,6 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
             </dl>
             <div class="reason"><h3>Review reason</h3><p>{{ importEvidenceLabel(record()!.resolution_reason) }}</p></div>
           </section>
-          @if (record()!.blocking_conflict) {
-            <section class="surface blocking-conflict" aria-labelledby="blocking-conflict-title">
-              <h2 id="blocking-conflict-title">Blocking source-data conflict</h2>
-              <p>Another record in this import shares {{ conflictSignalLabel() }} identity information. The records cannot safely be imported as separate People.</p>
-              <p>Correct the conflicting source data and upload a new import batch.</p>
-            </section>
-          } @else {
           <section class="surface" aria-labelledby="candidates-title">
             <h2 id="candidates-title">Possible CRM matches</h2>
             <fieldset class="candidates" aria-labelledby="candidates-title" [disabled]="saving() || identityOverrideConfirmationOpen()">
@@ -63,9 +56,7 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
             } @empty { <p>No candidate CRM People are available for this record.</p> }
             </fieldset>
           </section>
-          }
         </div>
-        @if (!record()!.blocking_conflict) {
         <section class="surface decision" aria-labelledby="decision-title" [attr.aria-busy]="saving()">
           <h2 id="decision-title">Decision</h2>
           <fieldset [disabled]="saving() || identityOverrideConfirmationOpen()" aria-describedby="decision-error">
@@ -87,7 +78,6 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
           <div class="actions"><button type="button" class="crm-button confirm-decision" [class.ready]="decision() === 'different' || (decision() === 'same' && selectedId() !== null)" [disabled]="!decision() || (decision() === 'same' && selectedId() === null) || saving() || identityOverrideConfirmationOpen()" aria-describedby="decision-help decision-error" (click)="confirmDecision()">{{ saving() ? 'Saving...' : decision() === 'same' ? 'Confirm same person' : decision() === 'different' ? 'Confirm different person' : 'Confirm decision' }}</button></div>
           </div>
         </section>
-        }
       }
       <app-confirmation-dialog
         [open]="identityOverrideConfirmationOpen()"
@@ -165,12 +155,6 @@ export class ImportReviewPageComponent {
     return includesMobile
       ? 'This email address and mobile number are already associated with another CRM Person. Only continue if you are sure these records belong to different people.'
       : 'This email address is already associated with another CRM Person. Only continue if you are sure these records belong to different people. The new Person may share the same email address.';
-  }
-
-  conflictSignalLabel(): string {
-    const signals = this.record()?.conflict_signals ?? [];
-    if (signals.length > 1) return signals.map((signal) => signal.toLowerCase()).join(' and ');
-    return (signals[0] ?? 'contact').toLowerCase();
   }
 
   private load(): void {

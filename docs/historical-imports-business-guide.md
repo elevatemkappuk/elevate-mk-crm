@@ -44,7 +44,7 @@ Upload -> system checks -> obvious matches
 - Uncertain evidence is shown to staff for a same-person or different-person decision.
 - Conflicting contact details are not silently merged.
 - Staff can explicitly confirm that records describe different people when appropriate.
-- When two new source rows share a normalized email or mobile, the import is blocked as a source-data conflict. V1 does not merge staged rows or override this duplicate; correct the workbook and upload a new batch.
+- When two new source rows share a normalized email or mobile, the batch fails as a source-data conflict. V1 does not merge staged rows or override this duplicate; correct the workbook and upload a new batch.
 
 ## What The System Protects
 
