@@ -88,6 +88,7 @@ describe('StaffCrmShellPageComponent', () => {
 
     expect(links).toContain('Dashboard');
     expect(links).toContain('People');
+    expect(links).toContain('Audience Preview');
     expect(links).toContain('Administration');
     expect(links).toContain('Historical Imports');
     expect(fixture.nativeElement.textContent).toContain('Ada Admin');
@@ -105,6 +106,7 @@ describe('StaffCrmShellPageComponent', () => {
 
     expect(links).toContain('Dashboard');
     expect(links).toContain('People');
+    expect(links).toContain('Audience Preview');
     expect(links).not.toContain('Administration');
     expect(links).not.toContain('Historical Imports');
   });
