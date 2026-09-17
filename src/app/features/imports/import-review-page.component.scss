@@ -10,6 +10,7 @@ h3 { font-size:var(--crm-font-base); margin-bottom:.35rem; }
 header p,dt,small,.decision-help,.selection-state { color:var(--crm-text-secondary); }
 .compare { display:grid; grid-template-columns:minmax(0,2fr) minmax(0,3fr); gap:var(--crm-space-5); align-items:stretch; }
 .surface { min-width:0; margin:0; padding:var(--crm-space-5); border:1px solid var(--crm-border); border-radius:var(--crm-radius-lg); background:var(--crm-surface); }
+.blocking-conflict { display:grid; gap:.75rem; align-content:start; border-color:var(--crm-warning); background:var(--crm-warning-surface); }
 .source-details { margin-top:1rem; }
 dl { display:grid; gap:.75rem; }
 dt { font-size:var(--crm-font-sm); }

@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { of, Subject, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -407,6 +407,37 @@ describe('ImportBatchPageComponent', () => {
     expect(button('Analyze buyers')).toBeFalsy();
     expect(button('Add to CRM')).toBeFalsy();
     expect(fixture.nativeElement.textContent).toContain('This import has been completed and is now read-only.');
+  });
+
+  it('offers a prominent review action that opens the first pending record', async () => {
+    const component = fixture.componentInstance;
+    const record = component.recordPage()!.results[0];
+    component.batch.set({ ...readyForImportBatch, status: 'READY_FOR_REVIEW', review_required_count: 1 });
+    component.recordPage.set({ count: 1, next: null, previous: null, results: [{ ...record, status: 'REVIEW_REQUIRED', resolution_method: null }] });
+    service.getReviewQueue.mockReturnValueOnce(of({ count: 1, results: [{
+      id: 9,
+      batch_id: 3,
+      source_row_identifier: 'row-1',
+      status: 'REVIEW_REQUIRED',
+      resolution_method: null,
+      resolution_reason: 'DUPLICATE_CREATE_NEW_IDENTITY_SIGNAL',
+      resolved_person: null,
+      source: record.source,
+      validation_errors: [],
+      candidates: [],
+    }] }));
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    fixture.detectChanges();
+
+    const reviewButton = button('Review 1 records');
+    expect(reviewButton).toBeTruthy();
+    reviewButton.click();
+    fixture.detectChanges();
+    await Promise.resolve();
+
+    expect(service.getReviewQueue).toHaveBeenCalledWith(3);
+    expect(navigate).toHaveBeenCalledWith(['/imports', 3, 'review', 9]);
   });
 
   it('preserves preview pagination parameters and disabled boundaries', () => {

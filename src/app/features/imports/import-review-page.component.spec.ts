@@ -56,6 +56,7 @@ const reviewRecord: ImportReviewDetail = {
 
 class MockImportReconciliationService {
   readonly getReviewRecord = vi.fn(() => of(reviewRecord));
+  readonly getReviewQueue = vi.fn(() => of({ count: 0, results: [] }));
   readonly resolveSamePerson = vi.fn(() => of(reviewRecord));
   readonly resolveDifferentPerson = vi.fn(() => of(reviewRecord));
 }
@@ -96,6 +97,24 @@ describe('ImportReviewPageComponent', () => {
     expect(content).toContain('Archived person');
     expect(content).not.toContain('Commit');
     expect(content).not.toContain('Search People');
+  });
+
+  it('presents intra-batch conflicts as blocking source-data issues without CRM decisions', () => {
+    service.getReviewRecord.mockReturnValueOnce(of({
+      ...reviewRecord,
+      blocking_conflict: true,
+      conflict_signals: ['EMAIL', 'MOBILE'],
+      resolution_reason: 'DUPLICATE_CREATE_NEW_IDENTITY_SIGNAL',
+      candidates: [],
+    }));
+    fixture = TestBed.createComponent(ImportReviewPageComponent);
+    fixture.detectChanges();
+    const content = fixture.nativeElement.textContent as string;
+    expect(content).toContain('Blocking source-data conflict');
+    expect(content).toContain('email and mobile identity information');
+    expect(content).toContain('Correct the conflicting source data and upload a new import batch.');
+    expect(fixture.nativeElement.querySelector('.decision')).toBeNull();
+    expect(fixture.nativeElement.querySelector('input[name="decision"]')).toBeNull();
   });
 
   it('requires a selected candidate before same-person can be submitted', () => {

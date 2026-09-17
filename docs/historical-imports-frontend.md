@@ -47,6 +47,8 @@ The batch detail preview has Source, Contact, Decision, and Destination columns.
 
 The review page displays source data, candidate cards, match/conflict evidence, candidate Person links, and `Same person` / `Different person` actions. Strong email collision decisions require the reusable confirmation dialog. A stale or otherwise safe backend conflict is displayed to staff; the backend remains authoritative.
 
+Intra-batch create-new collisions are blocking source-data conflicts in V1. They show their collided email/mobile signal and correction guidance instead of CRM candidate decision controls. Staff must correct the source workbook and upload a new batch; staged rows are not merged.
+
 ## Add To CRM
 
 The shared `importBatch()` service posts no invented request body to `POST /api/v1/imports/{batch_id}/import/`. The batch page supplies one-click/loading protection, the reusable accessible confirmation dialog, and a 409 handler that refreshes batch state.

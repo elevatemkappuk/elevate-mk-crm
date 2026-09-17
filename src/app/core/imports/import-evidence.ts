@@ -6,6 +6,7 @@ const labels: Record<string, string> = {
   UNIQUE_EMAIL_WITH_CONTRADICTION: 'Exact email, conflicting evidence',
   MOBILE_ONLY_MATCH: 'Exact mobile only',
   MULTIPLE_STRONG_CANDIDATES: 'Multiple possible CRM matches',
+  DUPLICATE_CREATE_NEW_IDENTITY_SIGNAL: 'Duplicate identity information within this import',
 };
 
 export function importEvidenceLabel(code: string | null): string {

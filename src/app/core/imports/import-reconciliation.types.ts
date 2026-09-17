@@ -15,6 +15,7 @@ export interface ImportBatchSummary {
   committed_count?: number;
   auto_match_count: number;
   new_person_count: number;
+  blocking_conflict_count?: number;
 }
 
 export type HistoricalImportSource = 'MEMBERSHIP_FORM' | 'EVENTBRITE';
@@ -54,6 +55,8 @@ export interface ImportReviewRecord {
   resolution_reason: string | null;
   match_evidence?: Record<string, unknown>;
   validation_errors: ImportValidationError[];
+  blocking_conflict?: boolean;
+  conflict_signals?: string[];
 }
 
 export interface ImportReviewDetail extends ImportReviewRecord {
