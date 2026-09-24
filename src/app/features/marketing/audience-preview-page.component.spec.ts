@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { vi } from 'vitest';
 
 import { apiCredentialsInterceptor, csrfHeaderInterceptor } from '../../core/http/auth-http.interceptors';
 import { API_CONFIG } from '../../core/http/api-config';
@@ -12,8 +13,12 @@ const apiBaseUrl = 'http://localhost:8000/api/v1';
 
 describe('AudiencePreviewPageComponent', () => {
   let httpTesting: HttpTestingController;
+  const showModal = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'showModal');
+  const close = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'close');
 
   beforeEach(() => {
+    Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value: vi.fn(function(this: HTMLDialogElement) { this.open = true; }) });
+    Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value: function(this: HTMLDialogElement) { this.open = false; } });
     TestBed.configureTestingModule({
       providers: [
         provideRouter([{ path: 'marketing/audience-preview', component: AudiencePreviewPageComponent }]),
@@ -26,6 +31,13 @@ describe('AudiencePreviewPageComponent', () => {
   });
 
   afterEach(() => httpTesting.verify());
+
+  afterAll(() => {
+    for (const [key, descriptor] of [['showModal', showModal], ['close', close]] as const) {
+      if (descriptor) Object.defineProperty(HTMLDialogElement.prototype, key, descriptor);
+      else Reflect.deleteProperty(HTMLDialogElement.prototype, key);
+    }
+  });
 
   function flushCatalogRequests(): void {
     for (const path of ['industries', 'interests', 'skills', 'tags']) {

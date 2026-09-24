@@ -160,7 +160,22 @@ export class PeopleDirectoryFiltersComponent {
     this.locationValue.set('');
   }
   closeDrawer(): void { this.draft.set(null); this.locationValue.set(''); }
-  clearDraft(): void { if (this.draft()) this.draft.set({ q: '', relationship: [], location: [], industry: [], career_stage: [], interest: [], skill: [], tag: [] }); this.locationValue.set(''); }
+  clearDraft(): void {
+    const draft = this.draft();
+    if (draft) {
+      this.draft.set({
+        q: this.compact() ? '' : draft.q,
+        relationship: [],
+        location: [],
+        industry: [],
+        career_stage: [],
+        interest: [],
+        skill: [],
+        tag: [],
+      });
+    }
+    this.locationValue.set('');
+  }
   applyFilters(): void { const draft = this.draft(); if (!draft) return; this.changed.emit(draft); this.closeDrawer(); }
   updateDraftSearch(value: string): void { this.searchValue.set(value); this.draft.update((draft) => draft ? { ...draft, q: value } : draft); }
   toggleRelationship(value: PersonRelationshipFilter): void { this.draft.update(draft => draft ? { ...draft, relationship: toggle(draft.relationship, value) } : null); }

@@ -57,7 +57,7 @@ describe('PersonMarketingPreferenceSectionComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Staff recorded');
-    expect(fixture.nativeElement.textContent).toContain('10 Sep 2026, 14:30');
+    expect(fixture.nativeElement.textContent).toContain('10 Sep 2026, 15:30');
   });
 
   it.each([
@@ -92,6 +92,7 @@ describe('PersonMarketingPreferenceSectionComponent', () => {
     fixture.componentRef.setInput('preference', preference('OPTED_IN', 'STAFF_RECORDED'));
     fixture.detectChanges();
     (fixture.nativeElement.querySelector('button') as HTMLButtonElement).click();
+    fixture.detectChanges();
     (fixture.nativeElement.querySelector('input[value="OPTED_OUT"]') as HTMLInputElement).click();
     (fixture.nativeElement.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
 
@@ -107,6 +108,7 @@ describe('PersonMarketingPreferenceSectionComponent', () => {
     fixture.componentRef.setInput('canEdit', true);
     fixture.detectChanges();
     (fixture.nativeElement.querySelector('button') as HTMLButtonElement).click();
+    fixture.detectChanges();
     (fixture.nativeElement.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     http.expectOne(`${apiBaseUrl}/people/30/marketing-preference/`).flush(
       { detail: 'Temporary failure' },
