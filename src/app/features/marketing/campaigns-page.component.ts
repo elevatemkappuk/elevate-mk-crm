@@ -7,8 +7,8 @@ import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { canManagePeople } from '../../core/auth/auth-access';
 import { CampaignService } from '../../core/marketing/campaign.service';
-import { Campaign, campaignCriteriaSummary } from '../../core/marketing/campaign.types';
-import { StatusBadgeComponent, StatusBadgeTone } from '../../shared/ui/status-badge.component';
+import { Campaign, campaignCriteriaSummary, campaignStatusLabel, campaignStatusTone } from '../../core/marketing/campaign.types';
+import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 
 @Component({
   selector: 'app-campaigns-page',
@@ -22,7 +22,7 @@ import { StatusBadgeComponent, StatusBadgeTone } from '../../shared/ui/status-ba
       @else if (errorMessage()) { <section class="state-card state-card-error"><p>{{ errorMessage() }}</p><button class="crm-button crm-button--secondary" type="button" (click)="load()">Retry</button></section> }
       @else if (!campaigns().length) { <section class="state-card"><h2>No campaigns yet</h2><p>Preview an audience to create the first Campaign.</p></section> }
       @else { <section class="list-card"><div class="table-wrap"><table><thead><tr><th>Name</th><th>Status</th><th>Recipients</th><th>Updated</th><th></th></tr></thead><tbody>
-        @for (campaign of campaigns(); track campaign.id) { <tr><td data-label="Name"><a [routerLink]="['/marketing/campaigns', campaign.id]">{{ campaign.name }}</a><small>{{ criteriaSummary(campaign)[0] }}</small></td><td data-label="Status"><app-status-badge [label]="campaign.status" [tone]="statusTone(campaign.status)" /></td><td data-label="Recipients">{{ recipientSummary(campaign) }}</td><td data-label="Updated">{{ campaign.updated_at | date:'mediumDate' }}</td><td><a class="row-action" [routerLink]="['/marketing/campaigns', campaign.id]">Open</a></td></tr> }
+        @for (campaign of campaigns(); track campaign.id) { <tr><td data-label="Name"><a [routerLink]="['/marketing/campaigns', campaign.id]">{{ campaign.name }}</a><small>{{ criteriaSummary(campaign)[0] }}</small></td><td data-label="Status"><app-status-badge [label]="statusLabel(campaign)" [tone]="statusTone(campaign)" /></td><td data-label="Recipients">{{ recipientSummary(campaign) }}</td><td data-label="Updated">{{ campaign.updated_at | date:'mediumDate' }}</td><td><a class="row-action" [routerLink]="['/marketing/campaigns', campaign.id]">Open</a></td></tr> }
       </tbody></table></div></section> }
     </section>
   `,
@@ -43,6 +43,6 @@ export class CampaignsPageComponent {
   load(): void { this.loading.set(true); this.errorMessage.set(null); this.service.list().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ next: (page) => { this.campaigns.set(page.results); this.loading.set(false); }, error: (_error: HttpErrorResponse) => { this.loading.set(false); this.errorMessage.set('Campaigns could not be loaded right now. Try again.'); } }); }
   criteriaSummary(campaign: Campaign): string[] { return campaignCriteriaSummary(campaign.audience_selection); }
   recipientSummary(campaign: Campaign): string { const prep = campaign.current_preparation; return prep ? `${prep.included_count} included · ${prep.excluded_count} excluded` : 'Not prepared'; }
-  statusTone(status: string): StatusBadgeTone { return status === 'PREPARED' || status === 'SNAPSHOT_READY' ? 'success' : status.includes('FAILED') || status === 'RECONCILIATION_REQUIRED' ? 'warning' : 'info'; }
+  statusLabel(campaign: Campaign): string { return campaign.current_preparation?.status === 'PROVIDER_PREPARING' ? 'Preparing in Brevo' : campaignStatusLabel(campaign.status); }
+  statusTone(campaign: Campaign) { return campaignStatusTone(campaign.current_preparation?.status === 'PROVIDER_PREPARING' ? 'PROVIDER_PREPARING' : campaign.status); }
 }
-

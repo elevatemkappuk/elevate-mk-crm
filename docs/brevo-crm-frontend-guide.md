@@ -237,8 +237,18 @@ criteria as a Campaign. Campaign history is available at `/marketing/campaigns`
 and review is available at `/marketing/campaigns/:id`; the Campaign detail page
 can perform CRM-only **Prepare recipients**, re-checking current consent and
 showing backend-authoritative snapshot counts and decisions. Viewers remain
-read-only. Provider preparation and the Brevo editor handoff are deferred to
-Phase 3B, and Angular never calls Brevo directly.
+read-only. Angular never calls Brevo directly. Admins and Managers may
+deliberately choose **Prepare in Brevo** from `SNAPSHOT_READY`; the same action
+is available as **Retry Brevo preparation** after a provider failure. The UI
+refreshes from the backend and does not edit consent, recipient decisions, or
+provider contact state.
+
+Provider-facing staff labels are **Recipients ready**, **Preparing in Brevo**,
+**Ready in Brevo**, **Brevo preparation failed**, **Needs attention**, and **No
+recipients ready**. A prepared campaign may show a backend-supplied editor URL;
+when it is unavailable, the UI does not guess one and instead directs staff to
+open Brevo Campaigns. Brevo remains responsible for email design, final
+subject/content, preview/test, scheduling, and sending.
 
 Saved segments, engagement analytics, bulk preference editing,
 direct Mailchimp/Brevo calls from Angular, and automated journeys are not

@@ -94,6 +94,40 @@ export interface CampaignPage {
   results: Campaign[];
 }
 
+export function campaignStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    DRAFT: 'Draft',
+    PREPARING: 'Preparing recipients',
+    SNAPSHOT_READY: 'Recipients ready',
+    PROVIDER_PREPARING: 'Preparing in Brevo',
+    PREPARED: 'Ready in Brevo',
+    PROVIDER_FAILED: 'Brevo preparation failed',
+    RECONCILIATION_REQUIRED: 'Needs attention',
+    NO_READY_RECIPIENTS: 'No recipients ready',
+  };
+  return labels[status] || 'Needs review';
+}
+
+export function campaignStatusTone(status: string): 'default' | 'info' | 'warning' | 'success' | 'neutral' {
+  if (status === 'PREPARED' || status === 'SNAPSHOT_READY') return 'success';
+  if (status === 'PROVIDER_FAILED' || status === 'RECONCILIATION_REQUIRED') return 'warning';
+  if (status === 'NO_READY_RECIPIENTS') return 'neutral';
+  return status === 'DRAFT' ? 'default' : 'info';
+}
+
+export function recipientDecisionLabel(decision: CampaignRecipientDecision): string {
+  return decision === 'INCLUDED' ? 'Included' : 'Excluded';
+}
+
+export function recipientReasonLabel(reason: string | null): string {
+  const labels: Record<string, string> = {
+    EXCLUDED_OPTED_OUT: 'Opted out',
+    EXCLUDED_CONSENT_UNKNOWN: 'Consent unknown',
+    EXCLUDED_NO_EMAIL: 'No email address',
+  };
+  return reason ? labels[reason] || reason.replaceAll('_', ' ').toLowerCase() : '—';
+}
+
 export function campaignCriteriaSummary(selection: AudienceSelection): string[] {
   const summary: string[] = [];
   if (selection.q) summary.push(`Search: ${selection.q}`);
@@ -106,4 +140,3 @@ export function campaignCriteriaSummary(selection: AudienceSelection): string[] 
   if (selection.tag.length) summary.push(`Tags: ${selection.tag.join(', ')}`);
   return summary.length ? summary : ['All active People'];
 }
-
