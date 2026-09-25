@@ -31,7 +31,7 @@ describe('CampaignService', () => {
     expect(prepare.request.method).toBe('POST');
     prepare.flush({});
     service.recipients(4).subscribe();
-    const recipients = http.expectOne(`${base}/marketing/campaigns/4/recipients/`);
+    const recipients = http.expectOne(`${base}/marketing/campaigns/4/recipients/?page=1&page_size=100`);
     expect(recipients.request.method).toBe('GET');
     recipients.flush({});
     service.prepareProvider(4).subscribe();

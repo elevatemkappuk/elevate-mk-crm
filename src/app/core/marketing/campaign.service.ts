@@ -20,7 +20,8 @@ export class CampaignService {
   get(id: number): Observable<Campaign> { return this.http.get<Campaign>(`${this.baseUrl}/${id}/`); }
   create(request: CampaignCreateRequest): Observable<Campaign> { return this.http.post<Campaign>(`${this.baseUrl}/`, request); }
   prepare(id: number): Observable<Campaign> { return this.http.post<Campaign>(`${this.baseUrl}/${id}/prepare/`, {}); }
-  recipients(id: number): Observable<CampaignRecipientPage> { return this.http.get<CampaignRecipientPage>(`${this.baseUrl}/${id}/recipients/`); }
+  recipients(id: number, page = 1, pageSize = 100): Observable<CampaignRecipientPage> {
+    return this.http.get<CampaignRecipientPage>(`${this.baseUrl}/${id}/recipients/`, { params: { page, page_size: pageSize } });
+  }
   prepareProvider(id: number): Observable<Campaign> { return this.http.post<Campaign>(`${this.baseUrl}/${id}/prepare-provider/`, {}); }
 }
-

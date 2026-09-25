@@ -239,9 +239,16 @@ can perform CRM-only **Prepare recipients**, re-checking current consent and
 showing backend-authoritative snapshot counts and decisions. Viewers remain
 read-only. Angular never calls Brevo directly. Admins and Managers may
 deliberately choose **Prepare in Brevo** from `SNAPSHOT_READY`; the same action
-is available as **Retry Brevo preparation** after a provider failure. The UI
-refreshes from the backend and does not edit consent, recipient decisions, or
-provider contact state.
+is available as **Retry Brevo preparation** after a provider failure or
+`RECONCILIATION_REQUIRED`. **Needs attention** is a read-only review of the
+included snapshot recipients that still need a safe Brevo identity/provider
+resolution. Staff must resolve the underlying issue through supported
+CRM/Brevo workflows; Angular does not repair, unblock, resubscribe, merge, or
+relink contacts. The deliberate retry re-checks unresolved recipients,
+preserves completed preparation work, and keeps the whole campaign blocked
+until every included recipient is safe. Restrictive Brevo states are never
+automatically cleared. The UI refreshes from the backend and does not edit
+consent, recipient decisions, or provider contact state.
 
 Provider-facing staff labels are **Recipients ready**, **Preparing in Brevo**,
 **Ready in Brevo**, **Brevo preparation failed**, **Needs attention**, and **No

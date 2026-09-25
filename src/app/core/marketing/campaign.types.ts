@@ -87,6 +87,33 @@ export interface CampaignRecipientPage {
   results: CampaignRecipientSnapshot[];
 }
 
+export interface CampaignReconciliationReason {
+  title: string;
+  explanation: string;
+}
+
+const reconciliationReasonLabels: Record<string, CampaignReconciliationReason> = {
+  BREVO_CONTACT_RESTRICTED: {
+    title: 'Blocked in Brevo',
+    explanation: 'This recipient has a restrictive email state in Brevo and cannot be automatically re-enabled.',
+  },
+  BREVO_CONTACT_NOT_FOUND_FOR_EXISTING_REFERENCE: {
+    title: 'Brevo contact needs review',
+    explanation: 'The CRM reference points to a Brevo contact that can no longer be found.',
+  },
+  BREVO_CONTACT_IDENTITY_CONFLICT: {
+    title: 'Brevo contact identity needs review',
+    explanation: 'The CRM and Brevo identities could not be matched safely.',
+  },
+};
+
+export function recipientReconciliationReason(code: string | null): CampaignReconciliationReason {
+  return reconciliationReasonLabels[code || ''] || {
+    title: 'Brevo contact needs review',
+    explanation: 'This recipient could not be safely reconciled with Brevo.',
+  };
+}
+
 export interface CampaignPage {
   count: number;
   next: string | null;
