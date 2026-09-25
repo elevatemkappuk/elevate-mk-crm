@@ -39,6 +39,7 @@ The marketing preference section is mounted inside the Person Overview by
 ```text
 PersonDetailPageComponent
 `-- PersonMarketingPreferenceSectionComponent
+`-- PersonBrevoIntegrationSectionComponent
 ```
 
 The component reuses the shared `CrmSectionCardComponent` and
@@ -55,6 +56,17 @@ The API boundary is kept in `PeopleService` and typed in
 - The frontend request body contains `state` only. The backend assigns the
   staff source for this UI path and remains responsible for authorization and
   synchronization-job creation.
+
+The Person Overview also performs a separate read-only inspection through:
+
+```text
+GET /api/v1/people/{person_id}/brevo-integration/
+```
+
+The Brevo Integration card displays the current provider status, safe
+explanation, and the CRM EMAIL marketing preference. It never exposes Brevo
+contact IDs, external reference IDs, raw provider errors, or sync-job
+terminology. A failed inspection leaves the rest of Person Overview usable.
 
 The frontend source-label map includes the implemented CRM and provider
 sources. Staff-recorded preferences display as `Staff recorded`,
@@ -166,6 +178,28 @@ An opt-out is restrictive. CRM opt-in or a profile edit must not silently
 resubscribe a contact that Brevo marks as unsubscribed, cleaned, or otherwise
 protected. The frontend should communicate API outcomes as CRM/provider
 state; it must not offer a control that bypasses those protections.
+
+Campaign reconciliation follows a deliberate review path:
+
+```text
+Campaign recipient needing attention
+    -> Review person
+    -> Person Overview / Brevo Integration
+    -> resolve the underlying issue through the approved workflow
+    -> Back to Campaign
+    -> retry preparation when appropriate
+```
+
+`RESTRICTED` is review-only: the frontend does not offer unblock or
+resubscribe actions. `CONTACT_MISSING` may show that an administrator can
+reconcile the connection when the backend authorizes that guidance, but the
+repair action is reserved for Phase 3C.3. `IDENTITY_CONFLICT` remains a
+manual administrative escalation in Campaign V1. Historical Campaign reason
+codes are not rewritten by this current Person inspection.
+
+Campaign navigation passes only a validated numeric Campaign ID as the
+internal `campaign` query parameter. Person Overview shows `Back to Campaign`
+only for that validated context; normal Person navigation does not show it.
 
 ## Loading, errors, and responsive behavior
 

@@ -111,6 +111,21 @@ describe('CampaignDetailPageComponent', () => {
     expect(text).toContain('Excluded Person');
   });
 
+  it('offers Review person navigation with the campaign return context', async () => {
+    TestBed.inject(AuthService).setAuthenticatedUser({ id: 1, email: 'viewer@example.com', person: { id: 1, first_name: 'View', last_name: 'Only', primary_email: 'viewer@example.com' }, staff_roles: ['CRM_VIEWER'] });
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/marketing/campaigns/4');
+    http.expectOne(`${base}/marketing/campaigns/4/`).flush(campaign('RECONCILIATION_REQUIRED', 'RECONCILIATION_REQUIRED'));
+    http.expectOne(`${base}/marketing/campaigns/4/recipients/?page=1&page_size=100`).flush({ count: 1, next: null, previous: null, results: [
+      { id: 1, person: 11, first_name_snapshot: 'Restricted', last_name_snapshot: 'Person', consent_state_snapshot: 'OPTED_IN', decision: 'INCLUDED', exclusion_reason: null, captured_at: '', provider_outcome: 'RECONCILIATION_REQUIRED', provider_error_code: 'BREVO_CONTACT_RESTRICTED' },
+    ] });
+    await harness.fixture.whenStable();
+    const link = harness.routeNativeElement?.querySelector<HTMLAnchorElement>('a[href*="/people/11"]');
+    expect(link?.getAttribute('href')).toContain('/people/11');
+    expect(link?.getAttribute('href')).toContain('campaign=4');
+    expect(link?.textContent).toContain('Review person');
+  });
+
   it('retrieves subsequent recipient pages with the bounded page size', async () => {
     TestBed.inject(AuthService).setAuthenticatedUser({ id: 1, email: 'viewer@example.com', person: { id: 1, first_name: 'View', last_name: 'Only', primary_email: 'viewer@example.com' }, staff_roles: ['CRM_VIEWER'] });
     const harness = await RouterTestingHarness.create();

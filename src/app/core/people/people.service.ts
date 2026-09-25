@@ -26,6 +26,7 @@ import {
   PersonDirectoryItem,
   PersonMembership,
   PersonOverview,
+  PersonBrevoIntegration,
   PeopleListQueryState,
   ProfessionalProfile,
   ProfessionalProfileWriteRequest,
@@ -69,6 +70,10 @@ export class PeopleService {
 
   getPersonOverview(personId: number): Observable<PersonOverview> {
     return this.http.get<PersonOverview>(this.buildUrl(`/people/${personId}/overview/`));
+  }
+
+  getPersonBrevoIntegration(personId: number): Observable<PersonBrevoIntegration> {
+    return this.http.get<PersonBrevoIntegration>(this.buildUrl(`/people/${personId}/brevo-integration/`));
   }
 
   updateMarketingPreference(
