@@ -56,11 +56,11 @@ The API boundary is kept in `PeopleService` and typed in
   staff source for this UI path and remains responsible for authorization and
   synchronization-job creation.
 
-The current frontend source-label map includes the common CRM sources and
-falls back to `Other` for a source value it does not have a dedicated label
-for. The backend's current Brevo-originated source is therefore displayed by
-the existing fallback until the frontend type/label map is extended in a
-separate UI change. This does not change the stored backend source.
+The frontend source-label map includes the implemented CRM and provider
+sources. Staff-recorded preferences display as `Staff recorded`,
+Brevo-originated unsubscribes display as `Brevo`, and unknown generic source
+values use the `Other` fallback. This is presentation of the backend source;
+it does not change stored preference provenance.
 
 ## Location and display
 

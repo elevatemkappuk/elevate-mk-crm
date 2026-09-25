@@ -22,9 +22,27 @@ The current integration can:
 - process synchronization durably through a backend worker rather than making
   staff wait for a provider request in the browser.
 
-It does not currently provide campaigns or bulk sync; the Staff CRM provides a
-read-only audience eligibility preview based on People criteria.
-segments, journeys, engagement analytics, or an Angular “sync now” action.
+It does not currently provide campaigns, bulk sync, segments, journeys,
+engagement analytics, or an Angular “sync now” action; the Staff CRM provides
+a read-only audience eligibility preview based on People criteria.
+
+## Staging-proven operation
+
+The core Elevate-to-Brevo marketing flow has been exercised successfully in
+staging. Staff recorded `EMAIL=OPTED_IN`, the durable Brevo job was processed,
+the contact was added to the staging marketing list, and the approved profile
+fields were synchronized. A later Person first-name edit updated the same
+Brevo contact.
+
+A real staging campaign unsubscribe was also verified: Brevo blocklisted the
+contact, delivered the Marketing Email `Unsubscribed` webhook, and Elevate
+recorded `EMAIL=OPTED_OUT` with source `Brevo`. The Person remained in CRM and
+no outbound echo/resubscribe job was created.
+
+Staging uses dedicated Brevo resources/configuration within the Brevo account,
+not a separate Brevo environment. Its current marketing list is
+`ELEVATE STAGING | Marketing Contacts` (List ID `4`). No credentials are
+stored in this guide.
 
 ## Why the boundary matters
 
@@ -126,6 +144,36 @@ payload's numeric webhook `id` is not treated as a globally unique event ID.
 An exact replay is ignored, while a later legitimate unsubscribe with distinct
 timestamp/campaign evidence can still be processed after re-consent.
 
+The Brevo webhook must use the complete URL:
+
+```text
+https://<api-host>/api/v1/webhooks/brevo/marketing/
+```
+
+It uses HTTP Basic authentication, with credentials supplied through
+environment configuration. Brevo must send the **Marketing Email ->
+Unsubscribed** event. During staging setup, configuring only the API root
+caused Brevo delivery to fail while the unsubscribe remained visible in
+Brevo; Railway showed no request to the expected route and CRM remained
+opted in. Correcting the full URL fixed delivery.
+
+OpenAPI/schema-generation warnings for the raw webhook view are not evidence
+of a failed webhook delivery.
+
+### Webhook troubleshooting
+
+| Symptom | First check |
+| --- | --- |
+| Contact missing in Brevo | Preference eligibility, Brevo sync job, worker, provider configuration, and list configuration |
+| Profile change missing | `PERSON_PROFILE` job and worker; profile edits update existing contacts only |
+| Brevo unsubscribe/blocklist but CRM remains opted in | Brevo webhook delivery |
+| Brevo delivery failed and Railway shows no POST | Complete webhook URL |
+| `401` | Basic Auth configuration |
+| `404` | Webhook route/URL |
+| `400` | Payload validation/parsing |
+| `5xx` | Application error/logs and provider retry |
+| Webhook succeeds but Person is unchanged | Exact BUSINESS-email resolution, receipt processing, and event eligibility |
+
 ## Opt-out protection and provider states
 
 Opted out is a restrictive business outcome. The integration does not
@@ -137,6 +185,11 @@ under a future controlled workflow if needed.
 Brevo delivery/provider state is not silently imported as general CRM consent.
 The supported inbound consent outcome is the authenticated marketing
 unsubscribe path described above.
+
+In the Person Overview, staff-recorded preferences display as **Staff
+recorded**, Brevo-originated unsubscribes display as **Brevo**, and other
+generic provenance retains the **Other** fallback. A generic `OTHER` source is
+not treated as proof that Brevo was involved.
 
 ## Where staff should act
 
