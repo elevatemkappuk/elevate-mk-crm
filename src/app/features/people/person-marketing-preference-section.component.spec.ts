@@ -64,7 +64,8 @@ describe('PersonMarketingPreferenceSectionComponent', () => {
       hour: '2-digit',
       minute: '2-digit',
     }).format(new Date('2026-09-10T14:30:00Z'));
-    expect(fixture.nativeElement.textContent).toContain(expectedDate);
+    const renderedText = (fixture.nativeElement.textContent as string).replace(/\s+/gu, ' ');
+    expect(renderedText).toContain(expectedDate.replace(/\s+/gu, ' '));
   });
 
   it.each([
