@@ -13,8 +13,8 @@ marketing preference. It does not call Brevo directly. Elevate's Django API
 remains authoritative for Person identity, permissions, consent state, audit
 history, and the decision to enqueue Brevo synchronization work.
 
-People is the canonical CRM directory. Audience Preview is a temporary,
-read-only marketing workflow built on People criteria: it evaluates current
+People is the canonical CRM directory. Audience Preview is the canonical
+audience-selection workflow built on People criteria: it evaluates current
 eligibility and does not duplicate or store People or create provider data.
 
 The frontend provides a read-only audience preview but does not provide
@@ -231,9 +231,15 @@ read-only, URL-backed preview. Staff can open it from navigation or from the
 People directory; the latter preserves compatible filters while resetting the
 directory page and active/archived state. The page shows backend-selected,
 eligible, and excluded counts, exclusion reasons, result views, and backend
-pagination. It has no consent-editing, provider-contact, or synchronization
-controls, and it never calls Brevo directly.
+pagination. CRM Admins and Managers can continue from an eligible preview to
+`/marketing/campaigns`, supply a campaign name, and store the normalized
+criteria as a Campaign. Campaign history is available at `/marketing/campaigns`
+and review is available at `/marketing/campaigns/:id`; the Campaign detail page
+can perform CRM-only **Prepare recipients**, re-checking current consent and
+showing backend-authoritative snapshot counts and decisions. Viewers remain
+read-only. Provider preparation and the Brevo editor handoff are deferred to
+Phase 3B, and Angular never calls Brevo directly.
 
-Campaigns, saved segments, engagement analytics, bulk preference editing,
+Saved segments, engagement analytics, bulk preference editing,
 direct Mailchimp/Brevo calls from Angular, and automated journeys are not
 implemented by this guide.
