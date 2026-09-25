@@ -1,3 +1,4 @@
+import { formatDate } from '@angular/common';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -62,13 +63,7 @@ describe('PersonMarketingPreferenceSectionComponent', () => {
     expect(sourceMetadata.querySelector('span')?.textContent).toBe('Source');
     expect(sourceMetadata.textContent).toContain('Staff recorded');
     expect(recordedMetadata.querySelector('span')?.textContent).toBe('Recorded');
-    const expectedDate = new Intl.DateTimeFormat('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date('2026-09-10T14:30:00Z'));
+    const expectedDate = formatDate('2026-09-10T14:30:00Z', 'd MMM y, HH:mm', 'en-US');
     const recordedDateText = Array.from(recordedMetadata.childNodes)
       .filter((node) => node.nodeType === 3)
       .map((node) => node.textContent ?? '')
@@ -137,5 +132,5 @@ describe('PersonMarketingPreferenceSectionComponent', () => {
 });
 
 function normalizeRenderedText(value: string): string {
-  return value.normalize('NFKC').replace(/[\s\u200B-\u200D\u200E\u200F\uFEFF]+/gu, ' ').trim();
+  return value.replace(/\s+/gu, ' ').trim();
 }
