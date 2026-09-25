@@ -56,7 +56,12 @@ describe('PersonMarketingPreferenceSectionComponent', () => {
     fixture.componentRef.setInput('preference', preference('OPTED_IN', 'STAFF_RECORDED'));
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Staff recorded');
+    const metadataRows = fixture.nativeElement.querySelectorAll('.metadata');
+    const sourceMetadata = metadataRows[0] as HTMLElement;
+    const recordedMetadata = metadataRows[1] as HTMLElement;
+    expect(sourceMetadata.querySelector('span')?.textContent).toBe('Source');
+    expect(sourceMetadata.textContent).toContain('Staff recorded');
+    expect(recordedMetadata.querySelector('span')?.textContent).toBe('Recorded');
     const expectedDate = new Intl.DateTimeFormat('en-GB', {
       day: 'numeric',
       month: 'short',
@@ -64,8 +69,11 @@ describe('PersonMarketingPreferenceSectionComponent', () => {
       hour: '2-digit',
       minute: '2-digit',
     }).format(new Date('2026-09-10T14:30:00Z'));
-    const recordedMetadata = fixture.nativeElement.querySelectorAll('.metadata')[1] as HTMLElement;
-    expect(normalizeRenderedText(recordedMetadata.textContent ?? '')).toContain(normalizeRenderedText(expectedDate));
+    const recordedDateText = Array.from(recordedMetadata.childNodes)
+      .filter((node) => node.nodeType === 3)
+      .map((node) => node.textContent ?? '')
+      .join('');
+    expect(normalizeRenderedText(recordedDateText)).toBe(normalizeRenderedText(expectedDate));
   });
 
   it.each([
