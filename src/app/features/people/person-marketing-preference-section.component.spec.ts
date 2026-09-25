@@ -57,7 +57,14 @@ describe('PersonMarketingPreferenceSectionComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Staff recorded');
-    expect(fixture.nativeElement.textContent).toContain('10 Sep 2026, 15:30');
+    const expectedDate = new Intl.DateTimeFormat('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date('2026-09-10T14:30:00Z'));
+    expect(fixture.nativeElement.textContent).toContain(expectedDate);
   });
 
   it.each([
