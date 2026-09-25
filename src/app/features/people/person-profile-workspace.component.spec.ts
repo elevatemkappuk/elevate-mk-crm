@@ -19,6 +19,7 @@ const overview: PersonOverview = {
     mobile: '077000001', location: 'Milton Keynes', age_range: '', gender: '', archived_at: null,
     created_at: '2026-09-01T12:00:00Z', updated_at: '2026-09-01T12:00:00Z' },
   relationship: { type: 'CONTACT', label: 'Contact' }, membership: null, skills: [], interests: [], tags: [],
+  marketing_preference: { channel: 'EMAIL', state: 'UNKNOWN', source: null, recorded_at: null, recorded_by_id: null },
   professional_profile: { id: 5, job_title: 'Designer', company: 'Example', industry: null, career_stage: '',
     linkedin_url: '', created_at: '2026-09-01T12:00:00Z', updated_at: '2026-09-01T12:00:00Z' },
 };

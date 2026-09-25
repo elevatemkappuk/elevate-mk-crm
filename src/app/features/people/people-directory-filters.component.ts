@@ -13,7 +13,7 @@ const CAREER_STAGES: ReadonlyArray<{ value: ProfessionalProfileCareerStage; labe
   { value: 'STUDENT', label: 'Student' }, { value: 'EARLY_CAREER', label: 'Early Career' }, { value: 'MID_CAREER', label: 'Mid Career' }, { value: 'SENIOR', label: 'Senior' }, { value: 'LEADERSHIP', label: 'Leadership' }, { value: 'FOUNDER_BUSINESS_OWNER', label: 'Founder / Business Owner' }, { value: 'OTHER', label: 'Other' },
 ];
 
-type FilterDraft = Pick<PeopleDirectoryQuery, 'relationship' | 'location' | 'industry' | 'career_stage' | 'interest' | 'skill' | 'tag'>;
+type FilterDraft = Pick<PeopleDirectoryQuery, 'q' | 'relationship' | 'location' | 'industry' | 'career_stage' | 'interest' | 'skill' | 'tag'>;
 type CatalogKey = 'industry' | 'interest' | 'skill' | 'tag';
 interface AppliedChip { key: string; label: string; patch: Partial<PeopleDirectoryQuery>; }
 let nextFilterDrawerId = 0;
@@ -22,7 +22,18 @@ let nextFilterDrawerId = 0;
   selector: 'app-people-directory-filters',
   imports: [CrmDrawerComponent, FilterMultiselectComponent],
   template: `
-    <section class="filters" aria-label="People directory filters">
+    <section class="filters" [attr.aria-label]="compact() ? 'Audience criteria' : 'People directory filters'">
+      @if (compact()) {
+        <div class="compact-summary">
+          <div class="criteria-chips" aria-label="Current audience criteria">
+            @if (criteriaChips().length) {
+              @for (chip of criteriaChips(); track chip.key) { <span class="crm-chip">{{ chip.label }}</span> }
+            } @else { <span class="empty-criteria">All active People</span> }
+          </div>
+          <button type="button" class="toggle crm-button crm-button--secondary" aria-haspopup="dialog"
+            [attr.aria-expanded]="expanded()" [attr.aria-controls]="expanded() ? drawerId : null" (click)="openDrawer()">Edit criteria</button>
+        </div>
+      } @else {
       <div class="topline">
         <form (submit)="submitSearch($event)" class="search">
           <label for="people-search">Search</label>
@@ -40,10 +51,16 @@ let nextFilterDrawerId = 0;
           <button type="button" class="clear crm-button crm-button--quiet" (click)="cleared.emit()">Clear filters</button>
         </div>
       }
+      }
     </section>
     @if (draft(); as values) {
-      <app-crm-drawer title="Filters" description="Refine the People directory" [dialogId]="drawerId" (closed)="closeDrawer()">
+      <app-crm-drawer [title]="compact() ? 'Audience criteria' : 'Filters'" [description]="compact() ? 'Choose the People included in this marketing preview' : 'Refine the People directory'" [dialogId]="drawerId" (closed)="closeDrawer()">
         <div class="draft-panel">
+          @if (compact()) {
+            <label class="draft-search">Search People
+              <input class="crm-control" [value]="searchValue()" (input)="updateDraftSearch($any($event.target).value)" placeholder="Name, email, mobile, job title, or company" />
+            </label>
+          }
           <fieldset>
             <legend>Relationship</legend>
             @for (option of relationships; track option.value) {
@@ -86,11 +103,14 @@ let nextFilterDrawerId = 0;
   `,
   styles: `
     :host { display:block; min-width:0; }
-    .filters,.topline,.search,.location-entry { display:grid; gap:.8rem; min-width:0; }
+    .filters,.topline,.search,.location-entry,.draft-search { display:grid; gap:.8rem; min-width:0; }
     .topline { grid-template-columns:minmax(0,1fr) auto; align-items:end; }
     .search,.location-entry { grid-template-columns:minmax(0,1fr) auto; }
     .search label,.location-entry label { grid-column:1/-1; font-weight:600; }
     .applied-chips,.chips,.drawer-actions,.footer-end { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; }
+    .compact-summary { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+    .criteria-chips { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; min-width:0; }
+    .empty-criteria { color:var(--crm-text-secondary); font-weight:600; }
     .crm-chip { max-width:100%; overflow-wrap:anywhere; text-align:left; cursor:pointer; }
     app-crm-drawer { --crm-drawer-width:34rem; }
     .draft-panel { display:grid; gap:1.75rem; padding-bottom:1.5rem; }
@@ -103,13 +123,14 @@ let nextFilterDrawerId = 0;
     .apply:hover { background:#f3c64c; }
     .catalog-error { margin:0; color:var(--crm-error); }
     :is(button,input):focus-visible { outline:2px solid var(--crm-focus-ring); outline-offset:2px; }
-    @media(max-width:580px) { .topline { grid-template-columns:minmax(0,1fr); } .toggle { width:fit-content; } .location-entry { grid-template-columns:minmax(0,1fr); } }
+    @media(max-width:580px) { .topline { grid-template-columns:minmax(0,1fr); } .toggle { width:fit-content; } .location-entry { grid-template-columns:minmax(0,1fr); } .compact-summary { align-items:stretch; flex-direction:column; } }
   `,
 })
 export class PeopleDirectoryFiltersComponent {
   private readonly peopleService = inject(PeopleService);
   private readonly destroyRef = inject(DestroyRef);
   readonly query = input.required<PeopleDirectoryQuery>();
+  readonly compact = input(false);
   readonly changed = output<Partial<PeopleDirectoryQuery>>();
   readonly cleared = output<void>();
   readonly draft = signal<FilterDraft | null>(null);
@@ -135,12 +156,28 @@ export class PeopleDirectoryFiltersComponent {
 
   openDrawer(): void {
     const query = this.query();
-    this.draft.set({ relationship: [...query.relationship], location: [...query.location], industry: [...query.industry], career_stage: [...query.career_stage], interest: [...query.interest], skill: [...query.skill], tag: [...query.tag] });
+    this.draft.set({ q: query.q, relationship: [...query.relationship], location: [...query.location], industry: [...query.industry], career_stage: [...query.career_stage], interest: [...query.interest], skill: [...query.skill], tag: [...query.tag] });
     this.locationValue.set('');
   }
   closeDrawer(): void { this.draft.set(null); this.locationValue.set(''); }
-  clearDraft(): void { if (this.draft()) this.draft.set({ relationship: [], location: [], industry: [], career_stage: [], interest: [], skill: [], tag: [] }); this.locationValue.set(''); }
+  clearDraft(): void {
+    const draft = this.draft();
+    if (draft) {
+      this.draft.set({
+        q: this.compact() ? '' : draft.q,
+        relationship: [],
+        location: [],
+        industry: [],
+        career_stage: [],
+        interest: [],
+        skill: [],
+        tag: [],
+      });
+    }
+    this.locationValue.set('');
+  }
   applyFilters(): void { const draft = this.draft(); if (!draft) return; this.changed.emit(draft); this.closeDrawer(); }
+  updateDraftSearch(value: string): void { this.searchValue.set(value); this.draft.update((draft) => draft ? { ...draft, q: value } : draft); }
   toggleRelationship(value: PersonRelationshipFilter): void { this.draft.update(draft => draft ? { ...draft, relationship: toggle(draft.relationship, value) } : null); }
   toggleCareerStage(value: ProfessionalProfileCareerStage): void { this.draft.update(draft => draft ? { ...draft, career_stage: toggle(draft.career_stage, value) } : null); }
   setSelection(kind: CatalogKey, values: number[]): void { this.draft.update(draft => draft ? { ...draft, [kind]: values } : null); }
@@ -173,6 +210,7 @@ export class PeopleDirectoryFiltersComponent {
     }
     return chips;
   });
+  readonly criteriaChips = computed(() => this.activeChips().filter((chip) => chip.key !== 'record_state' && chip.key !== 'ordering'));
 
   private loadCatalogs(): void {
     this.peopleService.getIndustries().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ next: (value) => this.industries.set(value), error: () => this.catalogError.set(true) });

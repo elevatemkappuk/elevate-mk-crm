@@ -56,6 +56,7 @@ const reviewRecord: ImportReviewDetail = {
 
 class MockImportReconciliationService {
   readonly getReviewRecord = vi.fn(() => of(reviewRecord));
+  readonly getReviewQueue = vi.fn(() => of({ count: 0, results: [] }));
   readonly resolveSamePerson = vi.fn(() => of(reviewRecord));
   readonly resolveDifferentPerson = vi.fn(() => of(reviewRecord));
 }
@@ -97,6 +98,7 @@ describe('ImportReviewPageComponent', () => {
     expect(content).not.toContain('Commit');
     expect(content).not.toContain('Search People');
   });
+
 
   it('requires a selected candidate before same-person can be submitted', () => {
     const samePersonButton = chooseDecision('same');
