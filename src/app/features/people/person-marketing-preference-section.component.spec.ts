@@ -64,8 +64,8 @@ describe('PersonMarketingPreferenceSectionComponent', () => {
       hour: '2-digit',
       minute: '2-digit',
     }).format(new Date('2026-09-10T14:30:00Z'));
-    const renderedText = (fixture.nativeElement.textContent as string).replace(/\s+/gu, ' ');
-    expect(renderedText).toContain(expectedDate.replace(/\s+/gu, ' '));
+    const recordedMetadata = fixture.nativeElement.querySelectorAll('.metadata')[1] as HTMLElement;
+    expect(normalizeRenderedText(recordedMetadata.textContent ?? '')).toContain(normalizeRenderedText(expectedDate));
   });
 
   it.each([
@@ -127,3 +127,7 @@ describe('PersonMarketingPreferenceSectionComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Marketing preference could not be saved right now. Try again.');
   });
 });
+
+function normalizeRenderedText(value: string): string {
+  return value.normalize('NFKC').replace(/[\s\u200B-\u200D\u200E\u200F\uFEFF]+/gu, ' ').trim();
+}
