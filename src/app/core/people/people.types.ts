@@ -82,6 +82,7 @@ export type MarketingPreferenceSource =
   | 'STAFF_RECORDED'
   | 'HISTORICAL_IMPORT'
   | 'MAILCHIMP'
+  | 'BREVO'
   | 'OTHER';
 
 export interface MarketingPreference {

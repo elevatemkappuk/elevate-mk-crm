@@ -71,6 +71,23 @@ describe('PersonMarketingPreferenceSectionComponent', () => {
     expect(normalizeRenderedText(recordedDateText)).toBe(normalizeRenderedText(expectedDate));
   });
 
+  it('labels a Brevo-originated preference as Brevo', () => {
+    fixture.componentRef.setInput('preference', preference('OPTED_OUT', 'BREVO'));
+    fixture.detectChanges();
+
+    const sourceMetadata = fixture.nativeElement.querySelectorAll('.metadata')[0] as HTMLElement;
+    expect(sourceMetadata.textContent).toContain('Brevo');
+    expect(sourceMetadata.textContent).not.toContain('Other');
+  });
+
+  it('keeps the generic source fallback as Other', () => {
+    fixture.componentRef.setInput('preference', preference('OPTED_OUT', 'OTHER'));
+    fixture.detectChanges();
+
+    const sourceMetadata = fixture.nativeElement.querySelectorAll('.metadata')[0] as HTMLElement;
+    expect(sourceMetadata.textContent).toContain('Other');
+  });
+
   it.each([
     ['CRM admin', true],
     ['CRM manager', true],

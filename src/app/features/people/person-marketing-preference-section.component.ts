@@ -134,6 +134,7 @@ export class PersonMarketingPreferenceSectionComponent {
       case 'WEBSITE_SIGNUP': return 'Website signup';
       case 'HISTORICAL_IMPORT': return 'Historical import';
       case 'MAILCHIMP': return 'Mailchimp';
+      case 'BREVO': return 'Brevo';
       default: return 'Other';
     }
   }
