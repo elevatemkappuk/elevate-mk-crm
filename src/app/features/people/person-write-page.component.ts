@@ -149,7 +149,14 @@ export class PersonWritePageComponent {
   }
 
   openIdentityOverrideConfirmation(): void {
-    if (!this.submitting() && this.pendingSubmission() && this.duplicateConflict()) {
+    const submission = this.pendingSubmission();
+    const conflict = this.duplicateConflict();
+    if (this.submitting() || !submission || !conflict) return;
+    if (this.mode() === 'edit' && !('collision' in conflict)) {
+      this.submitCreation(submission, { allow_duplicate_mobile: true });
+      return;
+    }
+    if (!this.submitting()) {
       this.identityOverrideConfirmationOpen.set(true);
     }
   }

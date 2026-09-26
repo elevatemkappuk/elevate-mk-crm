@@ -175,9 +175,16 @@ describe('Person profile workspace', () => {
     expect(host.textContent).not.toContain('This person state changed');
     expect(writer().personForm()!.form.controls.mobile.value).toBe('07911000000');
     (host.querySelector('app-person-duplicate-conflict .button-primary') as HTMLElement).click(); await settle();
-    (host.querySelector('app-confirmation-dialog .crm-button--primary') as HTMLElement).click(); await settle();
+    expect(host.querySelector('app-confirmation-dialog .dialog')).toBeNull();
     expect(service.updatePerson).toHaveBeenCalledTimes(2);
     expect(service.updatePerson.mock.calls[1][1]).toMatchObject({ allow_duplicate_mobile: true, mobile: '07911000000' });
+    expect(writer().submitting()).toBe(true);
+    expect((host.querySelector('app-person-form button[type="submit"]') as HTMLButtonElement).disabled).toBe(true);
+    writer().openIdentityOverrideConfirmation();
+    expect(service.updatePerson).toHaveBeenCalledTimes(2);
+    update.next({ ...overview.person, mobile: '07911000000' }); update.complete(); await settle();
+    expect(host.querySelector('dialog')).toBeNull();
+    expect(host.textContent).not.toContain('Shared mobile number');
   });
 
   it('moves Professional Profile editing into the shared drawer and refreshes its card after saving', async () => {
