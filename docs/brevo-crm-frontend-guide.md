@@ -348,3 +348,27 @@ campaign recipient target. The starter subject is the Campaign name only as a
 provider-required deterministic placeholder; final subject/content, preview,
 test, scheduling, and sending remain in Brevo. Angular never sends or
 schedules the campaign.
+
+## Campaign lifecycle workflow
+
+Campaigns default to the **Active** view. Staff can switch to **Archived**;
+the selection is reflected in the URL and requests the backend lifecycle filter.
+Archive is reversible and removes a Campaign from Active Campaigns while
+preserving its workflow status, recipient snapshot, preparation/history, and
+Brevo resources. Archived Campaigns remain open for historical review.
+
+On Campaign Detail, the backend capability flags control lifecycle actions:
+**Archive campaign**, **Restore campaign**, and **Delete draft**. Delete draft
+is shown only when the backend says the Campaign is a genuinely unused draft;
+the frontend does not recreate the historical-evidence rule. Prepared or
+historical Campaigns are archived rather than deleted. Archive, restore, and
+delete use confirmations and prevent duplicate submission.
+
+An archived Campaign clearly shows both concepts—for example, workflow
+**Ready in Brevo** and lifecycle **Archived**. Preparation, recipient counts,
+snapshot rows, reconciliation information, and Review person navigation remain
+visible, while Prepare recipients, Prepare in Brevo, and Retry Brevo preparation
+are hidden. Staff restore the Campaign before continuing workflow operations.
+Viewer staff remain read-only; Admin and Manager actions are still constrained
+by the backend capability flags. Lifecycle conflicts refresh the Campaign and
+show safe staff-facing error text.

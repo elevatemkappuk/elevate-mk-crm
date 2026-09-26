@@ -9,6 +9,8 @@ export type CampaignStatus =
   | 'PROVIDER_FAILED'
   | 'NO_READY_RECIPIENTS';
 
+export type CampaignLifecycle = 'active' | 'archived' | 'all';
+
 export type CampaignPreparationStatus =
   | 'PREPARING'
   | 'SNAPSHOT_READY'
@@ -58,6 +60,12 @@ export interface Campaign {
   created_by: number;
   created_at: string;
   updated_at: string;
+  archived_at: string | null;
+  archived_by: number | null;
+  is_archived: boolean;
+  can_archive: boolean;
+  can_restore: boolean;
+  can_delete: boolean;
   current_preparation: CampaignPreparation | null;
 }
 

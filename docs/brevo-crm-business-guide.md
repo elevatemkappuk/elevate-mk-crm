@@ -361,3 +361,12 @@ normalization and a stronger explicit administrative identity-repair workflow
 remain separate future work. See the [Campaign V1 foundation](../../elevate-mk-api/docs/campaign-v1-foundation.md)
 and [technical integration guide](../../elevate-mk-api/docs/brevo-crm-integration.md)
 for the authoritative state and provider contracts.
+
+Campaign lifecycle is separate from workflow status. Staff normally work from
+Active Campaigns, can archive a Campaign for reversible historical review, and
+can restore it later without changing its status or evidence. Archived
+Campaigns retain recipient/preparation history and Brevo resources; archiving
+never deletes provider data. Only an unused draft may be permanently deleted,
+according to the backend's historical-evidence checks. Prepared or historical
+Campaigns must be archived instead. CRM Viewers remain read-only, while Admins
+and Managers see lifecycle actions only when the backend permits them.

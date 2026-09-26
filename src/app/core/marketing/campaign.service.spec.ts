@@ -19,8 +19,8 @@ describe('CampaignService', () => {
 
   it('uses the Campaign API endpoints and wire-format payloads', () => {
     const selection = { q: 'mentor', relationship: [], location: [], industry: [], career_stage: [], interest: [], skill: [], tag: [] };
-    service.list().subscribe();
-    http.expectOne(`${base}/marketing/campaigns/`).flush({ count: 0, next: null, previous: null, results: [] });
+    service.list('active').subscribe();
+    http.expectOne(`${base}/marketing/campaigns/?lifecycle=active`).flush({ count: 0, next: null, previous: null, results: [] });
     service.create({ name: 'Spring Campaign', audience_selection: selection, audience_ordering: 'last_name' }).subscribe();
     const create = http.expectOne(`${base}/marketing/campaigns/`);
     expect(create.request.method).toBe('POST');
@@ -38,5 +38,19 @@ describe('CampaignService', () => {
     const provider = http.expectOne(`${base}/marketing/campaigns/4/prepare-provider/`);
     expect(provider.request.method).toBe('POST');
     provider.flush({});
+    service.list('archived').subscribe();
+    http.expectOne(`${base}/marketing/campaigns/?lifecycle=archived`).flush({ count: 0, next: null, previous: null, results: [] });
+    service.archiveCampaign(4).subscribe();
+    const archive = http.expectOne(`${base}/marketing/campaigns/4/archive/`);
+    expect(archive.request.method).toBe('POST');
+    archive.flush({});
+    service.restoreCampaign(4).subscribe();
+    const restore = http.expectOne(`${base}/marketing/campaigns/4/restore/`);
+    expect(restore.request.method).toBe('POST');
+    restore.flush({});
+    service.deleteCampaign(4).subscribe();
+    const remove = http.expectOne(`${base}/marketing/campaigns/4/`);
+    expect(remove.request.method).toBe('DELETE');
+    remove.flush(null);
   });
 });

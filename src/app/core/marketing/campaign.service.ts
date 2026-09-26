@@ -6,6 +6,7 @@ import { API_CONFIG } from '../http/api-config';
 import {
   Campaign,
   CampaignCreateRequest,
+  CampaignLifecycle,
   CampaignPage,
   CampaignRecipientPage,
 } from './campaign.types';
@@ -16,7 +17,9 @@ export class CampaignService {
   private readonly apiConfig = inject(API_CONFIG);
   private readonly baseUrl = `${this.apiConfig.apiBaseUrl}/marketing/campaigns`;
 
-  list(): Observable<CampaignPage> { return this.http.get<CampaignPage>(`${this.baseUrl}/`); }
+  list(lifecycle: CampaignLifecycle = 'active'): Observable<CampaignPage> {
+    return this.http.get<CampaignPage>(`${this.baseUrl}/`, { params: { lifecycle } });
+  }
   get(id: number): Observable<Campaign> { return this.http.get<Campaign>(`${this.baseUrl}/${id}/`); }
   create(request: CampaignCreateRequest): Observable<Campaign> { return this.http.post<Campaign>(`${this.baseUrl}/`, request); }
   prepare(id: number): Observable<Campaign> { return this.http.post<Campaign>(`${this.baseUrl}/${id}/prepare/`, {}); }
@@ -24,4 +27,7 @@ export class CampaignService {
     return this.http.get<CampaignRecipientPage>(`${this.baseUrl}/${id}/recipients/`, { params: { page, page_size: pageSize } });
   }
   prepareProvider(id: number): Observable<Campaign> { return this.http.post<Campaign>(`${this.baseUrl}/${id}/prepare-provider/`, {}); }
+  archiveCampaign(id: number): Observable<Campaign> { return this.http.post<Campaign>(`${this.baseUrl}/${id}/archive/`, {}); }
+  restoreCampaign(id: number): Observable<Campaign> { return this.http.post<Campaign>(`${this.baseUrl}/${id}/restore/`, {}); }
+  deleteCampaign(id: number): Observable<void> { return this.http.delete<void>(`${this.baseUrl}/${id}/`); }
 }
