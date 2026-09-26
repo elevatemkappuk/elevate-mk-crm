@@ -40,7 +40,7 @@ import { StatusBadgeComponent, StatusBadgeTone } from '../../shared/ui/status-ba
             <p class="next-step">An administrator can reconcile this Brevo connection.</p>
           }
           @if (current.integration.status === 'IDENTITY_CONFLICT') {
-            <p class="next-step"><strong>Next step:</strong> Escalate this record for administrative review.</p>
+            <p class="next-step"><strong>Next step:</strong> {{ identityNextStep(current.integration.reason_code) }}</p>
           }
           @if (current.integration.status === 'NOT_CONNECTED') {
             <p class="next-step">Elevate will not automatically create a Brevo connection from this page.</p>
@@ -117,5 +117,14 @@ export class PersonBrevoIntegrationSectionComponent implements OnInit {
       MEMBERSHIP_FORM: 'Membership form', WEBSITE_SIGNUP: 'Website signup', STAFF_RECORDED: 'Staff recorded',
       HISTORICAL_IMPORT: 'Historical import', MAILCHIMP: 'Mailchimp', BREVO: 'Brevo', OTHER: 'Other',
     }[source] ?? 'Other';
+  }
+
+  identityNextStep(reasonCode: string | null): string {
+    return {
+      BREVO_CRM_EMAIL_MISSING: "Review the person's CRM email before attempting further Brevo reconciliation.",
+      BREVO_EMAIL_IDENTITY_MISMATCH: "Verify the person's current email and the linked Brevo contact before making any identity changes.",
+      BREVO_CONTACT_LINKED_TO_OTHER_PERSON: 'Escalate this record for administrative review.',
+      BREVO_CONTACT_IDENTITY_CONFLICT: 'Escalate this record for administrative review.',
+    }[reasonCode ?? ''] ?? 'Escalate this record for administrative review.';
   }
 }

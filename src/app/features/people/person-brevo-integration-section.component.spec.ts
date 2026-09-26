@@ -51,6 +51,26 @@ describe('PersonBrevoIntegrationSectionComponent', () => {
     expect(text).not.toContain('Reconcile');
   });
 
+  it.each([
+    ['BREVO_CRM_EMAIL_MISSING', 'CRM email required', "Review the person's CRM email before attempting further Brevo reconciliation."],
+    ['BREVO_EMAIL_IDENTITY_MISMATCH', 'CRM and Brevo email identities differ', "Verify the person's current email and the linked Brevo contact before making any identity changes."],
+    ['BREVO_CONTACT_LINKED_TO_OTHER_PERSON', 'Brevo contact is linked elsewhere', 'Escalate this record for administrative review.'],
+    ['BREVO_CONTACT_IDENTITY_CONFLICT', 'Brevo contact identity needs review', 'Escalate this record for administrative review.'],
+  ])('renders actionable identity guidance for %s without identities or repair controls', (reasonCode, title, nextStep) => {
+    http.expectOne(`${base}/people/30/brevo-integration/`).flush({
+      ...response('IDENTITY_CONFLICT'),
+      integration: { status: 'IDENTITY_CONFLICT', reason_code: reasonCode, title, explanation: title === 'CRM and Brevo email identities differ' ? "The Brevo contact linked to this person uses a different email identity from the person's current CRM email." : 'Safe identity explanation.', can_reconcile: false },
+    });
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain(title);
+    expect(text).toContain(nextStep);
+    expect(fixture.nativeElement.querySelectorAll('button').length).toBe(0);
+    expect(text).not.toContain('example.com');
+    expect(text).not.toContain('42');
+    expect(text).not.toContain('Reconcile');
+  });
+
   it('shows administrator missing-contact guidance but no reconciliation button', () => {
     http.expectOne(`${base}/people/30/brevo-integration/`).flush(response('CONTACT_MISSING', true));
     fixture.detectChanges();
