@@ -22,7 +22,8 @@ The current integration can:
 - process synchronization durably through a backend worker rather than making
   staff wait for a provider request in the browser.
 
-It does not currently provide campaigns, bulk sync, segments, journeys,
+Campaign V1 is available for CRM audience review and preparation of an
+editable Brevo draft. Bulk sync, segments, journeys,
 engagement analytics, or an Angular “sync now” action; the Staff CRM provides
 a read-only audience eligibility preview based on People criteria.
 
@@ -41,8 +42,8 @@ no outbound echo/resubscribe job was created.
 
 Staging uses dedicated Brevo resources/configuration within the Brevo account,
 not a separate Brevo environment. Its current marketing list is
-`ELEVATE STAGING | Marketing Contacts` (List ID `4`). No credentials are
-stored in this guide.
+`ELEVATE STAGING | Marketing Contacts`. No credentials are stored in this
+guide.
 
 ## Why the boundary matters
 
@@ -200,7 +201,9 @@ not treated as proof that Brevo was involved.
 | Review current relationship or membership | Use the Person Overview/Membership sections |
 | Investigate provider synchronization | Ask an authorized technical/operator owner to inspect backend jobs and references |
 | Report an unsubscribe | Use the normal Brevo unsubscribe mechanism; the webhook carries it into CRM |
-| Change campaign content or audience | Not available in this integration yet |
+| Select/review campaign audience and CRM eligibility | Use Audience Preview and Campaign review |
+| Prepare recipients or prepare/retry in Brevo | Admin/Manager Campaign actions |
+| Change campaign content, preview/test, schedule, or send | Use Brevo after the draft is prepared |
 
 Do not edit a provider contact as a substitute for correcting the CRM Person.
 Do not create a second Person because a provider record appears unfamiliar.
@@ -257,7 +260,9 @@ separate concern from the operational CRM roles.
 | CRM audience selection and EMAIL eligibility preview | Implemented as a read-only backend API and Staff CRM page |
 | Transactional Brevo email | Existing separate infrastructure, unchanged |
 | Mailchimp | Frozen rollback/reference implementation, not active automatic provider |
-| Bulk sync, campaigns, segments, journeys | Not implemented |
+| Campaign V1 audience snapshot and Brevo draft preparation | Implemented for Admin/Manager; Viewer is read-only |
+| Brevo content, preview/test, scheduling, and sending | Brevo-owned; not performed by Elevate |
+| Bulk sync, saved audiences, segments, journeys | Not implemented |
 | Opens, clicks, delivery analytics, general webhooks | Not implemented |
 
 ## Planned direction and limits
@@ -303,3 +308,56 @@ The current rules remain:
 5. Exact identity matching is required; no fuzzy/name/phone guessing.
 6. Only the approved minimal profile is synchronized.
 7. Transactional Brevo and frozen Mailchimp behavior are separate.
+
+## Campaign V1: what staff own and what Brevo owns
+
+The operating boundary is simple: Elevate owns **WHO** and Brevo owns
+**WHAT/WHEN**. Staff use Audience Preview to review People criteria and CRM
+EMAIL eligibility, name a Campaign, prepare an immutable recipient snapshot,
+and—when appropriate—prepare recipients in Brevo. The preparation re-checks
+current consent and creates or reuses a dedicated Brevo recipient list and an
+editable draft. The broad marketing list is never the campaign target.
+
+After the Campaign is **Ready in Brevo**, staff edit the starter template,
+choose the final subject and content, preview/test, schedule, and send in
+Brevo. Elevate does not send or schedule the campaign and does not become an
+email-content editor. The initial Campaign name is only a deterministic,
+provider-required editable subject placeholder.
+
+Campaign statuses distinguish CRM evidence from provider readiness. A
+`SNAPSHOT_READY` campaign has an immutable CRM snapshot but is not yet ready in
+Brevo. `PREPARED` means all included recipients are provider-ready and a draft
+exists or was reused. `RECONCILIATION_REQUIRED` blocks the whole V1 campaign;
+it is not permission to send the safe subset. A retry preserves the snapshot,
+dedicated list, and completed safe work, then re-evaluates unresolved recipients
+and current consent.
+
+## When a Campaign needs attention
+
+The Campaign page may show safe, staff-facing reasons such as:
+
+- Brevo currently restricts marketing email. Elevate will not automatically
+  unblock or resubscribe the contact.
+- The CRM reference points to a provider contact that cannot be found. Review
+  the underlying integration state; do not guess or create a replacement link.
+- CRM and Brevo email identities differ. Verify the current CRM email and the
+  linked provider contact before any identity change.
+- A current CRM email is missing, or the contact is linked to another Person.
+  Review with the integration owner and never force-merge or relink.
+
+The Person Overview Brevo Integration card is a read-only inspection. It does
+not repair, revoke, relink, unblock, resubscribe, or expose provider IDs/raw
+payloads. Staff should resolve the underlying issue through an existing,
+authorized CRM/provider workflow, then return to the Campaign and retry only
+when the backend reports that retry is supported. If no supported repair
+workflow exists, escalate rather than inventing one.
+
+## Current limitations and future work
+
+Campaign V1 does not include saved audiences, partial campaign readiness,
+automatic provider repair, post-preparation consent removal from the mutable
+provider list, list cleanup, or campaign automation. Country-aware E.164
+normalization and a stronger explicit administrative identity-repair workflow
+remain separate future work. See the [Campaign V1 foundation](../../elevate-mk-api/docs/campaign-v1-foundation.md)
+and [technical integration guide](../../elevate-mk-api/docs/brevo-crm-integration.md)
+for the authoritative state and provider contracts.
