@@ -13,15 +13,15 @@ marketing preference. It does not call Brevo directly. Elevate's Django API
 remains authoritative for Person identity, permissions, consent state, audit
 history, and the decision to enqueue Brevo synchronization work.
 
-People is the canonical CRM directory. Audience Preview is a temporary,
-read-only marketing workflow built on People criteria: it evaluates current
+People is the canonical CRM directory. Audience Preview is the canonical
+audience-selection workflow built on People criteria: it evaluates current
 eligibility and does not duplicate or store People or create provider data.
 
-The frontend provides a read-only audience preview but does not provide
-campaign controls, bulk
+The frontend provides the read-only Audience Preview and Campaign V1 review
+workflow. It does not provide
 sync, provider contact editing, webhook administration, or a “Sync to Brevo”
 button. A successful UI save records CRM state; any Brevo work is handled
-asynchronously by the backend worker described in the
+by the backend services described in the
 [technical integration guide](../../elevate-mk-api/docs/brevo-crm-integration.md).
 
 ## Actual Angular architecture
@@ -39,6 +39,7 @@ The marketing preference section is mounted inside the Person Overview by
 ```text
 PersonDetailPageComponent
 `-- PersonMarketingPreferenceSectionComponent
+`-- PersonBrevoIntegrationSectionComponent
 ```
 
 The component reuses the shared `CrmSectionCardComponent` and
@@ -56,11 +57,22 @@ The API boundary is kept in `PeopleService` and typed in
   staff source for this UI path and remains responsible for authorization and
   synchronization-job creation.
 
-The current frontend source-label map includes the common CRM sources and
-falls back to `Other` for a source value it does not have a dedicated label
-for. The backend's current Brevo-originated source is therefore displayed by
-the existing fallback until the frontend type/label map is extended in a
-separate UI change. This does not change the stored backend source.
+The Person Overview also performs a separate read-only inspection through:
+
+```text
+GET /api/v1/people/{person_id}/brevo-integration/
+```
+
+The Brevo Integration card displays the current provider status, safe
+explanation, and the CRM EMAIL marketing preference. It never exposes Brevo
+contact IDs, external reference IDs, raw provider errors, or sync-job
+terminology. A failed inspection leaves the rest of Person Overview usable.
+
+The frontend source-label map includes the implemented CRM and provider
+sources. Staff-recorded preferences display as `Staff recorded`,
+Brevo-originated unsubscribes display as `Brevo`, and unknown generic source
+values use the `Other` fallback. This is presentation of the backend source;
+it does not change stored preference provenance.
 
 ## Location and display
 
@@ -167,6 +179,28 @@ resubscribe a contact that Brevo marks as unsubscribed, cleaned, or otherwise
 protected. The frontend should communicate API outcomes as CRM/provider
 state; it must not offer a control that bypasses those protections.
 
+Campaign reconciliation follows a deliberate review path:
+
+```text
+Campaign recipient needing attention
+    -> Review person
+    -> Person Overview / Brevo Integration
+    -> resolve the underlying issue through the approved workflow
+    -> Back to Campaign
+    -> retry preparation when appropriate
+```
+
+`RESTRICTED` is review-only: the frontend does not offer unblock or
+resubscribe actions. `CONTACT_MISSING` may show that an administrator can
+reconcile the connection when the backend authorizes that guidance, but the
+repair action is reserved for Phase 3C.3. `IDENTITY_CONFLICT` remains a
+manual administrative escalation in Campaign V1. Historical Campaign reason
+codes are not rewritten by this current Person inspection.
+
+Campaign navigation passes only a validated numeric Campaign ID as the
+internal `campaign` query parameter. Person Overview shows `Back to Campaign`
+only for that validated context; normal Person navigation does not show it.
+
 ## Loading, errors, and responsive behavior
 
 Person Overview uses the existing page-level loading, not-found, and error
@@ -211,7 +245,9 @@ provider HTTP client, or hand-built consent vocabulary in a feature component.
 | Provider contact creation/update | Not a UI action | Backend Brevo worker |
 | Brevo sync progress/result | Not shown in Person Overview | Durable backend job/admin inspection |
 | Webhook receipt/replay handling | Not a UI action | Django webhook service |
-| Bulk sync, campaigns, segments, journeys | Not implemented | Future backend/product work |
+| Campaign V1 audience review and preparation actions | Implemented for Admin/Manager; Viewer is read-only | Django Campaign API + backend orchestration |
+| Brevo campaign design, sending, scheduling | Not an Elevate UI action | Brevo |
+| Bulk sync, saved audiences, segments, journeys | Not implemented | Future backend/product work |
 
 ## Future frontend direction
 
@@ -231,9 +267,84 @@ read-only, URL-backed preview. Staff can open it from navigation or from the
 People directory; the latter preserves compatible filters while resetting the
 directory page and active/archived state. The page shows backend-selected,
 eligible, and excluded counts, exclusion reasons, result views, and backend
-pagination. It has no consent-editing, provider-contact, or synchronization
-controls, and it never calls Brevo directly.
+pagination. CRM Admins and Managers can continue from an eligible preview to
+`/marketing/campaigns`, supply a campaign name, and store the normalized
+criteria as a Campaign. Campaign history is available at `/marketing/campaigns`
+and review is available at `/marketing/campaigns/:id`; the Campaign detail page
+can perform CRM-only **Prepare recipients**, re-checking current consent and
+showing backend-authoritative snapshot counts and decisions. Viewers remain
+read-only. Angular never calls Brevo directly. Admins and Managers may
+deliberately choose **Prepare in Brevo** from `SNAPSHOT_READY`; the same action
+is available as **Retry Brevo preparation** after a provider failure or
+`RECONCILIATION_REQUIRED`. **Needs attention** is a read-only review of the
+included snapshot recipients that still need a safe Brevo identity/provider
+resolution. Staff must resolve the underlying issue through supported
+CRM/Brevo workflows; Angular does not repair, unblock, resubscribe, merge, or
+relink contacts. The deliberate retry re-checks unresolved recipients,
+preserves completed preparation work, and keeps the whole campaign blocked
+until every included recipient is safe. Restrictive Brevo states are never
+automatically cleared. The UI refreshes from the backend and does not edit
+consent, recipient decisions, or provider contact state.
 
-Campaigns, saved segments, engagement analytics, bulk preference editing,
-direct Mailchimp/Brevo calls from Angular, and automated journeys are not
-implemented by this guide.
+Provider-facing staff labels are **Recipients ready**, **Preparing in Brevo**,
+**Ready in Brevo**, **Brevo preparation failed**, **Needs attention**, and **No
+recipients ready**. A prepared campaign may show a backend-supplied editor URL;
+when it is unavailable, the UI does not guess one and instead directs staff to
+open Brevo Campaigns. Brevo remains responsible for email design, final
+subject/content, preview/test, scheduling, and sending.
+
+Saved segments, engagement analytics, bulk preference editing, direct
+Mailchimp/Brevo calls from Angular, automatic reconciliation repair, and
+automated journeys are not implemented by this guide.
+
+## Campaign V1 staff workflow
+
+Campaign V1 is the frontend expression of the CRM-owned **WHO** / Brevo-owned
+**WHAT/WHEN** boundary. Staff select and preview an audience in
+`/marketing/audience-preview`; Admins and Managers can continue to
+`/marketing/campaigns`, name the Campaign, and review the resulting immutable
+snapshot at `/marketing/campaigns/:id`.
+
+The Campaign page supports **Prepare recipients**, then **Prepare in Brevo**
+or **Retry Brevo preparation** when the backend says that retry is supported.
+The UI displays selected/included/excluded counts, provider-ready and issue
+counts, immutable recipient decisions, and safe reconciliation reasons. A
+`RECONCILIATION_REQUIRED` campaign is intentionally blocked as a whole in V1;
+completed work is preserved by backend retry, but the ready subset is not a
+sendable partial campaign.
+
+The read-only “Recipients needing attention” section may show the snapshot
+Person name and safe staff guidance. It must not expose provider contact IDs,
+external-reference IDs, raw provider errors, or provider payloads. The
+**Review person** link carries only a validated numeric Campaign ID. Person
+Overview can show the live read-only Brevo Integration card and a safe **Back to
+Campaign** link.
+
+Safe live inspection reasons are presented with human-readable wording:
+
+- `BREVO_CONTACT_RESTRICTED`: Brevo currently restricts marketing email;
+  Elevate will not automatically unblock or resubscribe the contact.
+- `BREVO_CONTACT_NOT_FOUND_FOR_EXISTING_REFERENCE`: the CRM reference points
+  to a provider contact that cannot be found and needs review.
+- `BREVO_EMAIL_IDENTITY_MISMATCH`: the linked Brevo contact uses a different
+  email identity from the current CRM email; verify both identities before any
+  change.
+- `BREVO_CRM_EMAIL_MISSING`: review the current CRM email before reconciliation.
+- `BREVO_CONTACT_LINKED_TO_OTHER_PERSON`: escalate for administrative review;
+  never force-merge or relink from the Campaign page.
+- `BREVO_CONTACT_IDENTITY_CONFLICT`: use the generic safe identity-review
+  guidance when no more specific explanation is safe.
+
+The Person Brevo Integration endpoint is a strictly read-only GET. The card
+does not add repair, revoke, relink, unblock, resubscribe, or sync controls.
+After an administrator resolves an issue through an actually supported
+workflow, return to the Campaign and use the backend-supported retry. If no
+repair workflow exists, the UI directs staff to the integration owner rather
+than inventing an action.
+
+Campaign provider preparation creates or reuses one dedicated Brevo list and
+an editable starter-template draft. The broad marketing list is never the
+campaign recipient target. The starter subject is the Campaign name only as a
+provider-required deterministic placeholder; final subject/content, preview,
+test, scheduling, and sending remain in Brevo. Angular never sends or
+schedules the campaign.

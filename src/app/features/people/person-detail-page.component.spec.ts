@@ -268,6 +268,14 @@ describe('PersonDetailPageComponent', () => {
 
   afterEach(() => {
     try {
+      for (const request of httpTesting.match((candidate) => candidate.url.includes('/brevo-integration/'))) {
+        if (request.cancelled) continue;
+        request.flush({
+          provider: 'BREVO',
+          marketing_preference: { channel: 'EMAIL', state: 'UNKNOWN', source: null, recorded_at: null, recorded_by_id: null },
+          integration: { status: 'NOT_CONNECTED', reason_code: 'BREVO_NO_ACTIVE_REFERENCE', title: 'Not connected to Brevo', explanation: 'No active connection.', can_reconcile: false },
+        });
+      }
       httpTesting.verify();
     } finally {
       TestBed.resetTestingModule();
@@ -2673,5 +2681,36 @@ describe('PersonDetailPageComponent', () => {
     httpTesting.expectNone(`${apiBaseUrl}/interests/`);
     httpTesting.expectNone(`${apiBaseUrl}/people/12/tags/`);
     httpTesting.expectNone(`${apiBaseUrl}/tags/`);
+  });
+
+  it('shows an internal Back to Campaign link for a valid campaign context', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11?campaign=2');
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/brevo-integration/`).flush({
+      provider: 'BREVO',
+      marketing_preference: { channel: 'EMAIL', state: 'UNKNOWN', source: null, recorded_at: null, recorded_by_id: null },
+      integration: { status: 'NOT_CONNECTED', reason_code: 'BREVO_NO_ACTIVE_REFERENCE', title: 'Not connected to Brevo', explanation: 'No active connection.', can_reconcile: false },
+    });
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    const link = Array.from(harness.routeNativeElement?.querySelectorAll('a') ?? []).find((anchor) => anchor.textContent?.includes('Back to Campaign')) as HTMLAnchorElement | undefined;
+    expect(link?.getAttribute('href')).toBe('/marketing/campaigns/2');
+  });
+
+  it('ignores an invalid campaign return parameter', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11?campaign=not-a-campaign');
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/brevo-integration/`).flush({
+      provider: 'BREVO',
+      marketing_preference: { channel: 'EMAIL', state: 'UNKNOWN', source: null, recorded_at: null, recorded_by_id: null },
+      integration: { status: 'NOT_CONNECTED', reason_code: 'BREVO_NO_ACTIVE_REFERENCE', title: 'Not connected to Brevo', explanation: 'No active connection.', can_reconcile: false },
+    });
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    expect(harness.routeNativeElement?.textContent).not.toContain('Back to Campaign');
   });
 });

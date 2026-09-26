@@ -96,6 +96,7 @@ export class StaffCrmShellPageComponent {
       label: 'Audience Preview', path: '/marketing/audience-preview', group: 'Marketing',
       icon: 'M4 5h16M4 12h16M4 19h16M8 5v14M16 5v14',
     }];
+    items.push({ label: 'Campaigns', path: '/marketing/campaigns', group: 'Marketing', icon: 'M4 5h16v14H4zM8 9h8M8 13h5' });
     if (this.auth.isCrmAdmin()) {
       items.push({ label: 'Historical Imports', path: '/imports', group: 'Management', icon: 'M12 16V3m-5 5 5-5 5 5M4 14v7h16v-7' });
       items.push({ label: 'Administration', path: '/administration', group: 'Management', icon: 'm9 3-1 3-3 1-2 5 2 5 3 1 1 3h6l1-3 3-1 2-5-2-5-3-1-1-3ZM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8' });

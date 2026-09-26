@@ -102,6 +102,26 @@ export interface MarketingPreferenceWriteResponse {
   changed: boolean;
 }
 
+export type BrevoIntegrationStatus =
+  | 'CONNECTED'
+  | 'RESTRICTED'
+  | 'CONTACT_MISSING'
+  | 'IDENTITY_CONFLICT'
+  | 'NOT_CONNECTED'
+  | 'UNKNOWN';
+
+export interface PersonBrevoIntegration {
+  provider: 'BREVO';
+  marketing_preference: MarketingPreference;
+  integration: {
+    status: BrevoIntegrationStatus;
+    reason_code: string | null;
+    title: string;
+    explanation: string;
+    can_reconcile: boolean;
+  };
+}
+
 export interface InternalNoteUserSummary {
   id: number;
   email: string;

@@ -15,6 +15,7 @@ import {
   withAudiencePreviewChange,
 } from '../../core/marketing/audience-preview-query';
 import { AudiencePreviewService } from '../../core/marketing/audience-preview.service';
+import { CampaignService } from '../../core/marketing/campaign.service';
 import {
   AudienceExclusionReason,
   AudiencePreviewPerson,
@@ -24,6 +25,9 @@ import {
 } from '../../core/marketing/audience.types';
 import { PeopleDirectoryQuery, PeopleOrdering, PeoplePageSize } from '../../core/people/people.types';
 import { PeopleDirectoryFiltersComponent } from '../people/people-directory-filters.component';
+import { AuthService } from '../../core/auth/auth.service';
+import { canManagePeople } from '../../core/auth/auth-access';
+import { CampaignCreateDialogComponent } from './campaign-create-dialog.component';
 import { CrmSectionCardComponent } from '../../shared/ui/crm-section-card.component';
 import { StatusBadgeComponent, StatusBadgeTone } from '../../shared/ui/status-badge.component';
 
@@ -55,7 +59,7 @@ const EXCLUSION_EXPLANATIONS: Record<AudienceExclusionReason, string> = {
 
 @Component({
   selector: 'app-audience-preview-page',
-  imports: [CommonModule, RouterLink, PeopleDirectoryFiltersComponent, CrmSectionCardComponent, StatusBadgeComponent],
+  imports: [CommonModule, RouterLink, PeopleDirectoryFiltersComponent, CrmSectionCardComponent, StatusBadgeComponent, CampaignCreateDialogComponent],
   template: `
     <section class="audience-page">
       <a routerLink="/people" class="back-link">Back to People</a>
@@ -110,6 +114,13 @@ const EXCLUSION_EXPLANATIONS: Record<AudienceExclusionReason, string> = {
         </section>
 
         <p class="funnel-summary">{{ preview.eligible_count }} of {{ preview.selected_count }} selected People can currently receive marketing email.</p>
+
+        @if (canCreateCampaign()) {
+          <div class="campaign-action">
+            <div><strong>Ready to continue?</strong><span>Use these criteria as the campaign audience. Eligibility will be re-checked during preparation.</span></div>
+            <button type="button" class="crm-button crm-button--primary" (click)="createDialogOpen.set(true)">Continue to Campaign</button>
+          </div>
+        }
 
         @if (preview.excluded_count > 0) {
           <app-crm-section-card title="Exclusion breakdown">
@@ -194,6 +205,17 @@ const EXCLUSION_EXPLANATIONS: Record<AudienceExclusionReason, string> = {
         }
       </section>
     </section>
+    <app-campaign-create-dialog
+      [open]="createDialogOpen()"
+      [selection]="currentSelection()"
+      [selectedCount]="response()?.selected_count || 0"
+      [eligibleCount]="response()?.eligible_count || 0"
+      [excludedCount]="response()?.excluded_count || 0"
+      [busy]="campaignSubmitting()"
+      [errorMessage]="campaignError()"
+      (cancelled)="createDialogOpen.set(false)"
+      (submitted)="createCampaign($event)"
+    />
   `,
   styles: `
     :host { display: block; }
@@ -216,6 +238,7 @@ const EXCLUSION_EXPLANATIONS: Record<AudienceExclusionReason, string> = {
     .summary-value { color: var(--crm-text-strong); font-size: 2rem; font-weight: 700; line-height: 1; }
     .summary-card p:last-child { color: var(--crm-text-muted); font-size: var(--crm-font-sm); line-height: 1.4; }
     .funnel-summary { margin: calc(var(--crm-space-4) * -0.35) 0 0; color: var(--crm-text-secondary); font-weight: 600; }
+    .campaign-action { display:flex; justify-content:space-between; align-items:center; gap:1rem; padding:1rem 1.1rem; border:1px solid var(--crm-shell-accent); border-radius:var(--crm-radius-lg); background:color-mix(in srgb, var(--crm-shell-accent) 12%, var(--crm-surface)); } .campaign-action div { display:grid; gap:.25rem; } .campaign-action strong { color:var(--crm-text-strong); } .campaign-action span { color:var(--crm-text-secondary); font-size:var(--crm-font-sm); }
     .breakdown { display: grid; gap: .6rem; margin: 0; max-width: 28rem; }
     .breakdown div { display: flex; justify-content: space-between; gap: 1rem; padding-bottom: .5rem; border-bottom: 1px solid var(--crm-border); }
     .breakdown dt { color: var(--crm-text-secondary); }
@@ -248,6 +271,8 @@ export class AudiencePreviewPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly service = inject(AudiencePreviewService);
+  private readonly campaignService = inject(CampaignService);
+  private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly pageSizes = PAGE_SIZES;
@@ -259,6 +284,10 @@ export class AudiencePreviewPageComponent {
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
   readonly directoryQuery = computed<PeopleDirectoryQuery>(() => ({ ...this.queryState(), record_state: 'active' }));
+  readonly createDialogOpen = signal(false);
+  readonly campaignSubmitting = signal(false);
+  readonly campaignError = signal<string | null>(null);
+  readonly currentSelection = computed(() => audienceSelection(this.queryState()));
 
   constructor() {
     this.route.queryParamMap.pipe(
@@ -316,6 +345,20 @@ export class AudiencePreviewPageComponent {
     this.service.preview(this.requestFor(this.queryState())).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (response) => { this.response.set(response); this.loading.set(false); },
       error: (error: HttpErrorResponse) => { this.loading.set(false); this.errorMessage.set(error.status === 403 ? 'You do not have permission to preview audiences.' : 'The audience preview could not be loaded right now. Try again.'); },
+    });
+  }
+
+  canCreateCampaign(): boolean {
+    return canManagePeople(this.auth.currentUser()) && (this.response()?.eligible_count ?? 0) > 0;
+  }
+
+  createCampaign(name: string): void {
+    if (this.campaignSubmitting() || !name.trim()) return;
+    this.campaignSubmitting.set(true);
+    this.campaignError.set(null);
+    this.campaignService.create({ name: name.trim(), audience_selection: this.currentSelection(), audience_ordering: this.queryState().ordering }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (campaign) => { this.campaignSubmitting.set(false); this.createDialogOpen.set(false); void this.router.navigate(['/marketing/campaigns', campaign.id]); },
+      error: (error: HttpErrorResponse) => { this.campaignSubmitting.set(false); this.campaignError.set(error.status === 400 ? 'Enter a valid campaign name and audience.' : 'The campaign could not be created right now. Try again.'); },
     });
   }
 

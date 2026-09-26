@@ -35,6 +35,14 @@ export const routes: Routes = [
         loadComponent: () => import('./features/marketing/audience-preview-page.component').then((module) => module.AudiencePreviewPageComponent),
       },
       {
+        path: 'marketing/campaigns',
+        loadComponent: () => import('./features/marketing/campaigns-page.component').then((module) => module.CampaignsPageComponent),
+      },
+      {
+        path: 'marketing/campaigns/:id',
+        loadComponent: () => import('./features/marketing/campaign-detail-page.component').then((module) => module.CampaignDetailPageComponent),
+      },
+      {
         path: 'people',
         loadComponent: () => import('./features/people/people-page.component').then((module) => module.PeoplePageComponent),
       },

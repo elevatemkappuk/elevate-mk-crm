@@ -36,6 +36,7 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 import { PersonAuditHistorySectionComponent } from './person-audit-history-section.component';
 import { PersonMarketingPreferenceSectionComponent } from './person-marketing-preference-section.component';
+import { PersonBrevoIntegrationSectionComponent } from './person-brevo-integration-section.component';
 import { PersonNotesSectionComponent } from './person-notes-section.component';
 import { PersonProfileHeaderComponent } from './person-profile-header.component';
 
@@ -68,6 +69,7 @@ interface AssignSkillFormValue {
     StatusBadgeComponent,
     PersonAuditHistorySectionComponent,
     PersonMarketingPreferenceSectionComponent,
+    PersonBrevoIntegrationSectionComponent,
     PersonNotesSectionComponent,
     PersonProfileHeaderComponent,
     CrmDrawerComponent,
@@ -76,6 +78,9 @@ interface AssignSkillFormValue {
   template: `
     <section class="detail-page">
       <a routerLink="/people" class="back-link">Back to People</a>
+      @if (returnCampaignId(); as campaignId) {
+        <a [routerLink]="['/marketing/campaigns', campaignId]" class="back-link">Back to Campaign</a>
+      }
 
       @if (loading()) {
         <app-state-message
@@ -124,6 +129,10 @@ interface AssignSkillFormValue {
               [canEdit]="canManagePeople() && !person()!.archived_at"
               (preferenceChanged)="marketingPreferenceChanged($event)"
             />
+          }
+
+          @if (person(); as currentPerson) {
+            <app-person-brevo-integration-section [personId]="currentPerson.id" />
           }
 
           <app-crm-section-card title="Membership">
@@ -708,6 +717,7 @@ export class PersonDetailPageComponent {
   ]);
   readonly selectedTab = computed(() => this.profileTabs().some(tab => tab.id === this.activeTab()) ? this.activeTab() : 'overview');
   readonly initials = computed(() => ((this.person()?.first_name?.[0] ?? '') + (this.person()?.last_name?.[0] ?? '')).toUpperCase());
+  readonly returnCampaignId = signal<number | null>(null);
 
   personSaved(person: PersonListItem): void {
     this.overview.update(overview => overview ? { ...overview, person } : overview);
@@ -1002,6 +1012,9 @@ export class PersonDetailPageComponent {
 
   constructor() {
     this.route.fragment.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(fragment => this.activeTab.set(fragment || 'overview'));
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
+      this.returnCampaignId.set(parseCampaignReturnId(params.get('campaign')));
+    });
     this.route.paramMap
       .pipe(
         map((params) => Number(params.get('id'))),
@@ -1834,6 +1847,14 @@ export class PersonDetailPageComponent {
     this.errorMessage.set(null);
     this.notFound.set(true);
   }
+}
+
+function parseCampaignReturnId(value: string | null): number | null {
+  if (!value || !/^[1-9]\d*$/u.test(value)) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 const CAREER_STAGE_OPTIONS: ReadonlyArray<{ value: ProfessionalProfileCareerStage; label: string }> = [
