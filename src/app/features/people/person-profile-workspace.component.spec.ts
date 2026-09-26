@@ -30,6 +30,7 @@ describe('Person profile workspace', () => {
   let service: {
     getPersonOverview: ReturnType<typeof vi.fn>; getPersonNotes: ReturnType<typeof vi.fn>;
     getPersonAuditHistory: ReturnType<typeof vi.fn>; getIndustries: ReturnType<typeof vi.fn>;
+    getPersonBrevoIntegration: ReturnType<typeof vi.fn>;
     updatePerson: ReturnType<typeof vi.fn>; updateProfessionalProfile: ReturnType<typeof vi.fn>;
     archivePerson: ReturnType<typeof vi.fn>; restorePerson: ReturnType<typeof vi.fn>;
   };
@@ -47,6 +48,11 @@ describe('Person profile workspace', () => {
     service = {
       getPersonOverview: vi.fn(() => of(overview)), getPersonNotes: vi.fn(() => of(empty)),
       getPersonAuditHistory: vi.fn(() => of(empty)), getIndustries: vi.fn(() => of([])),
+      getPersonBrevoIntegration: vi.fn(() => of({
+        provider: 'BREVO',
+        marketing_preference: overview.marketing_preference,
+        integration: { status: 'NOT_CONNECTED', reason_code: 'BREVO_NO_ACTIVE_REFERENCE', title: 'Not connected to Brevo', explanation: 'No active Brevo connection is recorded for this person.', can_reconcile: false },
+      })),
       updatePerson: vi.fn(() => update), updateProfessionalProfile: vi.fn(() => of(overview.professional_profile)),
       archivePerson: vi.fn(() => of(undefined)), restorePerson: vi.fn(() => of(undefined)),
     };
