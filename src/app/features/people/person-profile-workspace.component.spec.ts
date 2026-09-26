@@ -159,6 +159,27 @@ describe('Person profile workspace', () => {
     expect(host.querySelector('h1')?.textContent).toBe('Ama Amoah');
   });
 
+  it('shows a mobile-only duplicate warning, preserves edits, and retries narrowly', async () => {
+    const duplicate = {
+      code: 'duplicate_person', severity: 'WARNING', match_reasons: ['MOBILE'],
+      detail: 'Another Person already uses this mobile number.',
+      matches: [{ id: 22, first_name: 'Sofia', last_name: 'Black', archived_at: null }],
+    };
+    service.updatePerson.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 409, error: duplicate })));
+    const host = await render();
+    (host.querySelector('.edit-person') as HTMLElement).click(); await settle();
+    writer().personForm()!.form.controls.mobile.setValue('07911000000');
+    writer().personForm()!.submit(); await settle();
+    expect(host.textContent).toContain('Another person already uses this mobile number');
+    expect(host.textContent).toContain('Sofia Black');
+    expect(host.textContent).not.toContain('This person state changed');
+    expect(writer().personForm()!.form.controls.mobile.value).toBe('07911000000');
+    (host.querySelector('app-person-duplicate-conflict .button-primary') as HTMLElement).click(); await settle();
+    (host.querySelector('app-confirmation-dialog .crm-button--primary') as HTMLElement).click(); await settle();
+    expect(service.updatePerson).toHaveBeenCalledTimes(2);
+    expect(service.updatePerson.mock.calls[1][1]).toMatchObject({ allow_duplicate_mobile: true, mobile: '07911000000' });
+  });
+
   it('moves Professional Profile editing into the shared drawer and refreshes its card after saving', async () => {
     const host = await render();
     const trigger = host.querySelector('[aria-label="Edit professional profile"]') as HTMLButtonElement;
