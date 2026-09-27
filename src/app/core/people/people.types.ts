@@ -119,6 +119,7 @@ export interface PersonBrevoIntegration {
     title: string;
     explanation: string;
     can_reconcile: boolean;
+    provider_profile_url: string | null;
   };
 }
 

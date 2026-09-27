@@ -66,7 +66,10 @@ GET /api/v1/people/{person_id}/brevo-integration/
 The Brevo Integration card displays the current provider status, safe
 explanation, and the CRM EMAIL marketing preference. It never exposes Brevo
 contact IDs, external reference IDs, raw provider errors, or sync-job
-terminology. A failed inspection leaves the rest of Person Overview usable.
+terminology. When the backend supplies an optional safe profile URL, it also
+renders a `View in Brevo ↗` link in a new tab with `noopener noreferrer`; the
+frontend does not construct the URL or expose the provider ID separately. A
+failed inspection leaves the rest of Person Overview usable.
 
 The frontend source-label map includes the implemented CRM and provider
 sources. Staff-recorded preferences display as `Staff recorded`,
