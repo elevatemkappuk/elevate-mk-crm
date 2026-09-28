@@ -37,6 +37,9 @@ describe('CampaignDetailPageComponent', () => {
     http.expectOne(`${base}/marketing/campaigns/4/`).flush(campaign('DRAFT'));
     await harness.fixture.whenStable();
     harness.detectChanges();
+    expect(harness.routeNativeElement?.textContent).toContain('Prepare this Campaign');
+    expect(harness.routeNativeElement?.textContent).toContain("Recipients haven't been prepared yet");
+    expect(harness.routeNativeElement?.textContent).toContain('before preparing the Campaign');
     expect(harness.routeNativeElement?.textContent).not.toContain('Prepare recipients');
   });
 
@@ -47,6 +50,14 @@ describe('CampaignDetailPageComponent', () => {
     http.expectOne(`${base}/marketing/campaigns/4/`).flush(campaign('DRAFT'));
     await harness.fixture.whenStable();
     harness.detectChanges();
+    const workflow = harness.routeNativeElement?.querySelector('.draft-workflow-panel');
+    expect(workflow).not.toBeNull();
+    expect(harness.routeNativeElement?.querySelector('.campaign-summary')).toBeNull();
+    expect(workflow?.textContent).toContain('Prepare this Campaign');
+    expect(workflow?.textContent).toContain('Audience');
+    expect(workflow?.textContent).toContain("Recipients haven't been prepared yet");
+    expect(workflow?.querySelector('button')?.textContent).toContain('Prepare recipients');
+    expect(harness.routeNativeElement?.querySelector('section > button.crm-button--primary')).toBeNull();
     (Array.from(harness.routeNativeElement?.querySelectorAll('button') ?? []).find((button) => button.textContent?.includes('Prepare recipients')) as HTMLButtonElement).click();
     const prepare = http.expectOne(`${base}/marketing/campaigns/4/prepare/`);
     prepare.flush(campaign('SNAPSHOT_READY'));
@@ -110,7 +121,7 @@ describe('CampaignDetailPageComponent', () => {
       audience_selection: { q: 'fran', relationship: ['Member'], location: ['Milton Keynes'], industry: ['Technology'], career_stage: ['Senior'], interest: ['Training'], skill: ['Leadership'], tag: ['Newsletter'] },
     });
     await harness.fixture.whenStable();
-    const summary = harness.routeNativeElement?.querySelector('.campaign-summary');
+    const summary = harness.routeNativeElement?.querySelector('.draft-workflow-panel');
     for (const criterion of ['Search: fran', 'Relationships: Member', 'Locations: Milton Keynes', 'Industries: Technology', 'Career stages: Senior', 'Interests: Training', 'Skills: Leadership', 'Tags: Newsletter']) {
       expect(summary?.textContent).toContain(criterion);
     }
@@ -122,7 +133,7 @@ describe('CampaignDetailPageComponent', () => {
     await harness.navigateByUrl('/marketing/campaigns/4');
     http.expectOne(`${base}/marketing/campaigns/4/`).flush(campaign('DRAFT'));
     await harness.fixture.whenStable();
-    expect(harness.routeNativeElement?.querySelector('.campaign-summary')?.textContent).toContain('All active People');
+    expect(harness.routeNativeElement?.querySelector('.draft-workflow-panel')?.textContent).toContain('All active People');
   });
 
   it('maps failed, reconciliation, no-ready, and recipient reason states safely', async () => {
@@ -232,7 +243,7 @@ describe('CampaignDetailPageComponent', () => {
     const group = harness.routeNativeElement?.querySelector('.lifecycle-actions');
     expect(group?.textContent).toContain('Archive campaign');
     expect(group?.textContent).toContain('Delete draft');
-    expect(harness.routeNativeElement?.querySelector('section > button.crm-button--primary')).not.toBeNull();
+    expect(harness.routeNativeElement?.querySelector('.draft-workflow-panel button.crm-button--primary')).not.toBeNull();
   });
 
   it('presents the saved snapshot with staff-readable copy and accessible table headers', async () => {
