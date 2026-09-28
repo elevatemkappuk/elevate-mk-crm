@@ -3,6 +3,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { Router } from '@angular/router';
+import { vi } from 'vitest';
 
 import { API_CONFIG } from '../../core/http/api-config';
 import { CampaignsPageComponent } from './campaigns-page.component';
@@ -105,6 +107,19 @@ describe('CampaignsPageComponent', () => {
     expect(element.querySelector('.action-cell > .action-group')).not.toBeNull();
     expect(element.textContent).toContain('2 included · 1 excluded');
     expect(element.textContent).not.toContain('Â·');
+  });
+
+  it('opens a Campaign when a non-action row area is clicked or activated', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/marketing/campaigns');
+    flushList([makeCampaign({ name: 'Clickable campaign' })]);
+    await harness.fixture.whenStable();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const row = harness.routeNativeElement?.querySelector<HTMLTableRowElement>('tr.campaign-row');
+    row?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    row?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(navigate).toHaveBeenCalledWith(['/marketing/campaigns', 7], { queryParams: { lifecycle: 'active' } });
+    expect(navigate).toHaveBeenCalledTimes(2);
   });
 
   it('keeps existing rows and offers retry after a partial load failure', async () => {
