@@ -293,7 +293,7 @@ Provider-facing staff labels are **Recipients ready**, **Preparing in Brevo**,
 **Ready in Brevo**, **Brevo preparation failed**, **Needs attention**, and **No
 recipients ready**. A prepared campaign may show a backend-supplied editor URL;
 when it is unavailable, the UI does not guess one and instead directs staff to
-open Brevo Campaigns. This action uses the backend-supplied
+![alt text](image.png)open Brevo Campaigns. This action uses the backend-supplied
 `brevo_campaigns_url` listing target; Angular never constructs a Brevo URL from
 the provider campaign ID. The current backend-owned default is
 `https://app.brevo.com/campaigns/listing`, and following it performs no provider

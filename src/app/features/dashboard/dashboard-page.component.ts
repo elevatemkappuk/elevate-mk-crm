@@ -51,7 +51,7 @@ import { CommunityGrowthComponent } from './community-growth.component';
         </div>
       }
       <app-crm-section-card><h2>Quick actions</h2><div class="quick-actions">
-        @if (canManage()) { <button class="crm-button brand-action" type="button" (click)="addOpen.set(true)">Add person</button> }
+        @if (canManage()) { <button class="crm-button crm-button--brand" type="button" (click)="addOpen.set(true)">Add person</button> }
         <a class="crm-button crm-button--secondary" routerLink="/people">View People</a>
         <a class="crm-button crm-button--secondary" routerLink="/marketing/audience-preview">Preview audience</a>
         <a class="crm-button crm-button--secondary" routerLink="/marketing/campaigns">View campaigns</a>

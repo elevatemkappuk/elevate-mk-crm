@@ -20,6 +20,7 @@
   color: var(--crm-text-strong);
 }
 .crm-button--primary { background: var(--crm-action); color: var(--crm-on-action); }
+.crm-button--brand { background: var(--crm-shell-accent); color: var(--crm-text-strong); }
 .crm-button--secondary { border-color: var(--crm-control-border); }
 .crm-button--quiet { background: transparent; color: var(--crm-action); }
 .crm-button--destructive { background: var(--crm-destructive); color: var(--crm-on-action); }
@@ -27,6 +28,7 @@
   background: var(--crm-surface-subtle);
 }
 .crm-button--primary:not(:disabled):not([aria-disabled='true']):hover { background: var(--crm-action-hover); }
+.crm-button--brand:not(:disabled):not([aria-disabled='true']):hover { background: #f2c94f; }
 .crm-button--destructive:not(:disabled):not([aria-disabled='true']):hover { background: var(--crm-destructive-hover); }
 
 .crm-control {

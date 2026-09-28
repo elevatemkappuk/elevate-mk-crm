@@ -19,7 +19,7 @@ type LifecycleAction = 'archive' | 'restore';
   template: `
     <section class="page">
       <header class="heading"><div><p class="eyebrow">Marketing</p><h1>Campaigns</h1><p class="intro">Review campaigns and prepare CRM recipient snapshots.</p></div>
-        @if (canManage()) { <a class="crm-button crm-button--primary" routerLink="/marketing/audience-preview">Create Campaign</a> }
+        @if (canManage()) { <a class="crm-button crm-button--brand" routerLink="/marketing/audience-preview">Create Campaign</a> }
       </header>
       <nav class="lifecycle-tabs" aria-label="Campaign lifecycle"><div class="lifecycle-options"><a [routerLink]="[]" [queryParams]="{ lifecycle: 'active' }" [class.active]="lifecycle() === 'active'" [attr.aria-current]="lifecycle() === 'active' ? 'page' : null">Active</a><a [routerLink]="[]" [queryParams]="{ lifecycle: 'archived' }" [class.active]="lifecycle() === 'archived'" [attr.aria-current]="lifecycle() === 'archived' ? 'page' : null">Archived</a></div>@if (collectionCount() !== null) { <span class="collection-count">{{ collectionCountLabel() }}</span> }</nav>
       @if (errorMessage() && campaigns().length) { <div class="partial-error" role="alert"><span>{{ errorMessage() }}</span><button class="crm-button crm-button--quiet" type="button" (click)="load()">Retry</button></div> }
