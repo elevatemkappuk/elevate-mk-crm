@@ -28,7 +28,7 @@ describe('CampaignDetailPageComponent', () => {
 
   afterEach(() => http.verify());
 
-  const campaign = (status: string, preparationStatus = status === 'DRAFT' ? null : status, lifecycle = {}) => ({ id: 4, name: 'Campaign', status, audience_selection: { q: '', relationship: [], location: [], industry: [], career_stage: [], interest: [], skill: [], tag: [] }, audience_ordering: 'last_name', audience_schema_version: 1, created_by: 1, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z', archived_at: null, archived_by: null, is_archived: false, can_archive: true, can_restore: false, can_delete: status === 'DRAFT', ...lifecycle, current_preparation: preparationStatus ? { id: 2, attempt_number: 1, status: preparationStatus, started_at: '2026-01-01T00:00:00Z', completed_at: '2026-01-01T00:00:00Z', selected_count: 2, included_count: 1, excluded_count: 1, provider_ready_count: status === 'PREPARED' ? 1 : 0, provider_issue_count: status === 'RECONCILIATION_REQUIRED' ? 1 : 0, can_start_provider_preparation: false, can_retry_provider_preparation: status === 'RECONCILIATION_REQUIRED' || status === 'PROVIDER_FAILED', brevo_list_id: null, brevo_campaign_id: null, brevo_editor_url: null, provider_error_code: status === 'PROVIDER_FAILED' ? 'BREVO_TEMPORARY' : null, provider_error_message: status === 'PROVIDER_FAILED' ? 'Safe provider error' : null } : null });
+  const campaign = (status: string, preparationStatus = status === 'DRAFT' ? null : status, lifecycle = {}) => ({ id: 4, name: 'Campaign', status, audience_selection: { q: '', relationship: [], location: [], industry: [], career_stage: [], interest: [], skill: [], tag: [] }, audience_ordering: 'last_name', audience_schema_version: 1, created_by: 1, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z', archived_at: null, archived_by: null, is_archived: false, can_archive: true, can_restore: false, can_delete: status === 'DRAFT', ...lifecycle, current_preparation: preparationStatus ? { id: 2, attempt_number: 1, status: preparationStatus, started_at: '2026-01-01T00:00:00Z', completed_at: '2026-01-01T00:00:00Z', selected_count: 2, included_count: 1, excluded_count: 1, provider_ready_count: status === 'PREPARED' ? 1 : 0, provider_issue_count: status === 'RECONCILIATION_REQUIRED' ? 1 : 0, can_start_provider_preparation: false, can_retry_provider_preparation: status === 'RECONCILIATION_REQUIRED' || status === 'PROVIDER_FAILED', brevo_list_id: null, brevo_campaigns_url: null, brevo_editor_url: null, provider_error_code: status === 'PROVIDER_FAILED' ? 'BREVO_TEMPORARY' : null, provider_error_message: status === 'PROVIDER_FAILED' ? 'Safe provider error' : null } : null });
 
   it('keeps Prepare recipients hidden for viewers', async () => {
     TestBed.inject(AuthService).setAuthenticatedUser({ id: 1, email: 'viewer@example.com', person: { id: 1, first_name: 'View', last_name: 'Only', primary_email: 'viewer@example.com' }, staff_roles: ['CRM_VIEWER'] });
@@ -88,12 +88,18 @@ describe('CampaignDetailPageComponent', () => {
     const request = http.expectOne(`${base}/marketing/campaigns/4/prepare-provider/`);
     expect(request.request.method).toBe('POST');
     request.flush(campaign('PREPARED', 'PREPARED'));
-    http.expectOne(`${base}/marketing/campaigns/4/`).flush(campaign('PREPARED', 'PREPARED'));
+    const prepared = campaign('PREPARED', 'PREPARED') as any;
+    prepared.current_preparation!.brevo_campaigns_url = 'https://app.brevo.com/campaigns/listing';
+    http.expectOne(`${base}/marketing/campaigns/4/`).flush(prepared);
     http.expectOne(`${base}/marketing/campaigns/4/recipients/?page=1&page_size=100`).flush({ count: 0, next: null, previous: null, results: [] });
     await harness.fixture.whenStable();
     expect(harness.routeNativeElement?.textContent).toContain('Ready in Brevo');
     expect(harness.routeNativeElement?.textContent).toContain('All 1 recipient is prepared in Brevo.');
     expect(harness.routeNativeElement?.textContent).toContain('Campaign draft created in Brevo');
+    const brevoLink = harness.routeNativeElement?.querySelector<HTMLAnchorElement>('a[href="https://app.brevo.com/campaigns/listing"]');
+    expect(brevoLink?.textContent).toContain('Open Brevo Campaigns');
+    expect(brevoLink?.target).toBe('_blank');
+    expect(brevoLink?.rel).toBe('noopener noreferrer');
   });
 
   it('renders one compact summary with audience and selection sentence', async () => {
@@ -358,6 +364,21 @@ describe('CampaignDetailPageComponent', () => {
     expect(text).not.toContain('Prepare recipients');
     expect(text).not.toContain('Prepare in Brevo');
     expect(text).not.toContain('Retry Brevo preparation');
+  });
+
+  it('keeps the read-only Brevo Campaigns navigation for archived prepared campaigns', async () => {
+    TestBed.inject(AuthService).setAuthenticatedUser({ id: 1, email: 'viewer@example.com', person: { id: 1, first_name: 'View', last_name: 'Only', primary_email: 'viewer@example.com' }, staff_roles: ['CRM_VIEWER'] });
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/marketing/campaigns/4');
+    const archivedPrepared = campaign('PREPARED', 'PREPARED', { archived_at: '2026-01-01T00:00:00Z', archived_by: 1, is_archived: true, can_archive: false, can_restore: true, can_delete: false }) as any;
+    archivedPrepared.current_preparation!.brevo_campaigns_url = 'https://app.brevo.com/campaigns/listing';
+    http.expectOne(`${base}/marketing/campaigns/4/`).flush(archivedPrepared);
+    http.expectOne(`${base}/marketing/campaigns/4/recipients/?page=1&page_size=100`).flush({ count: 0, next: null, previous: null, results: [] });
+    await harness.fixture.whenStable();
+    const link = harness.routeNativeElement?.querySelector<HTMLAnchorElement>('a[href="https://app.brevo.com/campaigns/listing"]');
+    expect(link?.textContent).toContain('Open Brevo Campaigns');
+    expect(link?.target).toBe('_blank');
+    expect(link?.rel).toBe('noopener noreferrer');
   });
 
   it('refreshes campaign and recipients after a reconciliation retry remains unresolved', async () => {

@@ -94,7 +94,7 @@ describe('CampaignsPageComponent', () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/marketing/campaigns');
     flushList([makeCampaign({ current_preparation: {
-      id: 1, attempt_number: 1, status: 'SNAPSHOT_READY', started_at: '', completed_at: null, selected_count: 3, included_count: 2, excluded_count: 1, provider_ready_count: 0, provider_issue_count: 0, can_start_provider_preparation: true, can_retry_provider_preparation: false, brevo_list_id: null, brevo_campaign_id: null, brevo_editor_url: null, provider_error_code: null, provider_error_message: null,
+      id: 1, attempt_number: 1, status: 'SNAPSHOT_READY', started_at: '', completed_at: null, selected_count: 3, included_count: 2, excluded_count: 1, provider_ready_count: 0, provider_issue_count: 0, can_start_provider_preparation: true, can_retry_provider_preparation: false, brevo_list_id: null, brevo_campaigns_url: null, brevo_editor_url: null, provider_error_code: null, provider_error_message: null,
     } })]);
     await harness.fixture.whenStable();
     const element = harness.routeNativeElement!;

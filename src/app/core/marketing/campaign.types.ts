@@ -44,7 +44,7 @@ export interface CampaignPreparation {
   can_start_provider_preparation: boolean;
   can_retry_provider_preparation: boolean;
   brevo_list_id: number | null;
-  brevo_campaign_id: number | null;
+  brevo_campaigns_url: string | null;
   brevo_editor_url: string | null;
   provider_error_code: string | null;
   provider_error_message: string | null;

@@ -22,6 +22,12 @@ dl>div { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:var(--crm-s
 dt { overflow-wrap:anywhere; color:var(--crm-text-secondary); } dd { margin:0; font-weight:var(--crm-weight-medium); font-variant-numeric:tabular-nums; }
 .profile p,.muted { color:var(--crm-text-secondary); margin:0; font-size:var(--crm-font-sm); }
 .events-placeholder { display:grid; justify-items:start; gap:var(--crm-space-3); padding-block:var(--crm-space-3); }
+.marketing-summary { display:grid; gap:var(--crm-space-4); }
+.marketing-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--crm-space-3); }
+.marketing-metrics div { display:grid; gap:var(--crm-space-1); padding:var(--crm-space-3); border:1px solid var(--crm-border); border-radius:var(--crm-radius-md); background:var(--crm-surface); }
+.marketing-metrics span { color:var(--crm-text-secondary); font-size:var(--crm-font-sm); }
+.marketing-metrics strong { color:var(--crm-text-strong); font-size:var(--crm-font-lg); font-variant-numeric:tabular-nums; }
+.section-link { color:var(--crm-text-strong); font-weight:var(--crm-weight-medium); }
 .attention { display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:var(--crm-space-3); color:var(--crm-text-strong); padding:var(--crm-space-4); border:1px solid transparent; border-radius:var(--crm-radius-md); min-height:var(--crm-control-height); }
 .attention strong { font-variant-numeric:tabular-nums; }
 .attention>span:last-child:not(:first-child) { color:var(--crm-text-muted); }
@@ -33,4 +39,5 @@ dt { overflow-wrap:anywhere; color:var(--crm-text-secondary); } dd { margin:0; f
 .panels.skeleton>div { aspect-ratio:1.5; }
 @media(max-width:bp.$wide) { .profile-grid,.profile:last-child dl { grid-template-columns:1fr; } .overview { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:bp.$medium) { .panels { grid-template-columns:1fr; } .profile-grid,.profile:last-child dl { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:bp.$medium) { .marketing-metrics { grid-template-columns:1fr; } }
 @media(max-width:bp.$compact) { app-crm-section-card { --crm-card-padding:var(--crm-space-4) var(--crm-space-5); } .overview,.profile-grid,.profile:last-child dl { grid-template-columns:1fr; } }
