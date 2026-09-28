@@ -109,6 +109,11 @@ describe('CampaignDetailPageComponent', () => {
     expect(harness.routeNativeElement?.querySelector('.attention-card')?.textContent).not.toContain('Ready Person');
     expect(text).not.toContain('BREVO_CONTACT_RESTRICTED');
     expect(text).toContain('Excluded Person');
+    const attentionCard = harness.routeNativeElement?.querySelector('.attention-card');
+    const snapshotCard = harness.routeNativeElement?.querySelector('table[aria-label="Campaign recipients"]')?.closest('section');
+    expect(attentionCard).not.toBeNull();
+    expect(snapshotCard).not.toBeNull();
+    expect(attentionCard!.compareDocumentPosition(snapshotCard!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('offers Review person navigation with the campaign return context', async () => {
@@ -151,6 +156,50 @@ describe('CampaignDetailPageComponent', () => {
     harness.detectChanges();
     expect(harness.routeNativeElement?.textContent).toContain('completed preparation work');
     expect(harness.routeNativeElement?.textContent).toContain('will not be automatically cleared');
+  });
+
+  it('keeps lifecycle actions in a compact secondary header group', async () => {
+    TestBed.inject(AuthService).setAuthenticatedUser({ id: 1, email: 'manager@example.com', person: { id: 1, first_name: 'Campaign', last_name: 'Manager', primary_email: 'manager@example.com' }, staff_roles: ['CRM_MANAGER'] });
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/marketing/campaigns/4');
+    http.expectOne(`${base}/marketing/campaigns/4/`).flush(campaign('DRAFT'));
+    await harness.fixture.whenStable();
+    const group = harness.routeNativeElement?.querySelector('.lifecycle-actions');
+    expect(group?.textContent).toContain('Archive campaign');
+    expect(group?.textContent).toContain('Delete draft');
+    expect(harness.routeNativeElement?.querySelector('section > button.crm-button--primary')).not.toBeNull();
+  });
+
+  it('presents the saved snapshot with staff-readable copy and accessible table headers', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/marketing/campaigns/4');
+    http.expectOne(`${base}/marketing/campaigns/4/`).flush(campaign('SNAPSHOT_READY', 'SNAPSHOT_READY'));
+    http.expectOne(`${base}/marketing/campaigns/4/recipients/?page=1&page_size=100`).flush({ count: 1, next: null, previous: null, results: [{ id: 1, person: 11, first_name_snapshot: 'Saved', last_name_snapshot: 'Person', consent_state_snapshot: 'OPTED_IN', decision: 'INCLUDED', exclusion_reason: null, captured_at: '', provider_outcome: 'ADDED_TO_CAMPAIGN_LIST', provider_error_code: null }] });
+    await harness.fixture.whenStable();
+    const element = harness.routeNativeElement!;
+    expect(element.textContent).toContain('This saved preparation snapshot records the recipients and decisions used for this Campaign. It cannot be edited here.');
+    expect(element.querySelector('table[aria-label="Campaign recipients"]')).not.toBeNull();
+    expect(element.querySelectorAll('th[scope="col"]').length).toBe(3);
+  });
+
+  it('clearly presents active recipient preparation and no-ready guidance', async () => {
+    const preparingHarness = await RouterTestingHarness.create();
+    await preparingHarness.navigateByUrl('/marketing/campaigns/4');
+    http.expectOne(`${base}/marketing/campaigns/4/`).flush(campaign('PREPARING', 'PREPARING'));
+    http.expectOne(`${base}/marketing/campaigns/4/recipients/?page=1&page_size=100`).flush({ count: 0, next: null, previous: null, results: [] });
+    await preparingHarness.fixture.whenStable();
+    expect(preparingHarness.routeNativeElement?.textContent).toContain('Preparing recipients');
+    expect(preparingHarness.routeNativeElement?.textContent).toContain('saved recipient snapshot is being created');
+
+  });
+
+  it('gives no-ready campaigns actionable audience and consent guidance', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/marketing/campaigns/4');
+    http.expectOne(`${base}/marketing/campaigns/4/`).flush(campaign('NO_READY_RECIPIENTS', 'NO_READY_RECIPIENTS'));
+    http.expectOne(`${base}/marketing/campaigns/4/recipients/?page=1&page_size=100`).flush({ count: 0, next: null, previous: null, results: [] });
+    await harness.fixture.whenStable();
+    expect(harness.routeNativeElement?.textContent).toContain('Review the audience criteria and current consent status');
   });
 
   it('archives with reversible confirmation, preserves workflow status, and prevents duplicate submits', async () => {
