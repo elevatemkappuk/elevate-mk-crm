@@ -76,10 +76,11 @@ describe('CampaignDetailPageComponent', () => {
     http.expectOne(`${base}/marketing/campaigns/4/recipients/?page=1&page_size=100`).flush({ count: 0, next: null, previous: null, results: [] });
     await harness.fixture.whenStable();
     expect(harness.routeNativeElement?.textContent).toContain('Ready in Brevo');
+    expect(harness.routeNativeElement?.textContent).toContain('All 1 recipient is prepared in Brevo.');
     expect(harness.routeNativeElement?.textContent).toContain('Campaign draft created in Brevo');
   });
 
-  it('renders one compact summary with audience and recipient metrics', async () => {
+  it('renders one compact summary with audience and selection sentence', async () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/marketing/campaigns/4');
     http.expectOne(`${base}/marketing/campaigns/4/`).flush({
@@ -93,12 +94,9 @@ describe('CampaignDetailPageComponent', () => {
     expect(summary?.textContent).toContain('Campaign summary');
     expect(summary?.textContent).toContain('Audience');
     expect(summary?.textContent).toContain('Search: fran');
-    expect(summary?.textContent).toContain('Recipients');
-    expect(summary?.textContent).toContain('2');
-    expect(summary?.textContent).toContain('Selected');
-    expect(summary?.textContent).toContain('1');
-    expect(summary?.textContent).toContain('Included');
-    expect(summary?.textContent).toContain('Excluded');
+    expect(summary?.textContent).toContain('Selection');
+    expect(summary?.textContent).toContain('2 people selected \u00b7 1 included \u00b7 1 excluded');
+    expect(summary?.querySelector('.recipient-metrics')).toBeNull();
     expect(summary?.textContent).not.toContain('Preparation');
     expect(summary?.textContent).not.toContain('Status');
     expect(harness.routeNativeElement?.textContent).toContain('Recipients ready');
@@ -150,7 +148,10 @@ describe('CampaignDetailPageComponent', () => {
     ] });
     await harness.fixture.whenStable();
     const text = harness.routeNativeElement?.textContent ?? '';
-    expect(text).toContain('Recipients needing attention');
+    expect(text).toContain('Needs attention');
+    expect(text).not.toContain('Recipients needing attention');
+    expect(text).toContain('0 of 1 included recipients are ready in Brevo.');
+    expect(text).toContain('1 recipients need review.');
     expect(text).toContain('Restricted Person');
     expect(text).toContain('Blocked in Brevo');
     expect(text).toContain('cannot be automatically re-enabled');
@@ -174,6 +175,8 @@ describe('CampaignDetailPageComponent', () => {
     const attentionCard = harness.routeNativeElement?.querySelector('.attention-card');
     const snapshotCard = harness.routeNativeElement?.querySelector('table[aria-label="Campaign recipients"]')?.closest('section');
     expect(attentionCard).not.toBeNull();
+    expect(harness.routeNativeElement?.querySelectorAll('.attention-card').length).toBe(1);
+    expect(attentionCard?.querySelector('h2')?.textContent).toBe('Needs attention');
     expect(snapshotCard).not.toBeNull();
     expect(attentionCard!.compareDocumentPosition(snapshotCard!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
@@ -356,6 +359,10 @@ describe('CampaignDetailPageComponent', () => {
     http.expectOne(`${base}/marketing/campaigns/4/`).flush(campaign('RECONCILIATION_REQUIRED', 'RECONCILIATION_REQUIRED'));
     http.expectOne(`${base}/marketing/campaigns/4/recipients/?page=1&page_size=100`).flush({ count: 0, next: null, previous: null, results: [] });
     await harness.fixture.whenStable();
-    expect(harness.routeNativeElement?.textContent).toContain('Recipients needing attention');
+    expect(harness.routeNativeElement?.textContent).toContain('Needs attention');
+    expect(harness.routeNativeElement?.textContent).not.toContain('Recipients needing attention');
+    const attention = harness.routeNativeElement?.querySelector('.attention-card');
+    const retry = harness.routeNativeElement?.querySelector('.retry-card');
+    expect(attention && retry && (attention.compareDocumentPosition(retry) & Node.DOCUMENT_POSITION_FOLLOWING)).toBeTruthy();
   });
 });
