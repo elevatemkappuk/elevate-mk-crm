@@ -93,16 +93,24 @@ describe('AudiencePreviewPageComponent', () => {
     await harness.fixture.whenStable();
     harness.detectChanges();
 
-    expect(harness.routeNativeElement?.textContent).toContain('Selected');
-    expect(harness.routeNativeElement?.textContent).toContain('Eligible');
-    expect(harness.routeNativeElement?.textContent).toContain('Excluded');
+    expect(harness.routeNativeElement?.textContent).toContain('Selection');
+    expect(harness.routeNativeElement?.textContent).toContain('2 people selected · 1 eligible · 1 excluded');
+    expect(harness.routeNativeElement?.querySelector('.summary-card')).toBeNull();
     expect(harness.routeNativeElement?.textContent).toContain('Search: mentor');
-    expect(harness.routeNativeElement?.textContent).toContain('1 of 2 selected People can currently receive marketing email.');
-    expect(harness.routeNativeElement?.textContent).toContain('Eligible recipients (1)');
+    expect(harness.routeNativeElement?.textContent).not.toContain('1 of 2 selected People can currently receive marketing email.');
+    expect(harness.routeNativeElement?.textContent).toContain('Recipients');
+    expect(harness.routeNativeElement?.querySelector('.results-panel h2')?.textContent).toBe('Recipients');
+    expect(harness.routeNativeElement?.textContent).not.toContain('Recipient inspection');
+    expect(harness.routeNativeElement?.textContent).not.toContain('All selected People');
+    expect(harness.routeNativeElement?.textContent).not.toContain('Eligible recipients');
+    expect(harness.routeNativeElement?.textContent).toContain('Eligible (1)');
+    expect(harness.routeNativeElement?.textContent).toContain('Excluded (1)');
+    expect(harness.routeNativeElement?.textContent).toContain('All selected (2)');
     expect(harness.routeNativeElement?.textContent).not.toContain('Sync to Brevo');
     expect(harness.routeNativeElement?.textContent).not.toContain('Create campaign');
     expect(harness.routeNativeElement?.textContent).toContain('Opted out');
-    expect(harness.routeNativeElement?.textContent).toContain('This person has opted out of email marketing.');
+    expect(harness.routeNativeElement?.textContent).not.toContain('This person has opted out of email marketing.');
+    expect(harness.routeNativeElement?.textContent).not.toContain('No email address');
     expect(harness.routeNativeElement?.querySelector('a[href="/people/1"]')).not.toBeNull();
   });
 
@@ -126,13 +134,15 @@ describe('AudiencePreviewPageComponent', () => {
     harness.detectChanges();
 
     const excludedTab = Array.from(harness.routeNativeElement?.querySelectorAll('button') ?? [])
-      .find((button) => button.textContent?.trim() === 'Exclusions (1)') as HTMLButtonElement;
+      .find((button) => button.textContent?.trim() === 'Excluded (1)') as HTMLButtonElement;
     excludedTab.click();
     await harness.fixture.whenStable();
     const request = httpTesting.expectOne(`${apiBaseUrl}/marketing/audiences/preview/`);
     expect(request.request.body.result).toBe('excluded');
     expect(request.request.body.page).toBe(1);
     request.flush(response('excluded'));
+    await harness.fixture.whenStable();
+    expect(harness.routeNativeElement?.textContent).toContain('This person has opted out of email marketing.');
   });
 
   it('opens the reusable filter drawer from the compact criteria summary', async () => {
