@@ -37,7 +37,7 @@ describe('CampaignDetailPageComponent', () => {
     http.expectOne(`${base}/marketing/campaigns/4/`).flush(campaign('DRAFT'));
     await harness.fixture.whenStable();
     harness.detectChanges();
-    expect(harness.routeNativeElement?.textContent).toContain('Prepare this Campaign');
+    expect(harness.routeNativeElement?.textContent).toContain('Prepare campaign');
     expect(harness.routeNativeElement?.textContent).toContain("Recipients haven't been prepared yet");
     expect(harness.routeNativeElement?.textContent).toContain('before preparing the Campaign');
     expect(harness.routeNativeElement?.textContent).not.toContain('Prepare recipients');
@@ -53,9 +53,14 @@ describe('CampaignDetailPageComponent', () => {
     const workflow = harness.routeNativeElement?.querySelector('.draft-workflow-panel');
     expect(workflow).not.toBeNull();
     expect(harness.routeNativeElement?.querySelector('.campaign-summary')).toBeNull();
-    expect(workflow?.textContent).toContain('Prepare this Campaign');
+    expect(workflow?.textContent).toContain('Prepare campaign');
     expect(workflow?.textContent).toContain('Audience');
     expect(workflow?.textContent).toContain("Recipients haven't been prepared yet");
+    expect(workflow?.textContent).toContain('What happens next');
+    expect(workflow?.textContent).toContain('Check recipients');
+    expect(workflow?.textContent).toContain('Save recipient snapshot');
+    expect(workflow?.textContent).toContain('Prepare in Brevo');
+    expect(workflow?.querySelector('.draft-workflow-columns')).not.toBeNull();
     expect(workflow?.querySelector('button')?.textContent).toContain('Prepare recipients');
     expect(harness.routeNativeElement?.querySelector('section > button.crm-button--primary')).toBeNull();
     (Array.from(harness.routeNativeElement?.querySelectorAll('button') ?? []).find((button) => button.textContent?.includes('Prepare recipients')) as HTMLButtonElement).click();
