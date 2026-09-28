@@ -44,6 +44,7 @@ type WriteMode = 'contact' | 'member' | 'edit';
           [member]="mode() === 'member'"
           [submitLabel]="submitLabel()"
           [pending]="submitting()"
+          [mobileError]="mobileFieldError()"
           [drawer]="drawer()"
           (edited)="clearCollisionReview()"
           (submitted)="submit($event)"
@@ -92,6 +93,7 @@ export class PersonWritePageComponent {
   readonly notFound = signal(false);
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly mobileFieldError = signal<string | null>(null);
   readonly duplicateConflict = signal<DuplicatePersonConflict | null>(null);
   readonly pendingSubmission = signal<PersonFormSubmission | null>(null);
   readonly identityOverrideConfirmationOpen = signal(false);
@@ -128,6 +130,7 @@ export class PersonWritePageComponent {
 
   submit(submission: PersonFormSubmission): void {
     if (this.submitting() || !this.canManagePeople()) { return; }
+    this.mobileFieldError.set(null);
     this.pendingSubmission.set(submission);
     this.submitCreation(submission);
   }
@@ -142,6 +145,7 @@ export class PersonWritePageComponent {
     this.pendingSubmission.set(null);
     this.duplicateConflict.set(null);
     this.identityOverrideConfirmationOpen.set(false);
+    this.mobileFieldError.set(null);
   }
 
   hasUnsavedEdits(): boolean {
@@ -226,7 +230,11 @@ export class PersonWritePageComponent {
       if (error.error.code === 'IDENTITY_COLLISION_STALE') this.errorMessage.set(error.error.detail);
       return;
     }
-    if (error.status === 400) { this.errorMessage.set('Person details need to be corrected before they can be saved.'); return; }
+    if (error.status === 400) {
+      this.mobileFieldError.set(getMobileFieldError(error.error));
+      this.errorMessage.set('Person details need to be corrected before they can be saved.');
+      return;
+    }
     if (error.status === 403) {
       this.errorMessage.set(formatForbiddenError(error, 'You no longer have permission to manage People.'));
       return;
@@ -235,6 +243,12 @@ export class PersonWritePageComponent {
     if (error.status === 409) { this.errorMessage.set('This person state changed. Refresh the record and try again.'); return; }
     this.errorMessage.set('The person could not be saved right now. Try again.');
   }
+}
+
+function getMobileFieldError(payload: unknown): string | null {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
+  const value = (payload as Record<string, unknown>)['mobile'];
+  return Array.isArray(value) && typeof value[0] === 'string' ? value[0] : null;
 }
 
 function isDuplicatePersonConflict(value: unknown): value is DuplicatePersonConflict {

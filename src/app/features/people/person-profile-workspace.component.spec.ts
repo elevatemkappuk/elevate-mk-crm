@@ -187,6 +187,22 @@ describe('Person profile workspace', () => {
     expect(host.textContent).not.toContain('Shared mobile number');
   });
 
+  it('renders a backend mobile validation error against the Mobile field without losing edits', async () => {
+    service.updatePerson.mockReturnValue(throwError(() => new HttpErrorResponse({
+      status: 400,
+      error: { mobile: ['Enter a valid mobile number.'] },
+    })));
+    const host = await render();
+    (host.querySelector('.edit-person') as HTMLElement).click(); await settle();
+    writer().personForm()!.form.controls.mobile.setValue('hello123');
+    writer().personForm()!.submit(); await settle();
+
+    expect(host.querySelector('dialog .error')?.textContent).toContain('Person details need to be corrected');
+    const mobileLabel = Array.from(host.querySelectorAll('dialog label')).find(label => label.textContent?.includes('Mobile'));
+    expect(mobileLabel?.textContent).toContain('Enter a valid mobile number.');
+    expect(writer().personForm()!.form.controls.mobile.value).toBe('hello123');
+  });
+
   it('moves Professional Profile editing into the shared drawer and refreshes its card after saving', async () => {
     const host = await render();
     const trigger = host.querySelector('[aria-label="Edit professional profile"]') as HTMLButtonElement;

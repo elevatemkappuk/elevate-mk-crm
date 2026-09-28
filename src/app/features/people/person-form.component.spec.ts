@@ -39,9 +39,9 @@ describe('PersonFormComponent', () => {
     component.submit();
     expect(component.form.controls.primary_email.hasError('email')).toBe(true);
 
-    component.form.patchValue({ primary_email: ' ama@example.com ', mobile: ' 991000001 ' });
+    component.form.patchValue({ primary_email: ' ama@example.com ', mobile: ' 07911 123 456 ' });
     component.submit();
-    expect(submissions).toEqual([{ person: { first_name: 'Ama', last_name: 'Amoah', primary_email: 'ama@example.com', mobile: '991000001', location: '', age_range: '25_29', gender: 'NON_BINARY' }, joined_at: '2026-08-31' }]);
+    expect(submissions).toEqual([{ person: { first_name: 'Ama', last_name: 'Amoah', primary_email: 'ama@example.com', mobile: '07911 123 456', location: '', age_range: '25_29', gender: 'NON_BINARY' }, joined_at: '2026-08-31' }]);
   });
 
   it('renders shared canonical options and preselects canonical demographic values', () => {

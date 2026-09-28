@@ -28,7 +28,7 @@ export interface PersonFormSubmission {
           <label>First name <input formControlName="first_name" autocomplete="given-name" /> @if (invalid('first_name')) { <small>First name is required.</small> }</label>
           <label>Last name <input formControlName="last_name" autocomplete="family-name" /> @if (invalid('last_name')) { <small>Last name is required.</small> }</label>
           <label>Email <input type="email" formControlName="primary_email" autocomplete="email" /> @if (invalid('primary_email')) { <small>Enter a valid email address.</small> }</label>
-          <label>Mobile <input type="tel" formControlName="mobile" autocomplete="tel" /></label>
+          <label>Mobile <input type="tel" formControlName="mobile" autocomplete="tel" /> @if (mobileError()) { <small>{{ mobileError() }}</small> }</label>
           <label>Location <input formControlName="location" autocomplete="address-level2" /></label>
           <label>Age range
             <select formControlName="age_range">
@@ -81,6 +81,7 @@ export class PersonFormComponent {
   readonly member = input(false);
   readonly submitLabel = input('Save person');
   readonly pending = input(false);
+  readonly mobileError = input<string | null>(null);
   readonly drawer = input(false);
   readonly edited = output<void>();
   readonly submitted = output<PersonFormSubmission>();
