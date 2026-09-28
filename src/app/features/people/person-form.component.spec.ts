@@ -37,7 +37,9 @@ describe('PersonFormComponent', () => {
 
     component.form.setValue({ first_name: ' Ama ', last_name: ' Amoah ', primary_email: 'not-email', mobile: '', location: '', age_range: '25_29', gender: 'NON_BINARY', joined_at: '2026-08-31' });
     component.submit();
+    fixture.detectChanges();
     expect(component.form.controls.primary_email.hasError('email')).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('Enter a valid email address.');
 
     component.form.patchValue({ primary_email: ' ama@example.com ', mobile: ' 07911 123 456 ' });
     component.submit();

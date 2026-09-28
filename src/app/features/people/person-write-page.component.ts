@@ -44,6 +44,7 @@ type WriteMode = 'contact' | 'member' | 'edit';
           [member]="mode() === 'member'"
           [submitLabel]="submitLabel()"
           [pending]="submitting()"
+          [emailError]="emailFieldError()"
           [mobileError]="mobileFieldError()"
           [drawer]="drawer()"
           (edited)="clearCollisionReview()"
@@ -93,6 +94,7 @@ export class PersonWritePageComponent {
   readonly notFound = signal(false);
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly emailFieldError = signal<string | null>(null);
   readonly mobileFieldError = signal<string | null>(null);
   readonly duplicateConflict = signal<DuplicatePersonConflict | null>(null);
   readonly pendingSubmission = signal<PersonFormSubmission | null>(null);
@@ -130,6 +132,7 @@ export class PersonWritePageComponent {
 
   submit(submission: PersonFormSubmission): void {
     if (this.submitting() || !this.canManagePeople()) { return; }
+    this.emailFieldError.set(null);
     this.mobileFieldError.set(null);
     this.pendingSubmission.set(submission);
     this.submitCreation(submission);
@@ -145,6 +148,7 @@ export class PersonWritePageComponent {
     this.pendingSubmission.set(null);
     this.duplicateConflict.set(null);
     this.identityOverrideConfirmationOpen.set(false);
+    this.emailFieldError.set(null);
     this.mobileFieldError.set(null);
   }
 
@@ -231,6 +235,7 @@ export class PersonWritePageComponent {
       return;
     }
     if (error.status === 400) {
+      this.emailFieldError.set(getFieldError(error.error, 'primary_email'));
       this.mobileFieldError.set(getMobileFieldError(error.error));
       this.errorMessage.set('Person details need to be corrected before they can be saved.');
       return;
@@ -245,10 +250,14 @@ export class PersonWritePageComponent {
   }
 }
 
-function getMobileFieldError(payload: unknown): string | null {
+function getFieldError(payload: unknown, field: string): string | null {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
-  const value = (payload as Record<string, unknown>)['mobile'];
+  const value = (payload as Record<string, unknown>)[field];
   return Array.isArray(value) && typeof value[0] === 'string' ? value[0] : null;
+}
+
+function getMobileFieldError(payload: unknown): string | null {
+  return getFieldError(payload, 'mobile');
 }
 
 function isDuplicatePersonConflict(value: unknown): value is DuplicatePersonConflict {

@@ -203,6 +203,23 @@ describe('Person profile workspace', () => {
     expect(writer().personForm()!.form.controls.mobile.value).toBe('hello123');
   });
 
+  it('renders a backend primary email error against Email without losing the entered value', async () => {
+    service.updatePerson.mockReturnValue(throwError(() => new HttpErrorResponse({
+      status: 400,
+      error: { primary_email: ['Enter a valid email address.'] },
+    })));
+    const host = await render();
+    (host.querySelector('.edit-person') as HTMLElement).click(); await settle();
+    writer().personForm()!.form.controls.primary_email.setValue('hello@');
+    writer().personForm()!.form.controls.primary_email.setErrors(null);
+    writer().personForm()!.submit(); await settle();
+
+    expect(host.querySelector('dialog .error')?.textContent).toContain('Person details need to be corrected');
+    const emailLabel = Array.from(host.querySelectorAll('dialog label')).find(label => label.textContent?.includes('Email'));
+    expect(emailLabel?.textContent).toContain('Enter a valid email address.');
+    expect(writer().personForm()!.form.controls.primary_email.value).toBe('hello@');
+  });
+
   it('moves Professional Profile editing into the shared drawer and refreshes its card after saving', async () => {
     const host = await render();
     const trigger = host.querySelector('[aria-label="Edit professional profile"]') as HTMLButtonElement;
