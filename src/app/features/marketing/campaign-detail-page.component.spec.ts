@@ -79,6 +79,54 @@ describe('CampaignDetailPageComponent', () => {
     expect(harness.routeNativeElement?.textContent).toContain('Campaign draft created in Brevo');
   });
 
+  it('renders one compact summary with audience and recipient metrics', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/marketing/campaigns/4');
+    http.expectOne(`${base}/marketing/campaigns/4/`).flush({
+      ...campaign('SNAPSHOT_READY', 'SNAPSHOT_READY'),
+      audience_selection: { q: 'fran', relationship: [], location: [], industry: [], career_stage: [], interest: [], skill: [], tag: [] },
+    });
+    http.expectOne(`${base}/marketing/campaigns/4/recipients/?page=1&page_size=100`).flush({ count: 0, next: null, previous: null, results: [] });
+    await harness.fixture.whenStable();
+    const summary = harness.routeNativeElement?.querySelector('.campaign-summary');
+    expect(summary).not.toBeNull();
+    expect(summary?.textContent).toContain('Campaign summary');
+    expect(summary?.textContent).toContain('Audience');
+    expect(summary?.textContent).toContain('Search: fran');
+    expect(summary?.textContent).toContain('Recipients');
+    expect(summary?.textContent).toContain('2');
+    expect(summary?.textContent).toContain('Selected');
+    expect(summary?.textContent).toContain('1');
+    expect(summary?.textContent).toContain('Included');
+    expect(summary?.textContent).toContain('Excluded');
+    expect(summary?.textContent).not.toContain('Preparation');
+    expect(summary?.textContent).not.toContain('Status');
+    expect(harness.routeNativeElement?.textContent).toContain('Recipients ready');
+  });
+
+  it('keeps the all-people fallback and every audience criterion visible', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/marketing/campaigns/4');
+    http.expectOne(`${base}/marketing/campaigns/4/`).flush({
+      ...campaign('DRAFT'),
+      audience_selection: { q: 'fran', relationship: ['Member'], location: ['Milton Keynes'], industry: ['Technology'], career_stage: ['Senior'], interest: ['Training'], skill: ['Leadership'], tag: ['Newsletter'] },
+    });
+    await harness.fixture.whenStable();
+    const summary = harness.routeNativeElement?.querySelector('.campaign-summary');
+    for (const criterion of ['Search: fran', 'Relationships: Member', 'Locations: Milton Keynes', 'Industries: Technology', 'Career stages: Senior', 'Interests: Training', 'Skills: Leadership', 'Tags: Newsletter']) {
+      expect(summary?.textContent).toContain(criterion);
+    }
+
+  });
+
+  it('renders All active People when no audience filters are saved', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/marketing/campaigns/4');
+    http.expectOne(`${base}/marketing/campaigns/4/`).flush(campaign('DRAFT'));
+    await harness.fixture.whenStable();
+    expect(harness.routeNativeElement?.querySelector('.campaign-summary')?.textContent).toContain('All active People');
+  });
+
   it('maps failed, reconciliation, no-ready, and recipient reason states safely', async () => {
     TestBed.inject(AuthService).setAuthenticatedUser({ id: 1, email: 'viewer@example.com', person: { id: 1, first_name: 'View', last_name: 'Only', primary_email: 'viewer@example.com' }, staff_roles: ['CRM_VIEWER'] });
     const harness = await RouterTestingHarness.create();
