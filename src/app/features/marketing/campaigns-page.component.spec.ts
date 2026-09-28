@@ -38,6 +38,20 @@ describe('CampaignsPageComponent', () => {
     http.expectOne(`${base}/marketing/campaigns/?lifecycle=active`).flush({ count: 0, next: null, previous: null, results: [] });
     await harness.fixture.whenStable();
     expect(harness.routeNativeElement?.textContent).toContain('No active campaigns');
+    expect(harness.routeNativeElement?.textContent).toContain('0 active campaigns');
+  });
+
+  it('renders singular and plural collection counts with the selected lifecycle', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/marketing/campaigns');
+    flushList([makeCampaign()]);
+    await harness.fixture.whenStable();
+    expect(harness.routeNativeElement?.textContent).toContain('1 active campaign');
+
+    await harness.navigateByUrl('/marketing/campaigns?lifecycle=archived');
+    http.expectOne(`${base}/marketing/campaigns/?lifecycle=archived`).flush({ count: 3, next: null, previous: null, results: [] });
+    await harness.fixture.whenStable();
+    expect(harness.routeNativeElement?.textContent).toContain('3 archived campaigns');
   });
 
   it('renders the error state', async () => {
@@ -60,6 +74,54 @@ describe('CampaignsPageComponent', () => {
     expect(text).toContain('Prepared history');
     expect(text).toContain('Ready in Brevo');
     expect(text).toContain('Archived');
+    expect(text).toContain('1 archived campaign');
+    expect(harness.routeNativeElement?.querySelector('a[aria-current="page"]')?.textContent).toContain('Archived');
+  });
+
+  it('summarizes additional audience criteria without hiding them', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/marketing/campaigns');
+    flushList([makeCampaign({ audience_selection: {
+      q: '', relationship: ['ACTIVE_MEMBER'], location: ['Milton Keynes'], industry: [1], career_stage: [], interest: [], skill: [], tag: [],
+    } })]);
+    await harness.fixture.whenStable();
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('Relationships: ACTIVE_MEMBER · +2 more');
+    expect(text).not.toContain('Â·');
+  });
+
+  it('exposes accessible lifecycle and table semantics', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/marketing/campaigns');
+    flushList([makeCampaign({ current_preparation: {
+      id: 1, attempt_number: 1, status: 'SNAPSHOT_READY', started_at: '', completed_at: null, selected_count: 3, included_count: 2, excluded_count: 1, provider_ready_count: 0, provider_issue_count: 0, can_start_provider_preparation: true, can_retry_provider_preparation: false, brevo_list_id: null, brevo_campaign_id: null, brevo_editor_url: null, provider_error_code: null, provider_error_message: null,
+    } })]);
+    await harness.fixture.whenStable();
+    const element = harness.routeNativeElement!;
+    expect(element.querySelector('a[aria-current="page"]')?.textContent).toContain('Active');
+    expect(element.querySelector('table[aria-label="Campaigns"]')).not.toBeNull();
+    expect(element.querySelectorAll('th[scope="col"]').length).toBe(6);
+    expect(element.querySelector('th:last-child')?.textContent).toContain('Actions');
+    expect(element.querySelector('.action-cell > .action-group')).not.toBeNull();
+    expect(element.textContent).toContain('2 included · 1 excluded');
+    expect(element.textContent).not.toContain('Â·');
+  });
+
+  it('keeps existing rows and offers retry after a partial load failure', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/marketing/campaigns');
+    flushList([makeCampaign()]);
+    await harness.fixture.whenStable();
+    (harness.routeDebugElement?.componentInstance as CampaignsPageComponent).load();
+    http.expectOne(`${base}/marketing/campaigns/?lifecycle=active`).flush('failed', { status: 503, statusText: 'Unavailable' });
+    await harness.fixture.whenStable();
+    const element = harness.routeNativeElement!;
+    expect(element.textContent).toContain('Lifecycle test');
+    expect(element.querySelector('.partial-error button')?.textContent).toContain('Retry');
+    element.querySelector<HTMLButtonElement>('.partial-error button')?.click();
+    http.expectOne(`${base}/marketing/campaigns/?lifecycle=active`).flush({ count: 1, next: null, previous: null, results: [makeCampaign({ name: 'Refreshed campaign' })] });
+    await harness.fixture.whenStable();
+    expect(harness.routeNativeElement?.textContent).toContain('Refreshed campaign');
   });
 
   it('shows Archive only when the backend allows it and never shows Delete in the list', async () => {
