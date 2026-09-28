@@ -60,4 +60,18 @@ describe('PersonFormComponent', () => {
     expect(ageSelect.value).toBe('25_29');
     expect(genderSelect.value).toBe('NON_BINARY');
   });
+
+  it('reserves drawer validation space for inline field messages', () => {
+    fixture.componentRef.setInput('drawer', true);
+    fixture.detectChanges();
+    const slots = fixture.nativeElement.querySelectorAll('.validation-slot');
+    expect(slots.length).toBe(4);
+    expect(Array.from(slots).every((slot: unknown) => (slot as HTMLElement).textContent?.trim() === '')).toBe(true);
+    fixture.componentInstance.form.controls.first_name.markAsTouched();
+    fixture.componentInstance.form.controls.primary_email.setValue('invalid');
+    fixture.componentInstance.form.controls.primary_email.markAsTouched();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.validation-slot small')?.textContent).toContain('First name is required.');
+    expect(fixture.nativeElement.querySelectorAll('.validation-slot').length).toBe(4);
+  });
 });
