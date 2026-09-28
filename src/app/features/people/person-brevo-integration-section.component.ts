@@ -30,6 +30,9 @@ import { StatusBadgeComponent, StatusBadgeTone } from '../../shared/ui/status-ba
           </div>
           <h3>{{ current.integration.title }}</h3>
           <p class="explanation">{{ current.integration.explanation }}</p>
+          @if (current.integration.provider_profile_url; as providerProfileUrl) {
+            <a class="provider-link" [href]="providerProfileUrl" target="_blank" rel="noopener noreferrer">View in Brevo ↗</a>
+          }
 
           @if (current.integration.status === 'RESTRICTED') {
             <p class="prominent-warning">Brevo currently prevents marketing email for this contact.</p>
@@ -65,6 +68,7 @@ import { StatusBadgeComponent, StatusBadgeTone } from '../../shared/ui/status-ba
     .detail-label { color: var(--crm-text-muted); font-size: var(--crm-font-sm); }
     h3 { margin: 0; color: var(--crm-text-strong); font-size: var(--crm-font-md); }
     .explanation, .next-step, .loading-copy { color: var(--crm-text-secondary); line-height: 1.5; }
+    .provider-link { color: var(--crm-action); font-weight: 700; justify-self: start; }
     .prominent-warning { padding: .75rem; border-left: 3px solid var(--crm-warning); background: var(--crm-warning-surface); color: var(--crm-text-strong); font-weight: 600; line-height: 1.5; }
     .metadata { display: flex; gap: .5rem; color: var(--crm-text-secondary); font-size: var(--crm-font-sm); }
     .metadata span { color: var(--crm-text-muted); font-weight: 600; }

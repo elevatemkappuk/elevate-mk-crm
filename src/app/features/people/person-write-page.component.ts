@@ -44,6 +44,8 @@ type WriteMode = 'contact' | 'member' | 'edit';
           [member]="mode() === 'member'"
           [submitLabel]="submitLabel()"
           [pending]="submitting()"
+          [emailError]="emailFieldError()"
+          [mobileError]="mobileFieldError()"
           [drawer]="drawer()"
           (edited)="clearCollisionReview()"
           (submitted)="submit($event)"
@@ -92,13 +94,26 @@ export class PersonWritePageComponent {
   readonly notFound = signal(false);
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly emailFieldError = signal<string | null>(null);
+  readonly mobileFieldError = signal<string | null>(null);
   readonly duplicateConflict = signal<DuplicatePersonConflict | null>(null);
   readonly pendingSubmission = signal<PersonFormSubmission | null>(null);
   readonly identityOverrideConfirmationOpen = signal(false);
   readonly canManagePeople = computed(() => canManagePeople(this.auth.currentUser()));
   readonly submitLabel = computed(() => this.mode() === 'edit' ? 'Save changes' : this.drawer() ? 'Add person' : this.mode() === 'contact' ? 'Create Contact' : 'Create Member');
   readonly intro = computed(() => this.mode() === 'member' ? 'Create a new Person and active Membership in one step.' : this.mode() === 'contact' ? 'Create a new CRM Person without a Membership.' : 'Update the Person-owned details for this CRM record.');
-  readonly duplicateMessage = computed(() => this.mode() === 'edit' ? 'The new email or mobile number matches another existing Person. Review the existing record before saving this change.' : 'A Person with the same email or mobile number already exists. Review the existing record before creating another one.');
+  readonly duplicateMessage = computed(() => {
+    const conflict = this.duplicateConflict();
+    if (conflict?.code === 'duplicate_person') {
+      return 'Another person already uses this mobile number. Shared mobile numbers are allowed, but check that these are separate people before continuing.';
+    }
+    if (conflict?.code === 'IDENTITY_COLLISION' && conflict.match_reasons?.includes('EMAIL')) {
+      return 'A person with this email already exists. Review the existing person before continuing.';
+    }
+    return this.mode() === 'edit'
+      ? 'The new email or mobile number matches another existing Person. Review the existing record before saving this change.'
+      : 'A Person with the same email or mobile number already exists. Review the existing record before creating another one.';
+  });
 
   constructor() {
     effect(() => {
@@ -117,6 +132,8 @@ export class PersonWritePageComponent {
 
   submit(submission: PersonFormSubmission): void {
     if (this.submitting() || !this.canManagePeople()) { return; }
+    this.emailFieldError.set(null);
+    this.mobileFieldError.set(null);
     this.pendingSubmission.set(submission);
     this.submitCreation(submission);
   }
@@ -131,6 +148,8 @@ export class PersonWritePageComponent {
     this.pendingSubmission.set(null);
     this.duplicateConflict.set(null);
     this.identityOverrideConfirmationOpen.set(false);
+    this.emailFieldError.set(null);
+    this.mobileFieldError.set(null);
   }
 
   hasUnsavedEdits(): boolean {
@@ -138,7 +157,14 @@ export class PersonWritePageComponent {
   }
 
   openIdentityOverrideConfirmation(): void {
-    if (!this.submitting() && this.pendingSubmission() && this.duplicateConflict()) {
+    const submission = this.pendingSubmission();
+    const conflict = this.duplicateConflict();
+    if (this.submitting() || !submission || !conflict) return;
+    if (this.mode() === 'edit' && !('collision' in conflict)) {
+      this.submitCreation(submission, { allow_duplicate_mobile: true });
+      return;
+    }
+    if (!this.submitting()) {
       this.identityOverrideConfirmationOpen.set(true);
     }
   }
@@ -152,15 +178,23 @@ export class PersonWritePageComponent {
     const conflict = this.duplicateConflict();
     if (this.submitting() || !this.canManagePeople() || !submission || !conflict) return;
     this.identityOverrideConfirmationOpen.set(false);
-    this.submitCreation(submission, {
-      confirm_identity_override: true,
-      reviewed_collision: conflict.collision,
-    });
+    if (!('collision' in conflict)) {
+      this.submitCreation(submission, { allow_duplicate_mobile: true });
+    } else {
+      this.submitCreation(submission, {
+        confirm_identity_override: true,
+        reviewed_collision: conflict.collision,
+      });
+    }
   }
 
   identityOverrideConfirmationMessage(): string {
-    const type = this.duplicateConflict()?.collision.collision;
-    const subject = (this.duplicateConflict()?.candidates.length ?? 0) > 1 ? 'CRM People already use' : 'A CRM Person already uses';
+    const conflict = this.duplicateConflict();
+    if (!conflict || !('collision' in conflict)) {
+      return 'Another Person already uses this mobile number. Only continue if you are sure these records belong to different people.';
+    }
+    const type = conflict.collision.collision;
+    const subject = conflict.candidates.length > 1 ? 'CRM People already use' : 'A CRM Person already uses';
     if (type === 'EMAIL_AND_MOBILE_COLLISION') {
       return `${subject} this email address and mobile number. Only continue if you are sure these records belong to different people.`;
     }
@@ -170,7 +204,7 @@ export class PersonWritePageComponent {
     return `${subject} this mobile number. Only continue if you are sure these records belong to different people.`;
   }
 
-  private submitCreation(submission: PersonFormSubmission, identityOverride?: IdentityOverrideRequest): void {
+  private submitCreation(submission: PersonFormSubmission, identityOverride?: IdentityOverrideRequest | { allow_duplicate_mobile: true }): void {
     this.submitting.set(true); this.errorMessage.set(null); this.duplicateConflict.set(null);
     const request = this.mode() === 'contact'
       ? this.peopleService.createContact(identityOverride ? { ...submission.person, ...identityOverride } : submission.person)
@@ -178,7 +212,10 @@ export class PersonWritePageComponent {
         ? this.peopleService.createMember(identityOverride
           ? { ...submission.person, joined_at: submission.joined_at!, membership_source: 'STAFF', ...identityOverride }
           : { ...submission.person, joined_at: submission.joined_at!, membership_source: 'STAFF' } satisfies CreateMemberRequest)
-        : this.peopleService.updatePerson(this.person()!.id, submission.person satisfies UpdatePersonRequest);
+        : this.peopleService.updatePerson(this.person()!.id, {
+          ...submission.person,
+          ...(identityOverride && 'allow_duplicate_mobile' in identityOverride ? identityOverride : {}),
+        } satisfies UpdatePersonRequest);
     request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (person) => { this.submitting.set(false); this.saved.emit(person); if (!this.drawer() || this.mode() !== 'edit') void this.router.navigate(['/people', person.id]); },
       error: (error: HttpErrorResponse) => { this.submitting.set(false); this.handleError(error); },
@@ -197,7 +234,12 @@ export class PersonWritePageComponent {
       if (error.error.code === 'IDENTITY_COLLISION_STALE') this.errorMessage.set(error.error.detail);
       return;
     }
-    if (error.status === 400) { this.errorMessage.set('Person details need to be corrected before they can be saved.'); return; }
+    if (error.status === 400) {
+      this.emailFieldError.set(getFieldError(error.error, 'primary_email'));
+      this.mobileFieldError.set(getMobileFieldError(error.error));
+      this.errorMessage.set('Person details need to be corrected before they can be saved.');
+      return;
+    }
     if (error.status === 403) {
       this.errorMessage.set(formatForbiddenError(error, 'You no longer have permission to manage People.'));
       return;
@@ -208,10 +250,20 @@ export class PersonWritePageComponent {
   }
 }
 
+function getFieldError(payload: unknown, field: string): string | null {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
+  const value = (payload as Record<string, unknown>)[field];
+  return Array.isArray(value) && typeof value[0] === 'string' ? value[0] : null;
+}
+
+function getMobileFieldError(payload: unknown): string | null {
+  return getFieldError(payload, 'mobile');
+}
+
 function isDuplicatePersonConflict(value: unknown): value is DuplicatePersonConflict {
   const conflict = value as Partial<DuplicatePersonConflict> | null;
   return Boolean(conflict && typeof conflict === 'object'
-    && (conflict.code === 'IDENTITY_COLLISION' || conflict.code === 'IDENTITY_COLLISION_STALE')
-    && Array.isArray(conflict.candidates)
-    && conflict.collision);
+    && ((conflict.code === 'duplicate_person' && Array.isArray(conflict.matches))
+      || ((conflict.code === 'IDENTITY_COLLISION' || conflict.code === 'IDENTITY_COLLISION_STALE')
+        && Array.isArray(conflict.candidates) && conflict.collision)));
 }

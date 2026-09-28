@@ -115,33 +115,19 @@ interface AssignSkillFormValue {
           }
         </nav>
         <div class="detail-grid" [hidden]="selectedTab() !== 'overview'" aria-label="Overview">
-          <app-crm-section-card title="Personal details">
+          <div class="detail-column">
+<app-crm-section-card title="Personal details">
             <app-detail-list [items]="personalDetails()" />
             @if (canManagePeople() && !person()!.archived_at) {
               <button type="button" class="button-secondary" aria-label="Edit personal details" (click)="editPersonOpen.set(true)">Edit</button>
             }
           </app-crm-section-card>
 
-          @if (marketingPreference(); as preference) {
-            <app-person-marketing-preference-section
-              [personId]="person()!.id"
-              [preference]="preference"
-              [canEdit]="canManagePeople() && !person()!.archived_at"
-              (preferenceChanged)="marketingPreferenceChanged($event)"
-            />
-          }
-
-          @if (person(); as currentPerson) {
+@if (person(); as currentPerson) {
             <app-person-brevo-integration-section [personId]="currentPerson.id" />
           }
 
-          <app-crm-section-card title="Membership">
-            <p class="membership-summary"><app-status-badge [label]="relationshipLabel()" [tone]="membership()?.status === 'ACTIVE' ? 'info' : membership() ? 'warning' : 'neutral'" /></p>
-            @if (membership()) { <app-detail-list [items]="membershipDetails()" /> }
-            @else { <p class="empty-section-copy">No membership record</p> }
-            <a class="section-link" [routerLink]="[]" fragment="membership" queryParamsHandling="preserve">{{ canMakeMember() || canEndMembership() ? 'Manage membership' : 'View membership' }}</a>
-          </app-crm-section-card>
-          <app-crm-section-card title="Professional Profile">
+<app-crm-section-card title="Professional Profile">
             @if (professionalProfile()) {
               <app-detail-list [items]="professionalProfileDetails()" />
 
@@ -181,117 +167,7 @@ interface AssignSkillFormValue {
 
           </app-crm-section-card>
 
-          <app-crm-section-card title="Skills">
-            @if (skills().length) {
-              <div class="skills-list">
-                @for (skill of skills(); track skill.id) {
-                  <div class="skill-chip-row">
-                    <span class="skill-chip">{{ skill.name }}</span>
-
-                    @if (canManageSkills()) {
-                      <button
-                        type="button"
-                        class="skill-remove-button"
-                        [attr.aria-label]="'Remove ' + skill.name"
-                        [disabled]="removingSkillId() === skill.id"
-                        (click)="openSkillRemovalConfirmation(skill.id)"
-                      >
-                        Remove
-                      </button>
-                    }
-                  </div>
-                }
-              </div>
-
-              @if (pendingSkillRemoval()) {
-                <div class="inline-confirmation">
-                  <p class="form-note">Remove {{ pendingSkillRemoval()!.name }}?</p>
-                  <div class="form-actions">
-                    <button
-                      type="button"
-                      [disabled]="removingSkillId() === pendingSkillRemoval()!.id"
-                      (click)="confirmSkillRemoval()"
-                    >
-                      {{ removingSkillId() === pendingSkillRemoval()!.id ? 'Removing...' : 'Remove' }}
-                    </button>
-                    <button
-                      type="button"
-                      class="button-secondary"
-                      [disabled]="removingSkillId() === pendingSkillRemoval()!.id"
-                      (click)="cancelSkillRemoval()"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              }
-            } @else {
-              <div class="skills-empty-state">
-                <p class="empty-section-copy">No skills recorded.</p>
-              </div>
-            }
-
-            @if (showAddSkillForm()) {
-              <form class="skills-form" [formGroup]="assignSkillForm" (ngSubmit)="submitAssignSkill()">
-                @if (availableSkills().length) {
-                  <label>
-                    <span>Skill</span>
-                    <select formControlName="skill" [disabled]="skillsCatalogLoading() || !!skillsCatalogErrorMessage()">
-                      <option value="">Select a skill...</option>
-                      @for (skill of availableSkills(); track skill.id) {
-                        <option [value]="skill.id">{{ skill.name }}</option>
-                      }
-                    </select>
-                  </label>
-                } @else if (!skillsCatalogLoading() && !skillsCatalogErrorMessage()) {
-                  <p class="form-note">All available skills are already assigned.</p>
-                }
-
-                @if (skillsCatalogLoading()) {
-                  <p class="form-note">Loading skill options.</p>
-                }
-
-                @if (skillsCatalogErrorMessage()) {
-                  <p class="form-error">{{ skillsCatalogErrorMessage() }}</p>
-                }
-
-                @if (showAssignSkillRequiredError()) {
-                  <p class="form-error">Skill is required.</p>
-                }
-
-                @if (skillWriteErrorMessage()) {
-                  <p class="form-error">{{ skillWriteErrorMessage() }}</p>
-                }
-
-                <div class="form-actions">
-                  <button
-                    type="submit"
-                    [disabled]="
-                      assigningSkill() ||
-                      skillsCatalogLoading() ||
-                      !!skillsCatalogErrorMessage() ||
-                      !availableSkills().length
-                    "
-                  >
-                    {{ assigningSkill() ? 'Saving...' : 'Save' }}
-                  </button>
-                  <button type="button" class="button-secondary" [disabled]="assigningSkill()" (click)="cancelAddSkillForm()">
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            } @else if (canManageSkills()) {
-              <div class="section-actions">
-                <button type="button" class="button-primary" (click)="openAddSkillForm()">Add Skill</button>
-              </div>
-            }
-
-            @if (skillWriteErrorMessage() && !showAddSkillForm()) {
-              <p class="form-error skills-inline-error">{{ skillWriteErrorMessage() }}</p>
-            }
-          </app-crm-section-card>
-
-          <app-crm-section-card title="Interests">
+<app-crm-section-card title="Interests">
             @if (interests().length) {
               <div class="skills-list">
                 @for (interest of interests(); track interest.id) {
@@ -408,8 +284,135 @@ interface AssignSkillFormValue {
               <p class="form-error skills-inline-error">{{ interestWriteErrorMessage() }}</p>
             }
           </app-crm-section-card>
+          </div>
+          <div class="detail-column">
+@if (marketingPreference(); as preference) {
+            <app-person-marketing-preference-section
+              [personId]="person()!.id"
+              [preference]="preference"
+              [canEdit]="canManagePeople() && !person()!.archived_at"
+              (preferenceChanged)="marketingPreferenceChanged($event)"
+            />
+          }
 
-          <app-crm-section-card title="Tags">
+<app-crm-section-card title="Membership">
+            <p class="membership-summary"><app-status-badge [label]="relationshipLabel()" [tone]="membership()?.status === 'ACTIVE' ? 'info' : membership() ? 'warning' : 'neutral'" /></p>
+            @if (membership()) { <app-detail-list [items]="membershipDetails()" /> }
+            @else { <p class="empty-section-copy">No membership record</p> }
+            <a class="section-link" [routerLink]="[]" fragment="membership" queryParamsHandling="preserve">{{ canMakeMember() || canEndMembership() ? 'Manage membership' : 'View membership' }}</a>
+          </app-crm-section-card>
+
+<app-crm-section-card title="Skills">
+            @if (skills().length) {
+              <div class="skills-list">
+                @for (skill of skills(); track skill.id) {
+                  <div class="skill-chip-row">
+                    <span class="skill-chip">{{ skill.name }}</span>
+
+                    @if (canManageSkills()) {
+                      <button
+                        type="button"
+                        class="skill-remove-button"
+                        [attr.aria-label]="'Remove ' + skill.name"
+                        [disabled]="removingSkillId() === skill.id"
+                        (click)="openSkillRemovalConfirmation(skill.id)"
+                      >
+                        Remove
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+
+              @if (pendingSkillRemoval()) {
+                <div class="inline-confirmation">
+                  <p class="form-note">Remove {{ pendingSkillRemoval()!.name }}?</p>
+                  <div class="form-actions">
+                    <button
+                      type="button"
+                      [disabled]="removingSkillId() === pendingSkillRemoval()!.id"
+                      (click)="confirmSkillRemoval()"
+                    >
+                      {{ removingSkillId() === pendingSkillRemoval()!.id ? 'Removing...' : 'Remove' }}
+                    </button>
+                    <button
+                      type="button"
+                      class="button-secondary"
+                      [disabled]="removingSkillId() === pendingSkillRemoval()!.id"
+                      (click)="cancelSkillRemoval()"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              }
+            } @else {
+              <div class="skills-empty-state">
+                <p class="empty-section-copy">No skills recorded.</p>
+              </div>
+            }
+
+            @if (showAddSkillForm()) {
+              <form class="skills-form" [formGroup]="assignSkillForm" (ngSubmit)="submitAssignSkill()">
+                @if (availableSkills().length) {
+                  <label>
+                    <span>Skill</span>
+                    <select formControlName="skill" [disabled]="skillsCatalogLoading() || !!skillsCatalogErrorMessage()">
+                      <option value="">Select a skill...</option>
+                      @for (skill of availableSkills(); track skill.id) {
+                        <option [value]="skill.id">{{ skill.name }}</option>
+                      }
+                    </select>
+                  </label>
+                } @else if (!skillsCatalogLoading() && !skillsCatalogErrorMessage()) {
+                  <p class="form-note">All available skills are already assigned.</p>
+                }
+
+                @if (skillsCatalogLoading()) {
+                  <p class="form-note">Loading skill options.</p>
+                }
+
+                @if (skillsCatalogErrorMessage()) {
+                  <p class="form-error">{{ skillsCatalogErrorMessage() }}</p>
+                }
+
+                @if (showAssignSkillRequiredError()) {
+                  <p class="form-error">Skill is required.</p>
+                }
+
+                @if (skillWriteErrorMessage()) {
+                  <p class="form-error">{{ skillWriteErrorMessage() }}</p>
+                }
+
+                <div class="form-actions">
+                  <button
+                    type="submit"
+                    [disabled]="
+                      assigningSkill() ||
+                      skillsCatalogLoading() ||
+                      !!skillsCatalogErrorMessage() ||
+                      !availableSkills().length
+                    "
+                  >
+                    {{ assigningSkill() ? 'Saving...' : 'Save' }}
+                  </button>
+                  <button type="button" class="button-secondary" [disabled]="assigningSkill()" (click)="cancelAddSkillForm()">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            } @else if (canManageSkills()) {
+              <div class="section-actions">
+                <button type="button" class="button-primary" (click)="openAddSkillForm()">Add Skill</button>
+              </div>
+            }
+
+            @if (skillWriteErrorMessage() && !showAddSkillForm()) {
+              <p class="form-error skills-inline-error">{{ skillWriteErrorMessage() }}</p>
+            }
+          </app-crm-section-card>
+
+<app-crm-section-card title="Tags">
             <p class="taxonomy-supporting-copy">Internal CRM classification.</p>
 
             @if (tags().length) {
@@ -523,6 +526,7 @@ interface AssignSkillFormValue {
 
 
 
+          </div>
         </div>
         <section [hidden]="selectedTab() !== 'membership'" aria-label="Membership">
           <app-crm-section-card title="Membership">

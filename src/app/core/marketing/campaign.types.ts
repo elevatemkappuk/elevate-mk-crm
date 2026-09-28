@@ -9,6 +9,8 @@ export type CampaignStatus =
   | 'PROVIDER_FAILED'
   | 'NO_READY_RECIPIENTS';
 
+export type CampaignLifecycle = 'active' | 'archived' | 'all';
+
 export type CampaignPreparationStatus =
   | 'PREPARING'
   | 'SNAPSHOT_READY'
@@ -42,7 +44,7 @@ export interface CampaignPreparation {
   can_start_provider_preparation: boolean;
   can_retry_provider_preparation: boolean;
   brevo_list_id: number | null;
-  brevo_campaign_id: number | null;
+  brevo_campaigns_url: string | null;
   brevo_editor_url: string | null;
   provider_error_code: string | null;
   provider_error_message: string | null;
@@ -58,6 +60,12 @@ export interface Campaign {
   created_by: number;
   created_at: string;
   updated_at: string;
+  archived_at: string | null;
+  archived_by: number | null;
+  is_archived: boolean;
+  can_archive: boolean;
+  can_restore: boolean;
+  can_delete: boolean;
   current_preparation: CampaignPreparation | null;
 }
 
@@ -70,6 +78,7 @@ export interface CampaignCreateRequest {
 export interface CampaignRecipientSnapshot {
   id: number;
   person: number;
+  email_snapshot: string;
   first_name_snapshot: string;
   last_name_snapshot: string;
   consent_state_snapshot: string;

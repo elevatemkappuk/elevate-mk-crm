@@ -25,7 +25,7 @@ describe('PersonBrevoIntegrationSectionComponent', () => {
   const response = (status: string, canReconcile = false) => ({
     provider: 'BREVO',
     marketing_preference: { channel: 'EMAIL', state: 'OPTED_IN', source: 'STAFF_RECORDED', recorded_at: null, recorded_by_id: null },
-    integration: { status, reason_code: status, title: 'Safe title', explanation: 'Safe explanation', can_reconcile: canReconcile },
+    integration: { status, reason_code: status, title: 'Safe title', explanation: 'Safe explanation', can_reconcile: canReconcile, provider_profile_url: null },
   });
 
   it.each([
@@ -37,6 +37,28 @@ describe('PersonBrevoIntegrationSectionComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain(label);
     expect(fixture.nativeElement.textContent).not.toContain(status);
+  });
+
+  it('renders the backend-supplied Brevo profile URL as a safe external link', () => {
+    const url = 'https://app.brevo.com/contact/index/42';
+    http.expectOne(`${base}/people/30/brevo-integration/`).flush({
+      ...response('CONNECTED'),
+      integration: { ...response('CONNECTED').integration, provider_profile_url: url },
+    });
+    fixture.detectChanges();
+    const link = fixture.nativeElement.querySelector('a.provider-link') as HTMLAnchorElement;
+    expect(link?.textContent).toContain('View in Brevo');
+    expect(link?.href).toBe(url);
+    expect(link?.target).toBe('_blank');
+    expect(link?.rel).toContain('noopener');
+    expect(link?.rel).toContain('noreferrer');
+    expect(fixture.nativeElement.textContent).not.toContain('42');
+  });
+
+  it('does not render a dead link when the backend supplies no profile URL', () => {
+    http.expectOne(`${base}/people/30/brevo-integration/`).flush(response('CONTACT_MISSING'));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('a.provider-link')).toBeNull();
   });
 
   it('shows restrictive guidance without mutation controls', () => {

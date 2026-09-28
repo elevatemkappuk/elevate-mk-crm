@@ -37,17 +37,24 @@ import { CommunityGrowthComponent } from './community-growth.component';
               <section class="profile"><h3>{{ section.label }}</h3><dl>@for (item of dashboard.community_profile[section.key]; track $index) { <div><dt>{{ item.label }}</dt><dd>{{ item.count }}</dd></div> } @empty { <p>{{ section.empty }}</p> }</dl></section>
             }
           </div></app-crm-section-card>
+          <app-crm-section-card><h2>Marketing</h2><div class="marketing-summary">
+            <div class="marketing-metrics"><div><span>Active campaigns</span><strong>{{ dashboard.marketing.active_campaigns }}</strong></div><div><span>Ready in Brevo</span><strong>{{ dashboard.marketing.ready_in_brevo }}</strong></div><div><span>Needs attention</span><strong>{{ dashboard.marketing.needs_attention }}</strong></div></div>
+            <a class="section-link" routerLink="/marketing/campaigns">View campaigns <span aria-hidden="true">&rarr;</span></a>
+          </div></app-crm-section-card>
           <app-crm-section-card><h2>Events</h2><div class="events-placeholder"><app-status-badge label="Coming soon" tone="neutral" /><p class="muted">Event activity and participation will appear here.</p></div></app-crm-section-card>
           <app-crm-section-card><h2>Needs attention</h2>
-            @if (auth.isCrmAdmin()) { <a class="attention" routerLink="/imports"><span>Historical imports needing review</span><strong>{{ dashboard.attention.imports_needing_review }}</strong><span aria-hidden="true">&rarr;</span></a> }
-            @else { <div class="attention"><span>Historical imports needing review</span><strong>{{ dashboard.attention.imports_needing_review }}</strong></div> }
-            <a class="attention" routerLink="/people" [queryParams]="archivedParams"><span>Archived people</span><strong>{{ dashboard.attention.archived_people }}</strong><span aria-hidden="true">&rarr;</span></a>
+            @if (dashboard.attention.imports_needing_review > 0 && auth.isCrmAdmin()) { <a class="attention" routerLink="/imports"><span>Historical imports needing review</span><strong>{{ dashboard.attention.imports_needing_review }}</strong><span aria-hidden="true">&rarr;</span></a> }
+            @else if (dashboard.attention.imports_needing_review > 0) { <div class="attention"><span>Historical imports needing review</span><strong>{{ dashboard.attention.imports_needing_review }}</strong></div> }
+            @if (dashboard.attention.archived_people > 0) { <a class="attention" routerLink="/people" [queryParams]="archivedParams"><span>Archived people</span><strong>{{ dashboard.attention.archived_people }}</strong><span aria-hidden="true">&rarr;</span></a> }
+            @if (dashboard.attention.campaigns_needing_attention > 0) { <a class="attention" routerLink="/marketing/campaigns"><span>Campaigns needing attention</span><strong>{{ dashboard.attention.campaigns_needing_attention }}</strong><span aria-hidden="true">&rarr;</span></a> }
           </app-crm-section-card>
         </div>
       }
       <app-crm-section-card><h2>Quick actions</h2><div class="quick-actions">
-        @if (canManage()) { <button class="crm-button brand-action" type="button" (click)="addOpen.set(true)">Add person</button> }
+        @if (canManage()) { <button class="crm-button crm-button--brand" type="button" (click)="addOpen.set(true)">Add person</button> }
         <a class="crm-button crm-button--secondary" routerLink="/people">View People</a>
+        <a class="crm-button crm-button--secondary" routerLink="/marketing/audience-preview">Preview audience</a>
+        <a class="crm-button crm-button--secondary" routerLink="/marketing/campaigns">View campaigns</a>
         @if (auth.isCrmAdmin()) { <button class="crm-button crm-button--secondary" type="button" (click)="uploadOpen.set(true)">Upload historical records</button> }
       </div></app-crm-section-card>
       @if (addOpen() && canManage()) { <app-add-person-drawer (closed)="addOpen.set(false); load()" /> }

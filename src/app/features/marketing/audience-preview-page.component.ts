@@ -74,6 +74,9 @@ const EXCLUSION_EXPLANATIONS: Record<AudienceExclusionReason, string> = {
 
       <app-crm-section-card title="Audience criteria">
         <app-people-directory-filters [query]="directoryQuery()" [compact]="true" (changed)="selectionChanged($event)" (cleared)="clearFilters()" />
+        @if (response(); as preview) {
+          <div class="selection-summary"><strong>Selection</strong><span>{{ selectionSummary(preview) }}</span></div>
+        }
         <div class="display-controls" aria-label="Audience preview display controls">
           <label>
             <span>Order by</span>
@@ -95,37 +98,17 @@ const EXCLUSION_EXPLANATIONS: Record<AudienceExclusionReason, string> = {
       </app-crm-section-card>
 
       @if (response(); as preview) {
-        <section class="summary-grid" aria-label="Audience summary">
-          <article class="summary-card">
-            <p class="summary-label">Selected</p>
-            <p class="summary-value">{{ preview.selected_count }}</p>
-            <p>People matching the current audience criteria.</p>
-          </article>
-          <article class="summary-card summary-card-positive">
-            <p class="summary-label">Eligible</p>
-            <p class="summary-value">{{ preview.eligible_count }}</p>
-            <p>Can currently receive EMAIL marketing.</p>
-          </article>
-          <article class="summary-card summary-card-warning">
-            <p class="summary-label">Excluded</p>
-            <p class="summary-value">{{ preview.excluded_count }}</p>
-            <p>Match the criteria but cannot currently receive EMAIL marketing.</p>
-          </article>
-        </section>
-
-        <p class="funnel-summary">{{ preview.eligible_count }} of {{ preview.selected_count }} selected People can currently receive marketing email.</p>
-
         @if (canCreateCampaign()) {
           <div class="campaign-action">
-            <div><strong>Ready to continue?</strong><span>Use these criteria as the campaign audience. Eligibility will be re-checked during preparation.</span></div>
+            <div><strong>{{ preview.eligible_count }} {{ preview.eligible_count === 1 ? 'person can' : 'people can' }} receive this campaign</strong><span>Eligibility will be checked again when the Campaign is prepared.</span></div>
             <button type="button" class="crm-button crm-button--primary" (click)="createDialogOpen.set(true)">Continue to Campaign</button>
           </div>
         }
 
         @if (preview.excluded_count > 0) {
-          <app-crm-section-card title="Exclusion breakdown">
+          <app-crm-section-card [title]="'Exclusions (' + preview.excluded_count + ')'">
             <dl class="breakdown">
-              @for (reason of exclusionReasons; track reason) {
+              @for (reason of activeExclusionReasons(preview); track reason) {
                 <div>
                   <dt>{{ exclusionLabel(reason) }}</dt>
                   <dd>{{ preview.exclusion_counts[reason] }}</dd>
@@ -137,15 +120,7 @@ const EXCLUSION_EXPLANATIONS: Record<AudienceExclusionReason, string> = {
       }
 
       <section class="results-panel" aria-label="Audience results">
-        <div class="results-heading">
-          <div>
-            <p class="eyebrow">Recipient inspection</p>
-            <h2>{{ activeResultHeading() }}</h2>
-          </div>
-          @if (response(); as preview) {
-            <p class="result-count">{{ preview.results.count }} {{ activeResultLabel().toLowerCase() }}</p>
-          }
-        </div>
+        <h2>Recipients</h2>
 
         <div class="result-tabs" role="tablist" aria-label="Audience result views">
           @for (view of resultViews; track view) {
@@ -187,7 +162,7 @@ const EXCLUSION_EXPLANATIONS: Record<AudienceExclusionReason, string> = {
                         } @else {
                           <div class="excluded-status">
                             <app-status-badge [label]="exclusionLabel(person.exclusion_reasons[0])" tone="warning" />
-                            <span>{{ exclusionExplanation(person.exclusion_reasons[0]) }}</span>
+                            @if (queryState().result === 'excluded') { <span>{{ exclusionExplanation(person.exclusion_reasons[0]) }}</span> }
                           </div>
                         }
                       </td>
@@ -221,7 +196,7 @@ const EXCLUSION_EXPLANATIONS: Record<AudienceExclusionReason, string> = {
     :host { display: block; }
     .audience-page { display: grid; gap: var(--crm-space-4); }
     .back-link { color: var(--crm-text-secondary); font-size: var(--crm-font-sm); font-weight: 600; }
-    .page-heading, .results-heading { display: flex; justify-content: space-between; gap: 1rem; align-items: end; }
+    .page-heading { display: flex; justify-content: space-between; gap: 1rem; align-items: end; }
     h1, h2, p { margin: 0; }
     h1 { color: var(--crm-text-strong); font-size: clamp(1.45rem, 2.5vw, 2rem); }
     h2 { color: var(--crm-text-strong); font-size: var(--crm-font-lg); }
@@ -230,21 +205,14 @@ const EXCLUSION_EXPLANATIONS: Record<AudienceExclusionReason, string> = {
     .display-controls { display: flex; flex-wrap: wrap; gap: .8rem; margin-top: 1rem; }
     .display-controls label { display: grid; gap: .3rem; min-width: 12rem; color: var(--crm-text-secondary); font-size: var(--crm-font-sm); font-weight: 600; }
     select { min-height: 2.75rem; padding: .55rem .7rem; border: 1px solid var(--crm-border); border-radius: var(--crm-radius-sm); background: var(--crm-surface); color: var(--crm-text-strong); font: inherit; }
-    .summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--crm-space-4); }
-    .summary-card { display: grid; gap: .45rem; padding: 1.1rem 1.2rem; border: 1px solid var(--crm-border); border-radius: var(--crm-radius-lg); background: var(--crm-surface); box-shadow: var(--crm-shadow-sm); }
-    .summary-card-positive { border-color: color-mix(in srgb, var(--crm-success) 25%, var(--crm-border)); }
-    .summary-card-warning { border-color: color-mix(in srgb, var(--crm-warning) 30%, var(--crm-border)); }
-    .summary-label { color: var(--crm-text-secondary); font-weight: 700; }
-    .summary-value { color: var(--crm-text-strong); font-size: 2rem; font-weight: 700; line-height: 1; }
-    .summary-card p:last-child { color: var(--crm-text-muted); font-size: var(--crm-font-sm); line-height: 1.4; }
-    .funnel-summary { margin: calc(var(--crm-space-4) * -0.35) 0 0; color: var(--crm-text-secondary); font-weight: 600; }
+    .selection-summary { display: grid; gap: .25rem; margin-top: var(--crm-space-4); color: var(--crm-text-secondary); }
+    .selection-summary strong { color: var(--crm-text-strong); }
     .campaign-action { display:flex; justify-content:space-between; align-items:center; gap:1rem; padding:1rem 1.1rem; border:1px solid var(--crm-shell-accent); border-radius:var(--crm-radius-lg); background:color-mix(in srgb, var(--crm-shell-accent) 12%, var(--crm-surface)); } .campaign-action div { display:grid; gap:.25rem; } .campaign-action strong { color:var(--crm-text-strong); } .campaign-action span { color:var(--crm-text-secondary); font-size:var(--crm-font-sm); }
     .breakdown { display: grid; gap: .6rem; margin: 0; max-width: 28rem; }
     .breakdown div { display: flex; justify-content: space-between; gap: 1rem; padding-bottom: .5rem; border-bottom: 1px solid var(--crm-border); }
     .breakdown dt { color: var(--crm-text-secondary); }
     .breakdown dd { margin: 0; color: var(--crm-text-strong); font-weight: 700; }
     .results-panel { display: grid; gap: var(--crm-space-4); padding: 1.2rem 1.25rem; border: 1px solid var(--crm-border); border-radius: var(--crm-radius-lg); background: var(--crm-surface); box-shadow: var(--crm-shadow-sm); }
-    .result-count { color: var(--crm-text-muted); font-size: var(--crm-font-sm); }
     .result-tabs { display: flex; flex-wrap: wrap; gap: .45rem; border-bottom: 1px solid var(--crm-border); }
     .result-tabs button { min-height: 2.65rem; padding: .55rem .9rem; border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--crm-text-secondary); font: inherit; font-weight: 700; cursor: pointer; }
     .result-tabs button.active { border-bottom-color: var(--crm-shell-accent); color: var(--crm-text-strong); }
@@ -260,10 +228,8 @@ const EXCLUSION_EXPLANATIONS: Record<AudienceExclusionReason, string> = {
     .state-card { display: grid; gap: .8rem; justify-items: start; padding: 1.25rem; border: 1px dashed var(--crm-border); border-radius: var(--crm-radius-md); color: var(--crm-text-secondary); }
     .state-card-error { border-style: solid; color: var(--crm-error); }
     .pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; color: var(--crm-text-secondary); }
-    .crm-button { min-height: 2.75rem; padding: .6rem 1rem; border: 1px solid var(--crm-border); border-radius: var(--crm-radius-sm); background: var(--crm-surface); color: var(--crm-text-strong); font: inherit; font-weight: 700; cursor: pointer; }
-    .crm-button:disabled { cursor: not-allowed; opacity: .55; }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-    @media (max-width: 700px) { .summary-grid { grid-template-columns: 1fr; } .page-heading, .results-heading { align-items: start; flex-direction: column; } .display-controls label { width: 100%; } }
+    @media (max-width: 700px) { .page-heading { align-items: start; flex-direction: column; } .display-controls label { width: 100%; } }
     @media (max-width: 600px) { th { display: none; } td { display: grid; grid-template-columns: 8rem minmax(0, 1fr); gap: .6rem; } td::before { content: attr(data-label); color: var(--crm-text-muted); font-size: var(--crm-font-sm); font-weight: 700; } }
   `,
 })
@@ -363,12 +329,13 @@ export class AudiencePreviewPageComponent {
   }
 
   resultLabel(result: AudienceResultView, preview: AudiencePreviewResponse | null = this.response()): string {
-    if (result === 'eligible') return `Eligible recipients${preview ? ` (${preview.eligible_count})` : ''}`;
-    if (result === 'excluded') return `Exclusions${preview ? ` (${preview.excluded_count})` : ''}`;
+    if (result === 'eligible') return `Eligible${preview ? ` (${preview.eligible_count})` : ''}`;
+    if (result === 'excluded') return `Excluded${preview ? ` (${preview.excluded_count})` : ''}`;
     return `All selected${preview ? ` (${preview.selected_count})` : ''}`;
   }
   activeResultLabel(): string { return this.resultLabel(this.queryState().result); }
-  activeResultHeading(): string { return this.queryState().result === 'eligible' ? 'Eligible recipients' : this.queryState().result === 'excluded' ? 'Exclusions' : 'All selected People'; }
+  selectionSummary(preview: AudiencePreviewResponse): string { return `${preview.selected_count} ${preview.selected_count === 1 ? 'person' : 'people'} selected \u00b7 ${preview.eligible_count} eligible \u00b7 ${preview.excluded_count} excluded`; }
+  activeExclusionReasons(preview: AudiencePreviewResponse): AudienceExclusionReason[] { return this.exclusionReasons.filter((reason) => preview.exclusion_counts[reason] > 0); }
   fullName(person: AudiencePreviewPerson): string { return `${person.first_name} ${person.last_name}`.trim(); }
   exclusionLabel(reason: AudienceExclusionReason | undefined): string { return reason ? EXCLUSION_LABELS[reason] : 'Excluded'; }
   exclusionExplanation(reason: AudienceExclusionReason | undefined): string { return reason ? EXCLUSION_EXPLANATIONS[reason] : 'This person is not currently eligible for email marketing.'; }

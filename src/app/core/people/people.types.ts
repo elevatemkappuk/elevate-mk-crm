@@ -119,6 +119,7 @@ export interface PersonBrevoIntegration {
     title: string;
     explanation: string;
     can_reconcile: boolean;
+    provider_profile_url: string | null;
   };
 }
 
@@ -223,7 +224,9 @@ export interface IdentityOverrideRequest {
   reviewed_collision: ReviewedIdentityCollision;
 }
 
-export interface UpdatePersonRequest extends Partial<PersonWriteFields> {}
+export interface UpdatePersonRequest extends Partial<PersonWriteFields> {
+  allow_duplicate_mobile?: true;
+}
 
 export interface DuplicatePersonMatch {
   id: number;
@@ -234,11 +237,28 @@ export interface DuplicatePersonMatch {
   archived_at: string | null;
 }
 
-export interface DuplicatePersonConflict {
+export interface IdentityCollisionConflict {
   detail: string;
   code: 'IDENTITY_COLLISION' | 'IDENTITY_COLLISION_STALE';
+  severity?: 'BLOCKING' | 'WARNING';
+  match_reasons?: ('EMAIL' | 'MOBILE')[];
   collision: ReviewedIdentityCollision;
   candidates: DuplicatePersonMatch[];
+}
+
+export interface MobileDuplicatePersonConflict {
+  detail: string;
+  code: 'duplicate_person';
+  severity: 'WARNING';
+  match_reasons: ['MOBILE'];
+  matches: DuplicatePersonMatch[];
+}
+
+export type DuplicatePersonConflict = IdentityCollisionConflict | MobileDuplicatePersonConflict;
+export type PersonIdentityConflict = DuplicatePersonConflict;
+
+export interface DuplicateMobileOverrideRequest {
+  allow_duplicate_mobile: true;
 }
 
 export interface EndMembershipRequest {

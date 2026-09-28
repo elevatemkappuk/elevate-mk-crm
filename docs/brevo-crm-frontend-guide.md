@@ -66,7 +66,10 @@ GET /api/v1/people/{person_id}/brevo-integration/
 The Brevo Integration card displays the current provider status, safe
 explanation, and the CRM EMAIL marketing preference. It never exposes Brevo
 contact IDs, external reference IDs, raw provider errors, or sync-job
-terminology. A failed inspection leaves the rest of Person Overview usable.
+terminology. When the backend supplies an optional safe profile URL, it also
+renders a `View in Brevo ↗` link in a new tab with `noopener noreferrer`; the
+frontend does not construct the URL or expose the provider ID separately. A
+failed inspection leaves the rest of Person Overview usable.
 
 The frontend source-label map includes the implemented CRM and provider
 sources. Staff-recorded preferences display as `Staff recorded`,
@@ -290,7 +293,13 @@ Provider-facing staff labels are **Recipients ready**, **Preparing in Brevo**,
 **Ready in Brevo**, **Brevo preparation failed**, **Needs attention**, and **No
 recipients ready**. A prepared campaign may show a backend-supplied editor URL;
 when it is unavailable, the UI does not guess one and instead directs staff to
-open Brevo Campaigns. Brevo remains responsible for email design, final
+![alt text](image.png)open Brevo Campaigns. This action uses the backend-supplied
+`brevo_campaigns_url` listing target; Angular never constructs a Brevo URL from
+the provider campaign ID. The current backend-owned default is
+`https://app.brevo.com/campaigns/listing`, and following it performs no provider
+API request or write. `brevo_editor_url` remains reserved for a future
+officially supported campaign-specific URL. Brevo remains responsible for email
+design, final
 subject/content, preview/test, scheduling, and sending.
 
 Saved segments, engagement analytics, bulk preference editing, direct
@@ -348,3 +357,27 @@ campaign recipient target. The starter subject is the Campaign name only as a
 provider-required deterministic placeholder; final subject/content, preview,
 test, scheduling, and sending remain in Brevo. Angular never sends or
 schedules the campaign.
+
+## Campaign lifecycle workflow
+
+Campaigns default to the **Active** view. Staff can switch to **Archived**;
+the selection is reflected in the URL and requests the backend lifecycle filter.
+Archive is reversible and removes a Campaign from Active Campaigns while
+preserving its workflow status, recipient snapshot, preparation/history, and
+Brevo resources. Archived Campaigns remain open for historical review.
+
+On Campaign Detail, the backend capability flags control lifecycle actions:
+**Archive campaign**, **Restore campaign**, and **Delete draft**. Delete draft
+is shown only when the backend says the Campaign is a genuinely unused draft;
+the frontend does not recreate the historical-evidence rule. Prepared or
+historical Campaigns are archived rather than deleted. Archive, restore, and
+delete use confirmations and prevent duplicate submission.
+
+An archived Campaign clearly shows both concepts—for example, workflow
+**Ready in Brevo** and lifecycle **Archived**. Preparation, recipient counts,
+snapshot rows, reconciliation information, and Review person navigation remain
+visible, while Prepare recipients, Prepare in Brevo, and Retry Brevo preparation
+are hidden. Staff restore the Campaign before continuing workflow operations.
+Viewer staff remain read-only; Admin and Manager actions are still constrained
+by the backend capability flags. Lifecycle conflicts refresh the Campaign and
+show safe staff-facing error text.
