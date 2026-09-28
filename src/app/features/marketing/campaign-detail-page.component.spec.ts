@@ -144,9 +144,9 @@ describe('CampaignDetailPageComponent', () => {
     await harness.navigateByUrl('/marketing/campaigns/4');
     http.expectOne(`${base}/marketing/campaigns/4/`).flush(campaign('RECONCILIATION_REQUIRED', 'RECONCILIATION_REQUIRED'));
     http.expectOne(`${base}/marketing/campaigns/4/recipients/?page=1&page_size=100`).flush({ count: 3, next: null, previous: null, results: [
-      { id: 1, person: 11, first_name_snapshot: 'Restricted', last_name_snapshot: 'Person', consent_state_snapshot: 'OPTED_IN', decision: 'INCLUDED', exclusion_reason: null, captured_at: '', provider_outcome: 'RECONCILIATION_REQUIRED', provider_error_code: 'BREVO_CONTACT_RESTRICTED' },
-      { id: 2, person: 12, first_name_snapshot: 'Ready', last_name_snapshot: 'Person', consent_state_snapshot: 'OPTED_IN', decision: 'INCLUDED', exclusion_reason: null, captured_at: '', provider_outcome: 'ADDED_TO_CAMPAIGN_LIST', provider_error_code: null },
-      { id: 3, person: 13, first_name_snapshot: 'Excluded', last_name_snapshot: 'Person', consent_state_snapshot: 'OPTED_OUT', decision: 'EXCLUDED', exclusion_reason: 'EXCLUDED_OPTED_OUT', captured_at: '', provider_outcome: null, provider_error_code: null },
+      { id: 1, person: 11, email_snapshot: 'restricted@example.com', first_name_snapshot: 'Restricted', last_name_snapshot: 'Person', consent_state_snapshot: 'OPTED_IN', decision: 'INCLUDED', exclusion_reason: null, captured_at: '', provider_outcome: 'RECONCILIATION_REQUIRED', provider_error_code: 'BREVO_CONTACT_RESTRICTED' },
+      { id: 2, person: 12, email_snapshot: 'ready@example.com', first_name_snapshot: 'Ready', last_name_snapshot: 'Person', consent_state_snapshot: 'OPTED_IN', decision: 'INCLUDED', exclusion_reason: null, captured_at: '', provider_outcome: 'ADDED_TO_CAMPAIGN_LIST', provider_error_code: null },
+      { id: 3, person: 13, email_snapshot: 'excluded@example.com', first_name_snapshot: 'Excluded', last_name_snapshot: 'Person', consent_state_snapshot: 'OPTED_OUT', decision: 'EXCLUDED', exclusion_reason: 'EXCLUDED_OPTED_OUT', captured_at: '', provider_outcome: null, provider_error_code: null },
     ] });
     await harness.fixture.whenStable();
     const text = harness.routeNativeElement?.textContent ?? '';
@@ -154,6 +154,20 @@ describe('CampaignDetailPageComponent', () => {
     expect(text).toContain('Restricted Person');
     expect(text).toContain('Blocked in Brevo');
     expect(text).toContain('cannot be automatically re-enabled');
+    const recipientsTable = harness.routeNativeElement?.querySelector('.campaign-recipient-table');
+    const excludedTable = harness.routeNativeElement?.querySelector('table[aria-label="Excluded Campaign recipients"]');
+    expect(recipientsTable?.classList.contains('campaign-recipient-table')).toBe(true);
+    expect(excludedTable?.classList.contains('campaign-recipient-table')).toBe(true);
+    expect(recipientsTable?.textContent).toContain('Restricted Person');
+    expect(recipientsTable?.textContent).toContain('restricted@example.com');
+    expect(recipientsTable?.textContent).toContain('Ready Person');
+    expect(recipientsTable?.textContent).not.toContain('Excluded Person');
+    expect(recipientsTable?.textContent).not.toContain('RECONCILIATION_REQUIRED');
+    expect(recipientsTable?.querySelectorAll('th[scope="col"]').length).toBe(2);
+    expect(excludedTable?.textContent).toContain('Excluded Person');
+    expect(excludedTable?.textContent).toContain('Opted out');
+    expect(excludedTable?.textContent).not.toContain('excluded@example.com');
+    expect(harness.routeNativeElement?.querySelector('summary')?.textContent).toContain('Excluded from this Campaign (1)');
     expect(harness.routeNativeElement?.querySelector('.attention-card')?.textContent).not.toContain('Ready Person');
     expect(text).not.toContain('BREVO_CONTACT_RESTRICTED');
     expect(text).toContain('Excluded Person');
@@ -222,12 +236,16 @@ describe('CampaignDetailPageComponent', () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/marketing/campaigns/4');
     http.expectOne(`${base}/marketing/campaigns/4/`).flush(campaign('SNAPSHOT_READY', 'SNAPSHOT_READY'));
-    http.expectOne(`${base}/marketing/campaigns/4/recipients/?page=1&page_size=100`).flush({ count: 1, next: null, previous: null, results: [{ id: 1, person: 11, first_name_snapshot: 'Saved', last_name_snapshot: 'Person', consent_state_snapshot: 'OPTED_IN', decision: 'INCLUDED', exclusion_reason: null, captured_at: '', provider_outcome: 'ADDED_TO_CAMPAIGN_LIST', provider_error_code: null }] });
+    http.expectOne(`${base}/marketing/campaigns/4/recipients/?page=1&page_size=100`).flush({ count: 1, next: null, previous: null, results: [{ id: 1, person: 11, email_snapshot: 'saved@example.com', first_name_snapshot: 'Saved', last_name_snapshot: 'Person', consent_state_snapshot: 'OPTED_IN', decision: 'INCLUDED', exclusion_reason: null, captured_at: '', provider_outcome: 'ADDED_TO_CAMPAIGN_LIST', provider_error_code: null }] });
     await harness.fixture.whenStable();
     const element = harness.routeNativeElement!;
-    expect(element.textContent).toContain('This saved preparation snapshot records the recipients and decisions used for this Campaign. It cannot be edited here.');
+    expect(element.textContent).toContain('Recipients included in the saved Campaign preparation.');
     expect(element.querySelector('table[aria-label="Campaign recipients"]')).not.toBeNull();
-    expect(element.querySelectorAll('th[scope="col"]').length).toBe(3);
+    expect(element.querySelector('table[aria-label="Campaign recipients"] caption')).toBeNull();
+    expect(element.querySelector('table[aria-label="Excluded Campaign recipients"] caption')).toBeNull();
+    expect(element.querySelector('.campaign-recipient-table')?.textContent).toContain('saved@example.com');
+    expect(element.querySelectorAll('.campaign-recipient-table th[scope="col"]').length).toBe(2);
+    expect(element.querySelector('.campaign-recipient-table')?.textContent).not.toContain('Decision');
   });
 
   it('clearly presents active recipient preparation and no-ready guidance', async () => {

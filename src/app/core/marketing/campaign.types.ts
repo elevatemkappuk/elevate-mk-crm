@@ -78,6 +78,7 @@ export interface CampaignCreateRequest {
 export interface CampaignRecipientSnapshot {
   id: number;
   person: number;
+  email_snapshot: string;
   first_name_snapshot: string;
   last_name_snapshot: string;
   consent_state_snapshot: string;
