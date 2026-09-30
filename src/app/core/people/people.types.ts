@@ -41,6 +41,20 @@ export interface PersonRelationship {
   label: 'Contact' | 'Active Member' | 'Former Member';
 }
 
+export type CommunityAccountStatus = 'ACTIVE' | 'SETUP_PENDING' | 'NOT_SET_UP' | 'ACCESS_UNAVAILABLE';
+export type CommunityInvitationDeliveryStatus = 'SENT' | 'NOT_SENT' | 'DELIVERY_UNCERTAIN' | 'FAILED';
+
+export interface CommunityAccount {
+  status: CommunityAccountStatus;
+  account_email: string | null;
+  setup_email: string | null;
+  account_created_at: string | null;
+  last_login_at: string | null;
+  invitation_sent_at: string | null;
+  invitation_expires_at: string | null;
+  invitation_delivery_status: CommunityInvitationDeliveryStatus | null;
+}
+
 export interface PersonMembership {
   id: number;
   status: 'ACTIVE' | 'FORMER';
@@ -305,6 +319,7 @@ export interface PersonOverview {
   interests: InterestSummary[];
   tags: TagSummary[];
   marketing_preference: MarketingPreference;
+  community_account: CommunityAccount;
 }
 
 export interface PaginatedResponse<T> {

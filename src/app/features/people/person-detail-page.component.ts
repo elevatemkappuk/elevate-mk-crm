@@ -37,6 +37,7 @@ import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 import { PersonAuditHistorySectionComponent } from './person-audit-history-section.component';
 import { PersonMarketingPreferenceSectionComponent } from './person-marketing-preference-section.component';
 import { PersonBrevoIntegrationSectionComponent } from './person-brevo-integration-section.component';
+import { PersonCommunityAccountSectionComponent } from './person-community-account-section.component';
 import { PersonNotesSectionComponent } from './person-notes-section.component';
 import { PersonProfileHeaderComponent } from './person-profile-header.component';
 
@@ -70,6 +71,7 @@ interface AssignSkillFormValue {
     PersonAuditHistorySectionComponent,
     PersonMarketingPreferenceSectionComponent,
     PersonBrevoIntegrationSectionComponent,
+    PersonCommunityAccountSectionComponent,
     PersonNotesSectionComponent,
     PersonProfileHeaderComponent,
     CrmDrawerComponent,
@@ -301,6 +303,9 @@ interface AssignSkillFormValue {
             @else { <p class="empty-section-copy">No membership record</p> }
             <a class="section-link" [routerLink]="[]" fragment="membership" queryParamsHandling="preserve">{{ canMakeMember() || canEndMembership() ? 'Manage membership' : 'View membership' }}</a>
           </app-crm-section-card>
+          @if (overview()?.community_account; as communityAccount) {
+            <app-person-community-account-section [account]="communityAccount" />
+          }
 
 <app-crm-section-card title="Skills">
             @if (skills().length) {
