@@ -135,6 +135,7 @@ export class PersonMarketingPreferenceSectionComponent {
       case 'HISTORICAL_IMPORT': return 'Historical import';
       case 'MAILCHIMP': return 'Mailchimp';
       case 'BREVO': return 'Brevo';
+      case 'COMMUNITY_JOIN': return 'Community Join';
       default: return 'Other';
     }
   }

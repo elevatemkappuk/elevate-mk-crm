@@ -88,6 +88,14 @@ describe('PersonMarketingPreferenceSectionComponent', () => {
     expect(sourceMetadata.textContent).toContain('Other');
   });
 
+  it('labels Community Join consent distinctly from Other', () => {
+    fixture.componentRef.setInput('preference', preference('OPTED_IN', 'COMMUNITY_JOIN'));
+
+    const sourceMetadata = fixture.nativeElement.querySelectorAll('.metadata')[0] as HTMLElement;
+    expect(sourceMetadata.textContent).toContain('Community Join');
+    expect(sourceMetadata.textContent).not.toContain('Other');
+  });
+
   it.each([
     ['CRM admin', true],
     ['CRM manager', true],

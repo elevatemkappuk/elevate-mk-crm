@@ -61,6 +61,17 @@ describe('PersonBrevoIntegrationSectionComponent', () => {
     expect(fixture.nativeElement.querySelector('a.provider-link')).toBeNull();
   });
 
+  it('labels Community Join marketing consent correctly', () => {
+    http.expectOne(`${base}/people/30/brevo-integration/`).flush({
+      ...response('CONNECTED'),
+      marketing_preference: { ...response('CONNECTED').marketing_preference, source: 'COMMUNITY_JOIN' },
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Community Join');
+    expect(fixture.nativeElement.textContent).not.toContain('Other');
+  });
+
   it('shows restrictive guidance without mutation controls', () => {
     http.expectOne(`${base}/people/30/brevo-integration/`).flush({
       ...response('RESTRICTED'),
