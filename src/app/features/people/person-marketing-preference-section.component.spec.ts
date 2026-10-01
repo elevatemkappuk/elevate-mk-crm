@@ -90,6 +90,7 @@ describe('PersonMarketingPreferenceSectionComponent', () => {
 
   it('labels Community Join consent distinctly from Other', () => {
     fixture.componentRef.setInput('preference', preference('OPTED_IN', 'COMMUNITY_JOIN'));
+    fixture.detectChanges();
 
     const sourceMetadata = fixture.nativeElement.querySelectorAll('.metadata')[0] as HTMLElement;
     expect(sourceMetadata.textContent).toContain('Community Join');
