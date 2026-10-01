@@ -16,7 +16,7 @@ const basePerson: PersonDirectoryItem = {
   id: 11, first_name: 'Amina', last_name: 'Zulu', primary_email: 'amina@example.com',
   mobile: '991000001', location: 'Lilongwe', age_range: '', gender: '', archived_at: null,
   created_at: '2026-08-29T12:00:00Z', updated_at: '2026-08-29T12:00:00Z',
-  job_title: 'Programme Manager', relationship: 'ACTIVE_MEMBER',
+  job_title: 'Programme Manager', relationship: 'ACTIVE_MEMBER', community_account_status: 'ACTIVE',
 };
 
 describe('People directory projected columns', () => {
@@ -52,13 +52,14 @@ describe('People directory projected columns', () => {
 
   it('renders the requested column order and labels every cell for stacked rows', async () => {
     const host = await render([basePerson]);
-    const columns = ['Name', 'Email', 'Mobile', 'Job title', 'Type', 'Location', 'Status'];
+    const columns = ['Name', 'Email', 'Mobile', 'Job title', 'Type', 'Location', 'Status', 'Community'];
     expect(Array.from(host.querySelectorAll('th'), th => th.textContent?.trim())).toEqual(columns);
     expect(Array.from(host.querySelectorAll('tbody td'), td => td.getAttribute('data-label'))).toEqual(columns);
     expect(host.querySelector('[data-label="Job title"]')?.textContent?.trim()).toBe('Programme Manager');
     expect(host.querySelector('[data-label="Actions"]')).toBeNull();
     expect(host.querySelector('.row-link')?.getAttribute('href')).toBe('/people/11');
     expect(host.querySelectorAll('tbody a')).toHaveLength(1);
+    expect(host.querySelector('[data-label="Community"]')?.textContent?.trim()).toBe('Active');
   });
 
   it('maps authoritative types independently of archive status and handles missing job titles', async () => {
@@ -78,6 +79,22 @@ describe('People directory projected columns', () => {
       .toEqual(['info', 'warning', 'neutral', 'neutral']);
     expect(Array.from(host.querySelectorAll('[data-label="Status"] [data-tone]'), badge => badge.getAttribute('data-tone')))
       .toEqual(['muted', 'success', 'success', 'muted']);
+  });
+
+  it('renders backend-authoritative Community status labels and tones', async () => {
+    const statuses = [
+      ['ACTIVE', 'Active', 'success'],
+      ['SETUP_PENDING', 'Setup pending', 'warning'],
+      ['NOT_SET_UP', 'Not set up', 'neutral'],
+      ['ACCESS_UNAVAILABLE', 'Unavailable', 'error'],
+    ] as const;
+    const host = await render(statuses.map(([community_account_status], index) => ({
+      ...basePerson, id: 20 + index, community_account_status,
+    })));
+    expect(Array.from(host.querySelectorAll('[data-label="Community"]'), cell => cell.textContent?.trim()))
+      .toEqual(statuses.map(([, label]) => label));
+    expect(Array.from(host.querySelectorAll('[data-label="Community"] [data-tone]'), badge => badge.getAttribute('data-tone')))
+      .toEqual(statuses.map(([, , tone]) => tone));
   });
 
   it.each(['CRM_ADMIN', 'CRM_MANAGER', 'CRM_VIEWER'] as const)('shows linked rows to %s without granting write actions', async role => {

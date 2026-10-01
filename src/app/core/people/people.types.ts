@@ -34,6 +34,7 @@ export interface PersonListItem {
 export interface PersonDirectoryItem extends PersonListItem {
   job_title: string | null;
   relationship: PersonRelationship['type'];
+  community_account_status: CommunityAccountStatus;
 }
 
 export interface PersonRelationship {
