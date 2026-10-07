@@ -4,7 +4,7 @@ import { provideRouter, Router } from '@angular/router';
 
 import { AuthService } from '../auth/auth.service';
 import { AuthenticatedUser } from '../auth/auth.types';
-import { administrationGuard, authGuard, loginGuard, staffAccessGuard } from './auth.guards';
+import { administrationGuard, authGuard, loginGuard, moderationGuard, staffAccessGuard } from './auth.guards';
 
 const adminUser: AuthenticatedUser = {
   id: 1,
@@ -165,5 +165,16 @@ describe('auth guards', () => {
     expect(router.serializeUrl(result as ReturnType<Router['createUrlTree']>)).toBe(
       '/access-denied',
     );
+  });
+
+  it.each([adminUser, managerUser])('allows %s moderation access', (user) => {
+    auth.setUser(user);
+    expect(TestBed.runInInjectionContext(() => moderationGuard({} as never, {} as never))).toBe(true);
+  });
+
+  it('blocks CRM viewers from moderation access', () => {
+    auth.setUser(viewerUser);
+    const result = TestBed.runInInjectionContext(() => moderationGuard({} as never, {} as never));
+    expect(router.serializeUrl(result as ReturnType<Router['createUrlTree']>)).toBe('/access-denied');
   });
 });

@@ -5,6 +5,7 @@ import {
   authGuard,
   loginGuard,
   staffAccessGuard,
+  moderationGuard,
 } from './core/guards/auth.guards';
 export const routes: Routes = [
   {
@@ -41,6 +42,16 @@ export const routes: Routes = [
       {
         path: 'marketing/campaigns/:id',
         loadComponent: () => import('./features/marketing/campaign-detail-page.component').then((module) => module.CampaignDetailPageComponent),
+      },
+      {
+        path: 'moderation',
+        loadComponent: () => import('./features/moderation/moderation-queue-page.component').then(module => module.ModerationQueuePageComponent),
+        canActivate: [moderationGuard],
+      },
+      {
+        path: 'moderation/:reportId',
+        loadComponent: () => import('./features/moderation/moderation-report-page.component').then(module => module.ModerationReportPageComponent),
+        canActivate: [moderationGuard],
       },
       {
         path: 'people',
