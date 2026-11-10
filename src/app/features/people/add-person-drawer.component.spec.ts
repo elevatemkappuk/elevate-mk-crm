@@ -27,9 +27,9 @@ const person: PersonListItem = {
   created_at: '', updated_at: '',
 };
 const conflict: DuplicatePersonConflict = {
-  code: 'IDENTITY_COLLISION', detail: 'Review these people.',
-  collision: { collision: 'EMAIL_COLLISION', person_ids: [4] },
-  candidates: [{ ...person, id: 4 }],
+  code: 'IDENTITY_COLLISION', detail: 'Review these people.', severity: 'WARNING', match_reasons: ['MOBILE'],
+  collision: { collision: 'MOBILE_COLLISION', person_ids: [4] },
+  candidates: [{ ...person, id: 4, primary_email: null, mobile: '' }],
 };
 
 describe('Add person drawer and shared creation', () => {
@@ -178,7 +178,7 @@ describe('Add person drawer and shared creation', () => {
     (fixture.nativeElement.querySelector('app-person-duplicate-conflict button') as HTMLElement).click();
     fixture.detectChanges();
     expect(service.createMember).toHaveBeenCalledTimes(1);
-    const stale = { ...conflict, code: 'IDENTITY_COLLISION_STALE', detail: 'Candidates changed.', collision: { collision: 'EMAIL_COLLISION', person_ids: [4, 9] } };
+    const stale = { ...conflict, code: 'IDENTITY_COLLISION_STALE', detail: 'Candidates changed.', collision: { collision: 'MOBILE_COLLISION', person_ids: [4, 9] } };
     service.createMember.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 409, error: stale })));
     (fixture.nativeElement.querySelector('app-confirmation-dialog .crm-button--primary') as HTMLElement).click();
     fixture.detectChanges();

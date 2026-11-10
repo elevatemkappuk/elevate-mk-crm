@@ -25,10 +25,10 @@ export interface PersonFormSubmission {
       <section class="field-group">
         <h3>Personal details</h3>
         <div class="fields">
-          <label>First name <input formControlName="first_name" autocomplete="given-name" /> @if (invalid('first_name')) { <small>First name is required.</small> }</label>
-          <label>Last name <input formControlName="last_name" autocomplete="family-name" /> @if (invalid('last_name')) { <small>Last name is required.</small> }</label>
-          <label>Email <input type="email" formControlName="primary_email" autocomplete="email" /> @if (invalid('primary_email')) { <small>Enter a valid email address.</small> }</label>
-          <label>Mobile <input type="tel" formControlName="mobile" autocomplete="tel" /></label>
+          <label>First name <input formControlName="first_name" autocomplete="given-name" /><span class="validation-slot">@if (invalid('first_name')) { <small>First name is required.</small> }</span></label>
+          <label>Last name <input formControlName="last_name" autocomplete="family-name" /><span class="validation-slot">@if (invalid('last_name')) { <small>Last name is required.</small> }</span></label>
+          <label>Email <input type="email" formControlName="primary_email" autocomplete="email" /><span class="validation-slot">@if (invalid('primary_email')) { <small>Enter a valid email address.</small> } @if (emailError()) { <small>{{ emailError() }}</small> }</span></label>
+          <label>Mobile <input type="tel" formControlName="mobile" autocomplete="tel" /><span class="validation-slot">@if (mobileError()) { <small>{{ mobileError() }}</small> }</span></label>
           <label>Location <input formControlName="location" autocomplete="address-level2" /></label>
           <label>Age range
             <select formControlName="age_range">
@@ -62,6 +62,7 @@ export interface PersonFormSubmission {
     h3 { margin:0; color:#173248; font-size:1.05rem; } .fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
     label { display:grid; gap:.38rem; font-weight:650; color:#294456; } input,select { min-width:0; padding:.68rem .78rem; border:1px solid #b7c7d4; border-radius:.7rem; font:inherit; color:#173248; background:#fff; }
     input:focus-visible,select:focus-visible { outline:0; border-color:#5d88a0; box-shadow:0 0 0 3px rgba(108,154,180,.2); } small { color:#a12929; font-weight:600; }
+    .drawer-layout .validation-slot { min-height:1.1em; }
     .membership { max-width:22rem; } .actions { display:flex; gap:.7rem; flex-wrap:wrap; } button { border:0; border-radius:999px; padding:.72rem 1.1rem; font:inherit; font-weight:700; cursor:pointer; }
     .button-primary { color:#fff; background:#1d6077; } .button-secondary { color:#244359; background:#edf3f6; } button:disabled { opacity:.6; cursor:not-allowed; }
     fieldset { display:grid; gap:1rem; border:0; margin:0; padding:0; min-width:0; }
@@ -81,6 +82,8 @@ export class PersonFormComponent {
   readonly member = input(false);
   readonly submitLabel = input('Save person');
   readonly pending = input(false);
+  readonly emailError = input<string | null>(null);
+  readonly mobileError = input<string | null>(null);
   readonly drawer = input(false);
   readonly edited = output<void>();
   readonly submitted = output<PersonFormSubmission>();

@@ -1,0 +1,7 @@
+<app-crm-section-card title="Community account">
+  <div class="community-account-heading">
+    <p class="detail-label">Community access status</p>
+    <app-status-badge [label]="statusLabel(account().status)" [tone]="statusTone(account().status)" />
+  </div>
+  <app-detail-list [items]="details(account())" />
+</app-crm-section-card>

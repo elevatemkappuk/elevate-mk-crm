@@ -95,6 +95,20 @@ describe('PeopleService', () => {
     });
   });
 
+  it('requests the read-only Person Brevo integration projection', () => {
+    service.getPersonBrevoIntegration(44).subscribe();
+
+    const request = httpTesting.expectOne('http://localhost:8000/api/v1/people/44/brevo-integration/');
+
+    expect(request.request.method).toBe('GET');
+    expect(request.request.withCredentials).toBe(true);
+    request.flush({
+      provider: 'BREVO',
+      marketing_preference: { channel: 'EMAIL', state: 'UNKNOWN', source: null, recorded_at: null, recorded_by_id: null },
+      integration: { status: 'NOT_CONNECTED', reason_code: 'BREVO_NO_ACTIVE_REFERENCE', title: 'Not connected to Brevo', explanation: 'No active connection.', can_reconcile: false },
+    });
+  });
+
   it('sends Person write lifecycle requests to their authoritative endpoints', () => {
     const person: CreateContactRequest = { first_name: 'Ama', last_name: 'Amoah', primary_email: null, mobile: '', location: '', age_range: '', gender: '' };
     service.createContact(person).subscribe();

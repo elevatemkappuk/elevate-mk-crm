@@ -5,6 +5,7 @@ import {
   authGuard,
   loginGuard,
   staffAccessGuard,
+  moderationGuard,
 } from './core/guards/auth.guards';
 export const routes: Routes = [
   {
@@ -30,6 +31,28 @@ export const routes: Routes = [
         redirectTo: 'people',
       },
       { path: 'dashboard', loadComponent: () => import('./features/dashboard/dashboard-page.component').then(module => module.DashboardPageComponent) },
+      {
+        path: 'marketing/audience-preview',
+        loadComponent: () => import('./features/marketing/audience-preview-page.component').then((module) => module.AudiencePreviewPageComponent),
+      },
+      {
+        path: 'marketing/campaigns',
+        loadComponent: () => import('./features/marketing/campaigns-page.component').then((module) => module.CampaignsPageComponent),
+      },
+      {
+        path: 'marketing/campaigns/:id',
+        loadComponent: () => import('./features/marketing/campaign-detail-page.component').then((module) => module.CampaignDetailPageComponent),
+      },
+      {
+        path: 'moderation',
+        loadComponent: () => import('./features/moderation/moderation-queue-page.component').then(module => module.ModerationQueuePageComponent),
+        canActivate: [moderationGuard],
+      },
+      {
+        path: 'moderation/:reportId',
+        loadComponent: () => import('./features/moderation/moderation-report-page.component').then(module => module.ModerationReportPageComponent),
+        canActivate: [moderationGuard],
+      },
       {
         path: 'people',
         loadComponent: () => import('./features/people/people-page.component').then((module) => module.PeoplePageComponent),

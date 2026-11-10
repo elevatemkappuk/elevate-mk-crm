@@ -18,6 +18,7 @@ import {
   InterestSummary,
   Industry,
   MakeMembershipRequest,
+  MarketingPreference,
   PersonListItem,
   PersonMembership,
   PersonOverview,
@@ -34,6 +35,9 @@ import { DetailListComponent, DetailListItem } from '../../shared/ui/detail-list
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 import { PersonAuditHistorySectionComponent } from './person-audit-history-section.component';
+import { PersonMarketingPreferenceSectionComponent } from './person-marketing-preference-section.component';
+import { PersonBrevoIntegrationSectionComponent } from './person-brevo-integration-section.component';
+import { PersonCommunityAccountSectionComponent } from './person-community-account-section.component';
 import { PersonNotesSectionComponent } from './person-notes-section.component';
 import { PersonProfileHeaderComponent } from './person-profile-header.component';
 
@@ -65,6 +69,9 @@ interface AssignSkillFormValue {
     StateMessageComponent,
     StatusBadgeComponent,
     PersonAuditHistorySectionComponent,
+    PersonMarketingPreferenceSectionComponent,
+    PersonBrevoIntegrationSectionComponent,
+    PersonCommunityAccountSectionComponent,
     PersonNotesSectionComponent,
     PersonProfileHeaderComponent,
     CrmDrawerComponent,
@@ -73,6 +80,9 @@ interface AssignSkillFormValue {
   template: `
     <section class="detail-page">
       <a routerLink="/people" class="back-link">Back to People</a>
+      @if (returnCampaignId(); as campaignId) {
+        <a [routerLink]="['/marketing/campaigns', campaignId]" class="back-link">Back to Campaign</a>
+      }
 
       @if (loading()) {
         <app-state-message
@@ -107,20 +117,15 @@ interface AssignSkillFormValue {
           }
         </nav>
         <div class="detail-grid" [hidden]="selectedTab() !== 'overview'" aria-label="Overview">
-          <app-crm-section-card title="Personal details">
+          <div class="detail-column">
+<app-crm-section-card title="Personal details">
             <app-detail-list [items]="personalDetails()" />
             @if (canManagePeople() && !person()!.archived_at) {
               <button type="button" class="button-secondary" aria-label="Edit personal details" (click)="editPersonOpen.set(true)">Edit</button>
             }
           </app-crm-section-card>
 
-          <app-crm-section-card title="Membership">
-            <p class="membership-summary"><app-status-badge [label]="relationshipLabel()" [tone]="membership()?.status === 'ACTIVE' ? 'info' : membership() ? 'warning' : 'neutral'" /></p>
-            @if (membership()) { <app-detail-list [items]="membershipDetails()" /> }
-            @else { <p class="empty-section-copy">No membership record</p> }
-            <a class="section-link" [routerLink]="[]" fragment="membership" queryParamsHandling="preserve">{{ canMakeMember() || canEndMembership() ? 'Manage membership' : 'View membership' }}</a>
-          </app-crm-section-card>
-          <app-crm-section-card title="Professional Profile">
+<app-crm-section-card title="Professional Profile">
             @if (professionalProfile()) {
               <app-detail-list [items]="professionalProfileDetails()" />
 
@@ -160,7 +165,7 @@ interface AssignSkillFormValue {
 
           </app-crm-section-card>
 
-          <app-crm-section-card title="Skills">
+<app-crm-section-card title="Skills">
             @if (skills().length) {
               <div class="skills-list">
                 @for (skill of skills(); track skill.id) {
@@ -270,7 +275,7 @@ interface AssignSkillFormValue {
             }
           </app-crm-section-card>
 
-          <app-crm-section-card title="Interests">
+<app-crm-section-card title="Interests">
             @if (interests().length) {
               <div class="skills-list">
                 @for (interest of interests(); track interest.id) {
@@ -388,7 +393,7 @@ interface AssignSkillFormValue {
             }
           </app-crm-section-card>
 
-          <app-crm-section-card title="Tags">
+<app-crm-section-card title="Tags">
             <p class="taxonomy-supporting-copy">Internal CRM classification.</p>
 
             @if (tags().length) {
@@ -499,9 +504,35 @@ interface AssignSkillFormValue {
               <p class="form-error skills-inline-error">{{ tagWriteErrorMessage() }}</p>
             }
           </app-crm-section-card>
+          </div>
+          <div class="detail-column">
+<app-crm-section-card title="Membership">
+            <p class="membership-summary"><app-status-badge [label]="relationshipLabel()" [tone]="membership()?.status === 'ACTIVE' ? 'info' : membership() ? 'warning' : 'neutral'" /></p>
+            @if (membership()) { <app-detail-list [items]="membershipDetails()" /> }
+            @else { <p class="empty-section-copy">No membership record</p> }
+            <a class="section-link" [routerLink]="[]" fragment="membership" queryParamsHandling="preserve">{{ canMakeMember() || canEndMembership() ? 'Manage membership' : 'View membership' }}</a>
+          </app-crm-section-card>
+          @if (overview()?.community_account; as communityAccount) {
+            <app-person-community-account-section [account]="communityAccount" />
+          }
+
+@if (marketingPreference(); as preference) {
+            <app-person-marketing-preference-section
+              [personId]="person()!.id"
+              [preference]="preference"
+              [canEdit]="canManagePeople() && !person()!.archived_at"
+              (preferenceChanged)="marketingPreferenceChanged($event)"
+            />
+          }
+
+@if (person(); as currentPerson) {
+            <app-person-brevo-integration-section [personId]="currentPerson.id" />
+          }
 
 
 
+
+          </div>
         </div>
         <section [hidden]="selectedTab() !== 'membership'" aria-label="Membership">
           <app-crm-section-card title="Membership">
@@ -696,10 +727,15 @@ export class PersonDetailPageComponent {
   ]);
   readonly selectedTab = computed(() => this.profileTabs().some(tab => tab.id === this.activeTab()) ? this.activeTab() : 'overview');
   readonly initials = computed(() => ((this.person()?.first_name?.[0] ?? '') + (this.person()?.last_name?.[0] ?? '')).toUpperCase());
+  readonly returnCampaignId = signal<number | null>(null);
 
   personSaved(person: PersonListItem): void {
     this.overview.update(overview => overview ? { ...overview, person } : overview);
     this.editPersonOpen.set(false);
+  }
+
+  marketingPreferenceChanged(preference: MarketingPreference): void {
+    this.overview.update(overview => overview ? { ...overview, marketing_preference: preference } : overview);
   }
 
   readonly careerStageOptions = CAREER_STAGE_OPTIONS;
@@ -764,6 +800,7 @@ export class PersonDetailPageComponent {
   readonly skills = computed<SkillSummary[]>(() => this.overview()?.skills ?? []);
   readonly interests = computed<InterestSummary[]>(() => this.overview()?.interests ?? []);
   readonly tags = computed<TagSummary[]>(() => this.overview()?.tags ?? []);
+  readonly marketingPreference = computed<MarketingPreference | null>(() => this.overview()?.marketing_preference ?? null);
   readonly relationshipLabel = computed(() => this.overview()?.relationship.label ?? 'Contact');
   readonly canMakeMember = computed(() => {
     const overview = this.overview();
@@ -985,6 +1022,9 @@ export class PersonDetailPageComponent {
 
   constructor() {
     this.route.fragment.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(fragment => this.activeTab.set(fragment || 'overview'));
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
+      this.returnCampaignId.set(parseCampaignReturnId(params.get('campaign')));
+    });
     this.route.paramMap
       .pipe(
         map((params) => Number(params.get('id'))),
@@ -1817,6 +1857,14 @@ export class PersonDetailPageComponent {
     this.errorMessage.set(null);
     this.notFound.set(true);
   }
+}
+
+function parseCampaignReturnId(value: string | null): number | null {
+  if (!value || !/^[1-9]\d*$/u.test(value)) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 const CAREER_STAGE_OPTIONS: ReadonlyArray<{ value: ProfessionalProfileCareerStage; label: string }> = [

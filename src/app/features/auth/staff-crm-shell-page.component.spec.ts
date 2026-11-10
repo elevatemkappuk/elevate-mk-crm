@@ -88,6 +88,7 @@ describe('StaffCrmShellPageComponent', () => {
 
     expect(links).toContain('Dashboard');
     expect(links).toContain('People');
+    expect(links).toContain('Audience Preview');
     expect(links).toContain('Administration');
     expect(links).toContain('Historical Imports');
     expect(fixture.nativeElement.textContent).toContain('Ada Admin');
@@ -105,8 +106,22 @@ describe('StaffCrmShellPageComponent', () => {
 
     expect(links).toContain('Dashboard');
     expect(links).toContain('People');
+    expect(links).toContain('Audience Preview');
     expect(links).not.toContain('Administration');
     expect(links).not.toContain('Historical Imports');
+  });
+
+  it('shows moderation only to managers and admins', () => {
+    let links = Array.from(fixture.nativeElement.querySelectorAll('.nav-link') as NodeListOf<HTMLElement>).map(link => link.textContent?.trim());
+    expect(links).toContain('Moderation');
+    auth.setUser(managerUser);
+    fixture.detectChanges();
+    links = Array.from(fixture.nativeElement.querySelectorAll('.nav-link') as NodeListOf<HTMLElement>).map(link => link.textContent?.trim());
+    expect(links).toContain('Moderation');
+    auth.setUser({ ...managerUser, staff_roles: ['CRM_VIEWER'] });
+    fixture.detectChanges();
+    links = Array.from(fixture.nativeElement.querySelectorAll('.nav-link') as NodeListOf<HTMLElement>).map(link => link.textContent?.trim());
+    expect(links).not.toContain('Moderation');
   });
 
   it('marks the active route in navigation', async () => {

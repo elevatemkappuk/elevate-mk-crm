@@ -1,7 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
@@ -36,10 +36,18 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
           </dl>
         </header>
         <section class="batch-message" [attr.data-tone]="statusTone(currentBatch.status)" aria-live="polite">
-          <h2>{{ batchMessageTitle(currentBatch) }}</h2><p>{{ batchMessage(currentBatch) }}</p>
+          <h2>{{ batchMessageTitle(currentBatch) }}</h2>
+          <p>{{ batchMessage(currentBatch) }}</p>
           @if (importError()) { <p class="import-error" role="alert">{{ importError() }}</p> }
           @if (canAnalyze()) {
             <div class="batch-actions"><button type="button" class="crm-button import-primary" [disabled]="analyzing()" (click)="analyzeBuyers()">{{ analyzing() ? 'Analyzing buyers...' : 'Analyze buyers' }}</button>@if (analyzing()) { <span class="importing" aria-live="polite">Analyzing buyers...</span> }</div>
+          }
+          @if (isReviewable(currentBatch.status) && currentBatch.review_required_count > 0 && auth.isCrmAdmin()) {
+            <div class="batch-actions">
+              <button type="button" class="crm-button review-primary" [disabled]="reviewQueueLoading()" (click)="openReviewQueue()">
+                {{ reviewQueueLoading() ? 'Loading review records...' : 'Review ' + currentBatch.review_required_count + ' records' }}
+              </button>
+            </div>
           }
           @if (canImport()) {
             <div class="batch-actions">
@@ -76,7 +84,7 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
           } @else {
             <div class="table-wrap" role="region" aria-labelledby="resolution-preview-title" tabindex="0"><table aria-labelledby="resolution-preview-title"><thead><tr><th scope="col">Source</th><th scope="col">Contact</th><th scope="col">Decision</th><th scope="col">Destination</th></tr></thead><tbody>
               @for (record of recordPage()!.results; track record.id) {
-                <tr><td><strong>{{ value(record, 'first_name') }} {{ value(record, 'last_name') }}</strong><small>{{ value(record, 'location') }}</small></td><td>{{ value(record, 'email') }}<small>{{ value(record, 'mobile') }}</small></td><td><app-status-badge [label]="resolutionLabel(record).title" [tone]="decisionTone(record)" />@if (record.status === 'INVALID') { @if (validationMessages(record).length) { @for (message of validationMessages(record); track message) { <small class="validation-message">{{ message }}</small> } } @else { <small class="validation-message">Source record failed validation.</small> } } @else { <small>{{ resolutionLabel(record).detail }}</small> }</td><td>@if (record.resolved_person; as person) { <a [routerLink]="['/people', person.id]">{{ person.first_name }} {{ person.last_name }}</a><small>{{ person.primary_email || person.mobile }} @if (person.record_state === 'archived') { (Archived) }</small> } @else { <span>{{ destinationLabel(record) }}</span> }
+                <tr><td><strong>{{ value(record, 'first_name') }} {{ value(record, 'last_name') }}</strong><small>{{ value(record, 'location') }}</small></td><td>{{ value(record, 'email') }}<small>{{ value(record, 'mobile') }}</small></td><td><app-status-badge [label]="displayResolutionLabel(record)" [tone]="decisionTone(record)" />@if (record.status === 'INVALID') { @if (validationMessages(record).length) { @for (message of validationMessages(record); track message) { <small class="validation-message">{{ message }}</small> } } @else { <small class="validation-message">Source record failed validation.</small> } } @else { <small>{{ resolutionLabel(record).detail }}</small> }</td><td>@if (record.resolved_person; as person) { <a [routerLink]="['/people', person.id]">{{ person.first_name }} {{ person.last_name }}</a><small>{{ person.primary_email || person.mobile }} @if (person.record_state === 'archived') { (Archived) }</small> } @else { <span>{{ destinationLabel(record) }}</span> }
                   @if (isReviewable(currentBatch.status) && record.status === 'REVIEW_REQUIRED' && auth.isCrmAdmin()) {
                     <a class="review-action crm-button crm-button--quiet" [routerLink]="['/imports', batchId, 'review', record.id]" [attr.aria-label]="'Review ' + value(record, 'first_name') + ' ' + value(record, 'last_name')">Review <span aria-hidden="true">&rarr;</span></a>
                   }</td></tr>
@@ -115,6 +123,7 @@ export class ImportBatchPageComponent {
   readonly importConfirmationOpen = signal(false);
   readonly importing = signal(false);
   readonly analyzing = signal(false);
+  readonly reviewQueueLoading = signal(false);
   readonly importError = signal<string | null>(null);
   readonly importResult = signal<AuthoritativeImportResult | null>(null);
   readonly canImport = computed(() => {
@@ -127,6 +136,11 @@ export class ImportBatchPageComponent {
   readonly resolutionLabel = importResolutionLabel;
   readonly statusLabel = importBatchStatusLabel;
   readonly isReviewable = isReviewableImportBatch;
+  private readonly router = inject(Router);
+
+  displayResolutionLabel(record: ImportRecordPreview): string {
+    return record.resolution_reason === 'DUPLICATE_CREATE_NEW_IDENTITY_SIGNAL' ? 'Source-data conflict' : this.resolutionLabel(record).title;
+  }
 
   readonly sourceLabel = (source: string) => source === 'MEMBERSHIP_FORM' ? 'Membership Form' : source === 'EVENTBRITE' ? 'Eventbrite' : source;
   statusTone(status: ImportBatchStatus): StatusBadgeTone {
@@ -218,22 +232,44 @@ export class ImportBatchPageComponent {
       },
     });
   }
+  openReviewQueue(): void {
+    const batch = this.batch();
+    if (!batch || !this.isReviewable(batch.status) || batch.review_required_count < 1 || !this.auth.isCrmAdmin() || this.reviewQueueLoading()) return;
+    this.reviewQueueLoading.set(true);
+    this.service.getReviewQueue(this.batchId).subscribe({
+      next: (queue) => {
+        this.reviewQueueLoading.set(false);
+        const first = queue.results[0];
+        if (first) void this.router.navigate(['/imports', this.batchId, 'review', first.id]);
+      },
+      error: () => {
+        this.reviewQueueLoading.set(false);
+        this.importError.set('The review records could not be loaded right now.');
+      },
+    });
+  }
   batchMessageTitle(batch: ImportBatchDetail): string {
     if (batch.status === 'STAGED') return 'Staged';
     if (batch.status === 'PROCESSING') return 'Processing';
     if (batch.status === 'READY_FOR_REVIEW') return 'Identity review required';
     if (batch.status === 'READY_FOR_IMPORT') return batch.source_type === 'EVENTBRITE' ? 'Identity review complete' : 'Ready to add to CRM';
     if (batch.status === 'IMPORTED') return 'Imported';
+    if (batch.status === 'FAILED' && (batch.blocking_conflict_count ?? 0) > 0) return 'Import cannot continue';
     return 'Failed';
   }
   batchMessage(batch: ImportBatchDetail): string {
     if (batch.status === 'STAGED') return 'The file has been processed and is ready for identity analysis.';
     if (batch.status === 'PROCESSING') return 'Identity analysis is in progress. This import is not actionable yet.';
-    if (batch.status === 'READY_FOR_REVIEW') return `${batch.review_required_count} ${this.countLabel(batch.review_required_count, 'record')} ${batch.review_required_count === 1 ? 'needs' : 'need'} a staff identity decision. Use Review in the table below to resolve each record.`;
+    if (batch.status === 'READY_FOR_REVIEW') return `${batch.review_required_count} ${this.countLabel(batch.review_required_count, 'record')} ${batch.review_required_count === 1 ? 'needs' : 'need'} a staff identity decision. Use the review action to resolve each record.`;
     if (batch.status === 'READY_FOR_IMPORT') return batch.source_type === 'EVENTBRITE'
       ? 'All Eventbrite buyers have been matched or resolved. This import is ready to add buyers, Events, and event registrations to the CRM.'
       : 'All identity decisions have been resolved. These records can now be added to the CRM.';
     if (batch.status === 'IMPORTED') return 'This import has been completed and is now read-only.';
+    if (batch.status === 'FAILED' && (batch.blocking_conflict_count ?? 0) > 0) {
+      const signals = batch.blocking_conflict_signals ?? [];
+      const signalText = signals.length > 1 ? signals.map((signal) => signal.toLowerCase()).join(' and ') : (signals[0]?.toLowerCase() ?? 'identity');
+      return `Multiple source records share ${signalText} information that must be unique before they can be safely added to the CRM. Correct the conflicting source data and upload a new import batch.`;
+    }
     return 'This import could not be processed safely.';
   }
   private loadBatch(refresh = false): void {
