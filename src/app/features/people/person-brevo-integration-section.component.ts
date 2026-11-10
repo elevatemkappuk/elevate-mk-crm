@@ -119,7 +119,7 @@ export class PersonBrevoIntegrationSectionComponent implements OnInit {
   sourceLabel(source: NonNullable<PersonBrevoIntegration['marketing_preference']['source']>): string {
     return {
       MEMBERSHIP_FORM: 'Membership form', WEBSITE_SIGNUP: 'Website signup', STAFF_RECORDED: 'Staff recorded',
-      HISTORICAL_IMPORT: 'Historical import', MAILCHIMP: 'Mailchimp', BREVO: 'Brevo', OTHER: 'Other',
+      HISTORICAL_IMPORT: 'Historical import', MAILCHIMP: 'Mailchimp', BREVO: 'Brevo', COMMUNITY_JOIN: 'Community Join', OTHER: 'Other',
     }[source] ?? 'Other';
   }
 

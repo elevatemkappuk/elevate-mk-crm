@@ -111,6 +111,19 @@ describe('StaffCrmShellPageComponent', () => {
     expect(links).not.toContain('Historical Imports');
   });
 
+  it('shows moderation only to managers and admins', () => {
+    let links = Array.from(fixture.nativeElement.querySelectorAll('.nav-link') as NodeListOf<HTMLElement>).map(link => link.textContent?.trim());
+    expect(links).toContain('Moderation');
+    auth.setUser(managerUser);
+    fixture.detectChanges();
+    links = Array.from(fixture.nativeElement.querySelectorAll('.nav-link') as NodeListOf<HTMLElement>).map(link => link.textContent?.trim());
+    expect(links).toContain('Moderation');
+    auth.setUser({ ...managerUser, staff_roles: ['CRM_VIEWER'] });
+    fixture.detectChanges();
+    links = Array.from(fixture.nativeElement.querySelectorAll('.nav-link') as NodeListOf<HTMLElement>).map(link => link.textContent?.trim());
+    expect(links).not.toContain('Moderation');
+  });
+
   it('marks the active route in navigation', async () => {
     await router.navigateByUrl('/people');
     fixture.detectChanges();
