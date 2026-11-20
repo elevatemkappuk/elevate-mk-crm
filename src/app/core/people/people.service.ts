@@ -17,6 +17,8 @@ import {
   InterestSummary,
   Industry,
   MakeMembershipRequest,
+  MarketingPreferenceMutationRequest,
+  MarketingPreferenceWriteResponse,
   NotesListQuery,
   PaginatedResponse,
   PaginatedPersonAuditHistoryResponse,
@@ -24,6 +26,7 @@ import {
   PersonDirectoryItem,
   PersonMembership,
   PersonOverview,
+  PersonBrevoIntegration,
   PeopleListQueryState,
   ProfessionalProfile,
   ProfessionalProfileWriteRequest,
@@ -67,6 +70,20 @@ export class PeopleService {
 
   getPersonOverview(personId: number): Observable<PersonOverview> {
     return this.http.get<PersonOverview>(this.buildUrl(`/people/${personId}/overview/`));
+  }
+
+  getPersonBrevoIntegration(personId: number): Observable<PersonBrevoIntegration> {
+    return this.http.get<PersonBrevoIntegration>(this.buildUrl(`/people/${personId}/brevo-integration/`));
+  }
+
+  updateMarketingPreference(
+    personId: number,
+    payload: MarketingPreferenceMutationRequest,
+  ): Observable<MarketingPreferenceWriteResponse> {
+    return this.http.post<MarketingPreferenceWriteResponse>(
+      this.buildUrl(`/people/${personId}/marketing-preference/`),
+      payload,
+    );
   }
 
   createContact(payload: CreateContactRequest | (CreateContactRequest & IdentityOverrideRequest)): Observable<PersonListItem> {

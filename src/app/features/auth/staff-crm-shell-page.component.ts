@@ -3,12 +3,13 @@ import { afterNextRender, Component, computed, ElementRef, HostListener, inject,
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { canManagePeople } from '../../core/auth/auth-access';
 
 interface NavigationItem {
   label: string;
   path: string;
   icon: string;
-  group: 'Workspace' | 'Management';
+  group: 'Workspace' | 'Marketing' | 'Management';
 }
 
 @Component({
@@ -86,13 +87,20 @@ export class StaffCrmShellPageComponent {
   readonly menuOpen = signal(false);
   // Matches the shared SCSS medium breakpoint.
   readonly narrow = signal(this.document.defaultView?.matchMedia?.('(max-width: 900px)').matches ?? false);
-  readonly groups = ['Workspace', 'Management'] as const;
+  readonly groups = ['Workspace', 'Marketing', 'Management'] as const;
 
   readonly navigationItems = computed<NavigationItem[]>(() => {
     const items: NavigationItem[] = [{ label: 'Dashboard', path: '/dashboard', group: 'Workspace', icon: 'M3 3h7v7H3ZM14 3h7v7h-7ZM3 14h7v7H3ZM14 14h7v7h-7Z' }, {
       label: 'People', path: '/people', group: 'Workspace',
       icon: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8M17 4a4 4 0 0 1 0 7m1 4a4 4 0 0 1 4 4v2',
+    }, {
+      label: 'Audience Preview', path: '/marketing/audience-preview', group: 'Marketing',
+      icon: 'M4 5h16M4 12h16M4 19h16M8 5v14M16 5v14',
     }];
+    items.push({ label: 'Campaigns', path: '/marketing/campaigns', group: 'Marketing', icon: 'M4 5h16v14H4zM8 9h8M8 13h5' });
+    if (canManagePeople(this.auth.currentUser())) {
+      items.push({ label: 'Moderation', path: '/moderation', group: 'Management', icon: 'M12 3 4 6v5c0 5 3.4 8.4 8 10 4.6-1.6 8-5 8-10V6Zm0 5v4m0 3h.01' });
+    }
     if (this.auth.isCrmAdmin()) {
       items.push({ label: 'Historical Imports', path: '/imports', group: 'Management', icon: 'M12 16V3m-5 5 5-5 5 5M4 14v7h16v-7' });
       items.push({ label: 'Administration', path: '/administration', group: 'Management', icon: 'm9 3-1 3-3 1-2 5 2 5 3 1 1 3h6l1-3 3-1 2-5-2-5-3-1-1-3ZM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8' });

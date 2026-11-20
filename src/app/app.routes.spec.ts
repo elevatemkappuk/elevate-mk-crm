@@ -117,6 +117,13 @@ describe('app routes', () => {
     for (const request of httpTesting.match((candidate) => candidate.url.includes('/notes/'))) {
       request.flush({ count: 0, next: null, previous: null, results: [] });
     }
+    for (const request of httpTesting.match((candidate) => candidate.url.includes('/brevo-integration/'))) {
+      request.flush({
+        provider: 'BREVO',
+        marketing_preference: { channel: 'EMAIL', state: 'UNKNOWN', source: null, recorded_at: null, recorded_by_id: null },
+        integration: { status: 'NOT_CONNECTED', reason_code: 'BREVO_NO_ACTIVE_REFERENCE', title: 'Not connected to Brevo', explanation: 'No active Brevo connection is recorded for this person.', can_reconcile: false },
+      });
+    }
     await harness.fixture.whenStable();
     harness.detectChanges();
   }

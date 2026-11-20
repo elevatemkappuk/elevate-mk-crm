@@ -12,6 +12,7 @@ import {
   PaginatedResponse,
   PersonListItem,
   PersonDirectoryItem,
+  CommunityAccountStatus,
   PeopleDirectoryQuery,
   PeopleOrdering,
   PeoplePageSize,
@@ -20,6 +21,7 @@ import { arePeopleDirectoryQueriesEqual, DEFAULT_PEOPLE_DIRECTORY_QUERY, parsePe
 import { PeopleDirectoryFiltersComponent } from './people-directory-filters.component';
 import { StatusBadgeComponent, StatusBadgeTone } from '../../shared/ui/status-badge.component';
 import { AddPersonDrawerComponent } from './add-person-drawer.component';
+import { audienceQueryFromPeopleDirectory, serializeAudiencePreviewQuery } from '../../core/marketing/audience-preview-query';
 
 const VALID_PAGE_SIZES: PeoplePageSize[] = [25, 50, 100];
 
@@ -68,6 +70,9 @@ interface OrderingOption {
             <button type="button" class="add-person crm-button" (click)="addPersonOpen.set(true)">Add person</button>
           </div>
         }
+        <div class="page-actions">
+          <button type="button" class="crm-button crm-button--secondary" (click)="previewMarketingAudience()">Preview marketing audience</button>
+        </div>
       </div>
 
       @if (loading()) {
@@ -101,6 +106,7 @@ interface OrderingOption {
                   <th scope="col">Type</th>
                   <th scope="col">Location</th>
                   <th scope="col">Status</th>
+                  <th scope="col">Community</th>
                 </tr>
               </thead>
               <tbody>
@@ -117,6 +123,7 @@ interface OrderingOption {
                     <td data-label="Type"><app-status-badge [label]="relationshipLabels[person.relationship] || '-'" [tone]="relationshipTones[person.relationship] || 'neutral'" /></td>
                     <td data-label="Location">{{ person.location || '-' }}</td>
                     <td data-label="Status"><app-status-badge [label]="person.archived_at ? 'Archived' : 'Active'" [tone]="person.archived_at ? 'muted' : 'success'" /></td>
+                    <td data-label="Community"><app-status-badge [label]="communityStatusLabels[person.community_account_status] || 'Unavailable'" [tone]="communityStatusTones[person.community_account_status] || 'neutral'" /></td>
                   </tr>
                 }
               </tbody>
@@ -460,6 +467,18 @@ export class PeoplePageComponent {
   readonly relationshipTones: Record<PersonDirectoryItem['relationship'], StatusBadgeTone> = {
     ACTIVE_MEMBER: 'info', FORMER_MEMBER: 'warning', CONTACT: 'neutral',
   };
+  readonly communityStatusLabels: Record<CommunityAccountStatus, string> = {
+    ACTIVE: 'Active',
+    SETUP_PENDING: 'Setup pending',
+    NOT_SET_UP: 'Not set up',
+    ACCESS_UNAVAILABLE: 'Unavailable',
+  };
+  readonly communityStatusTones: Record<CommunityAccountStatus, StatusBadgeTone> = {
+    ACTIVE: 'success',
+    SETUP_PENDING: 'warning',
+    NOT_SET_UP: 'neutral',
+    ACCESS_UNAVAILABLE: 'error',
+  };
   readonly queryState = signal<PeopleDirectoryQuery>(DEFAULT_PEOPLE_DIRECTORY_QUERY);
   readonly canManagePeople = computed(() => canManagePeople(this.auth.currentUser()));
 
@@ -550,6 +569,13 @@ export class PeoplePageComponent {
 
   clearFilters(): void {
     this.navigateToQuery({ ...DEFAULT_PEOPLE_DIRECTORY_QUERY, page_size: this.queryState().page_size });
+  }
+
+  previewMarketingAudience(): void {
+    const audienceQuery = audienceQueryFromPeopleDirectory(this.queryState());
+    void this.router.navigate(['/marketing/audience-preview'], {
+      queryParams: serializeAudiencePreviewQuery(audienceQuery),
+    });
   }
 
   retry(): void {

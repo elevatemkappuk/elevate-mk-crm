@@ -34,11 +34,26 @@ export interface PersonListItem {
 export interface PersonDirectoryItem extends PersonListItem {
   job_title: string | null;
   relationship: PersonRelationship['type'];
+  community_account_status: CommunityAccountStatus;
 }
 
 export interface PersonRelationship {
   type: 'CONTACT' | 'ACTIVE_MEMBER' | 'FORMER_MEMBER';
   label: 'Contact' | 'Active Member' | 'Former Member';
+}
+
+export type CommunityAccountStatus = 'ACTIVE' | 'SETUP_PENDING' | 'NOT_SET_UP' | 'ACCESS_UNAVAILABLE';
+export type CommunityInvitationDeliveryStatus = 'SENT' | 'NOT_SENT' | 'DELIVERY_UNCERTAIN' | 'FAILED';
+
+export interface CommunityAccount {
+  status: CommunityAccountStatus;
+  account_email: string | null;
+  setup_email: string | null;
+  account_created_at: string | null;
+  last_login_at: string | null;
+  invitation_sent_at: string | null;
+  invitation_expires_at: string | null;
+  invitation_delivery_status: CommunityInvitationDeliveryStatus | null;
 }
 
 export interface PersonMembership {
@@ -73,6 +88,55 @@ export interface TagSummary {
   id: number;
   name: string;
   slug: string;
+}
+
+export type MarketingPreferenceState = 'UNKNOWN' | 'OPTED_IN' | 'OPTED_OUT';
+export type MarketingPreferenceSource =
+  | 'MEMBERSHIP_FORM'
+  | 'WEBSITE_SIGNUP'
+  | 'STAFF_RECORDED'
+  | 'HISTORICAL_IMPORT'
+  | 'MAILCHIMP'
+  | 'BREVO'
+  | 'COMMUNITY_JOIN'
+  | 'OTHER';
+
+export interface MarketingPreference {
+  channel: 'EMAIL';
+  state: MarketingPreferenceState;
+  source: MarketingPreferenceSource | null;
+  recorded_at: string | null;
+  recorded_by_id: number | null;
+}
+
+export interface MarketingPreferenceMutationRequest {
+  state: Exclude<MarketingPreferenceState, 'UNKNOWN'>;
+}
+
+export interface MarketingPreferenceWriteResponse {
+  preference: MarketingPreference;
+  changed: boolean;
+}
+
+export type BrevoIntegrationStatus =
+  | 'CONNECTED'
+  | 'RESTRICTED'
+  | 'CONTACT_MISSING'
+  | 'IDENTITY_CONFLICT'
+  | 'NOT_CONNECTED'
+  | 'UNKNOWN';
+
+export interface PersonBrevoIntegration {
+  provider: 'BREVO';
+  marketing_preference: MarketingPreference;
+  integration: {
+    status: BrevoIntegrationStatus;
+    reason_code: string | null;
+    title: string;
+    explanation: string;
+    can_reconcile: boolean;
+    provider_profile_url: string | null;
+  };
 }
 
 export interface InternalNoteUserSummary {
@@ -176,7 +240,9 @@ export interface IdentityOverrideRequest {
   reviewed_collision: ReviewedIdentityCollision;
 }
 
-export interface UpdatePersonRequest extends Partial<PersonWriteFields> {}
+export interface UpdatePersonRequest extends Partial<PersonWriteFields> {
+  allow_duplicate_mobile?: true;
+}
 
 export interface DuplicatePersonMatch {
   id: number;
@@ -187,11 +253,28 @@ export interface DuplicatePersonMatch {
   archived_at: string | null;
 }
 
-export interface DuplicatePersonConflict {
+export interface IdentityCollisionConflict {
   detail: string;
   code: 'IDENTITY_COLLISION' | 'IDENTITY_COLLISION_STALE';
+  severity?: 'BLOCKING' | 'WARNING';
+  match_reasons?: ('EMAIL' | 'MOBILE')[];
   collision: ReviewedIdentityCollision;
   candidates: DuplicatePersonMatch[];
+}
+
+export interface MobileDuplicatePersonConflict {
+  detail: string;
+  code: 'duplicate_person';
+  severity: 'WARNING';
+  match_reasons: ['MOBILE'];
+  matches: DuplicatePersonMatch[];
+}
+
+export type DuplicatePersonConflict = IdentityCollisionConflict | MobileDuplicatePersonConflict;
+export type PersonIdentityConflict = DuplicatePersonConflict;
+
+export interface DuplicateMobileOverrideRequest {
+  allow_duplicate_mobile: true;
 }
 
 export interface EndMembershipRequest {
@@ -236,6 +319,8 @@ export interface PersonOverview {
   skills: SkillSummary[];
   interests: InterestSummary[];
   tags: TagSummary[];
+  marketing_preference: MarketingPreference;
+  community_account: CommunityAccount;
 }
 
 export interface PaginatedResponse<T> {

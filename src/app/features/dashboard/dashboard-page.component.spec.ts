@@ -13,7 +13,8 @@ const data: DashboardProjection = {
   overview: { total_people: 12, active_members: 8, contacts: 3, former_members: 1 },
   growth: { people_by_month: months.map(month => ({ month, count: 0 })), members_by_month: months.map(month => ({ month, count: 0 })) },
   community_profile: { top_locations: [], top_industries: [], age_ranges: [{ value: 'UNDER_25', label: 'Under 25', count: 0 }] },
-  attention: { imports_needing_review: 2, archived_people: 4 },
+  marketing: { active_campaigns: 3, ready_in_brevo: 1, needs_attention: 0 },
+  attention: { imports_needing_review: 2, archived_people: 4, campaigns_needing_attention: 0 },
 };
 
 describe('DashboardPageComponent', () => {
@@ -41,6 +42,8 @@ describe('DashboardPageComponent', () => {
     respond(); fixture.detectChanges();
     expect(Array.from(fixture.nativeElement.querySelectorAll('.metric strong')).map(node => (node as HTMLElement).textContent)).toEqual(['12', '8', '3', '1']);
     expect(fixture.nativeElement.textContent).toContain('Coming soon');
+    expect(fixture.nativeElement.textContent).toContain('Active campaigns');
+    expect(fixture.nativeElement.textContent).toContain('Ready in Brevo');
     expect(fixture.nativeElement.textContent).toContain('No location data yet.');
     expect(fixture.nativeElement.textContent).toContain('No industry data yet.');
     expect(fixture.nativeElement.textContent).toContain('Under 25');
@@ -53,6 +56,22 @@ describe('DashboardPageComponent', () => {
     expect(hrefs).toEqual(['/people', '/people?relationship=ACTIVE_MEMBER', '/people?relationship=CONTACT', '/people?relationship=FORMER_MEMBER']);
     const attention = Array.from(fixture.nativeElement.querySelectorAll('a.attention')).map(node => (node as HTMLAnchorElement).getAttribute('href'));
     expect(attention).toEqual(['/imports', '/people?record_state=archived']);
+    expect(Array.from(fixture.nativeElement.querySelectorAll('.quick-actions a')).map(node => (node as HTMLAnchorElement).getAttribute('href'))).toEqual(['/people', '/marketing/audience-preview', '/marketing/campaigns']);
+  });
+  it('shows actionable Campaign attention and links to Campaigns', () => {
+    const fixture = create();
+    http.expectOne('/api/v1/dashboard/').flush({ ...data, marketing: { ...data.marketing, needs_attention: 2 }, attention: { ...data.attention, campaigns_needing_attention: 2 } });
+    fixture.detectChanges();
+    const row = Array.from(fixture.nativeElement.querySelectorAll('a.attention')).find(node => (node as HTMLElement).textContent?.includes('Campaigns needing attention')) as HTMLAnchorElement;
+    expect(row).toBeTruthy();
+    expect(row.getAttribute('href')).toBe('/marketing/campaigns');
+    expect(row.textContent).toContain('2');
+  });
+  it('omits zero-count attention rows', () => {
+    const fixture = create();
+    http.expectOne('/api/v1/dashboard/').flush({ ...data, attention: { imports_needing_review: 0, archived_people: 0, campaigns_needing_attention: 0 } });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('a.attention, .attention').length).toBe(0);
   });
   it('shows errors with Retry instead of zeros and requests fresh data on retry', () => {
     const fixture = create();

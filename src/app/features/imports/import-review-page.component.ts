@@ -169,7 +169,7 @@ export class ImportReviewPageComponent {
     this.saving.set(true);
     this.actionError.set(null);
     request.subscribe({
-      next: () => void this.router.navigate(['/imports', this.batchId]),
+      next: () => this.navigateToNextReview(),
       error: (error: { status?: number; error?: { detail?: string } }) => {
         const detail = error.error?.detail;
         if (detail) {
@@ -183,6 +183,18 @@ export class ImportReviewPageComponent {
         this.saving.set(false);
       },
       complete: () => this.saving.set(false),
+    });
+  }
+
+  private navigateToNextReview(): void {
+    this.service.getReviewQueue(this.batchId).subscribe({
+      next: (queue) => {
+        const next = queue.results[0];
+        void this.router.navigate(next
+          ? ['/imports', this.batchId, 'review', next.id]
+          : ['/imports', this.batchId]);
+      },
+      error: () => void this.router.navigate(['/imports', this.batchId]),
     });
   }
 }
