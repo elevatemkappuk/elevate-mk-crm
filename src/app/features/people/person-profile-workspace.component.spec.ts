@@ -20,6 +20,10 @@ const overview: PersonOverview = {
     created_at: '2026-09-01T12:00:00Z', updated_at: '2026-09-01T12:00:00Z' },
   relationship: { type: 'CONTACT', label: 'Contact' }, membership: null, skills: [], interests: [], tags: [],
   marketing_preference: { channel: 'EMAIL', state: 'UNKNOWN', source: null, recorded_at: null, recorded_by_id: null },
+  community_account: {
+    status: 'NOT_SET_UP', account_email: null, setup_email: null, account_created_at: null,
+    last_login_at: null, invitation_sent_at: null, invitation_expires_at: null, invitation_delivery_status: null,
+  },
   professional_profile: { id: 5, job_title: 'Designer', company: 'Example', industry: null, career_stage: '',
     linkedin_url: '', created_at: '2026-09-01T12:00:00Z', updated_at: '2026-09-01T12:00:00Z' },
 };

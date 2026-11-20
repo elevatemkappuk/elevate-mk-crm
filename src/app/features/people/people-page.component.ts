@@ -12,6 +12,7 @@ import {
   PaginatedResponse,
   PersonListItem,
   PersonDirectoryItem,
+  CommunityAccountStatus,
   PeopleDirectoryQuery,
   PeopleOrdering,
   PeoplePageSize,
@@ -105,6 +106,7 @@ interface OrderingOption {
                   <th scope="col">Type</th>
                   <th scope="col">Location</th>
                   <th scope="col">Status</th>
+                  <th scope="col">Community</th>
                 </tr>
               </thead>
               <tbody>
@@ -121,6 +123,7 @@ interface OrderingOption {
                     <td data-label="Type"><app-status-badge [label]="relationshipLabels[person.relationship] || '-'" [tone]="relationshipTones[person.relationship] || 'neutral'" /></td>
                     <td data-label="Location">{{ person.location || '-' }}</td>
                     <td data-label="Status"><app-status-badge [label]="person.archived_at ? 'Archived' : 'Active'" [tone]="person.archived_at ? 'muted' : 'success'" /></td>
+                    <td data-label="Community"><app-status-badge [label]="communityStatusLabels[person.community_account_status] || 'Unavailable'" [tone]="communityStatusTones[person.community_account_status] || 'neutral'" /></td>
                   </tr>
                 }
               </tbody>
@@ -463,6 +466,18 @@ export class PeoplePageComponent {
   };
   readonly relationshipTones: Record<PersonDirectoryItem['relationship'], StatusBadgeTone> = {
     ACTIVE_MEMBER: 'info', FORMER_MEMBER: 'warning', CONTACT: 'neutral',
+  };
+  readonly communityStatusLabels: Record<CommunityAccountStatus, string> = {
+    ACTIVE: 'Active',
+    SETUP_PENDING: 'Setup pending',
+    NOT_SET_UP: 'Not set up',
+    ACCESS_UNAVAILABLE: 'Unavailable',
+  };
+  readonly communityStatusTones: Record<CommunityAccountStatus, StatusBadgeTone> = {
+    ACTIVE: 'success',
+    SETUP_PENDING: 'warning',
+    NOT_SET_UP: 'neutral',
+    ACCESS_UNAVAILABLE: 'error',
   };
   readonly queryState = signal<PeopleDirectoryQuery>(DEFAULT_PEOPLE_DIRECTORY_QUERY);
   readonly canManagePeople = computed(() => canManagePeople(this.auth.currentUser()));
