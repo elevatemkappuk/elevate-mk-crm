@@ -10,6 +10,6 @@ test('staff can sign in and reach the Dashboard', async ({ page }) => {
   await expect(page).toHaveURL(/\/people$/);
   await page.goto('/dashboard');
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Community growth' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Community growth', exact: true })).toBeVisible();
 });

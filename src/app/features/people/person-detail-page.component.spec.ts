@@ -268,6 +268,14 @@ describe('PersonDetailPageComponent', () => {
 
   afterEach(() => {
     try {
+      for (const request of httpTesting.match((candidate) => candidate.url.includes('/brevo-integration/'))) {
+        if (request.cancelled) continue;
+        request.flush({
+          provider: 'BREVO',
+          marketing_preference: { channel: 'EMAIL', state: 'UNKNOWN', source: null, recorded_at: null, recorded_by_id: null },
+          integration: { status: 'NOT_CONNECTED', reason_code: 'BREVO_NO_ACTIVE_REFERENCE', title: 'Not connected to Brevo', explanation: 'No active connection.', can_reconcile: false },
+        });
+      }
       httpTesting.verify();
     } finally {
       TestBed.resetTestingModule();
@@ -446,6 +454,46 @@ describe('PersonDetailPageComponent', () => {
     expect(harness.routeNativeElement?.textContent).toContain('Personal details');
     expect(harness.routeNativeElement?.textContent).toContain('Record information');
     expect(harness.routeNativeElement?.textContent).toContain('Membership');
+  });
+
+  it('keeps classification correction unavailable to non-admin staff', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush({ ...contactOverview, person: { ...contactOverview.person, record_type: 'COMMUNITY' } });
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent).toContain('Person classification');
+    expect(harness.routeNativeElement?.textContent).not.toContain('Correct classification');
+  });
+
+  it('lets only a CRM admin submit a confirmed classification correction with a reason', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush({ ...contactOverview, person: { ...contactOverview.person, record_type: 'COMMUNITY' } });
+    await stabilize(harness);
+
+    const host = harness.routeNativeElement!;
+    const openButton = Array.from(host.querySelectorAll('button')).find(button => button.textContent?.includes('Correct classification')) as HTMLButtonElement;
+    openButton.click();
+    harness.detectChanges();
+    const form = host.querySelector('form.classification-form') as HTMLFormElement;
+    (form.querySelector('select') as HTMLSelectElement).value = 'STAFF';
+    (form.querySelector('select') as HTMLSelectElement).dispatchEvent(new Event('change'));
+    const reason = form.querySelector('textarea') as HTMLTextAreaElement;
+    reason.value = 'Verified staff identity during controlled onboarding.';
+    reason.dispatchEvent(new Event('input'));
+    (form.querySelector('input[type="checkbox"]') as HTMLInputElement).click();
+    form.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true }));
+    harness.detectChanges();
+
+    const request = httpTesting.expectOne(`${apiBaseUrl}/people/11/classification/`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ record_type: 'STAFF', reason: 'Verified staff identity during controlled onboarding.' });
+    request.flush({ ...contactOverview.person, record_type: 'STAFF' });
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    expect(host.textContent).toContain('Staff');
   });
 
   it('shows a loading state before the request resolves', async () => {
@@ -2673,5 +2721,36 @@ describe('PersonDetailPageComponent', () => {
     httpTesting.expectNone(`${apiBaseUrl}/interests/`);
     httpTesting.expectNone(`${apiBaseUrl}/people/12/tags/`);
     httpTesting.expectNone(`${apiBaseUrl}/tags/`);
+  });
+
+  it('shows an internal Back to Campaign link for a valid campaign context', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11?campaign=2');
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/brevo-integration/`).flush({
+      provider: 'BREVO',
+      marketing_preference: { channel: 'EMAIL', state: 'UNKNOWN', source: null, recorded_at: null, recorded_by_id: null },
+      integration: { status: 'NOT_CONNECTED', reason_code: 'BREVO_NO_ACTIVE_REFERENCE', title: 'Not connected to Brevo', explanation: 'No active connection.', can_reconcile: false },
+    });
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    const link = Array.from(harness.routeNativeElement?.querySelectorAll('a') ?? []).find((anchor) => anchor.textContent?.includes('Back to Campaign')) as HTMLAnchorElement | undefined;
+    expect(link?.getAttribute('href')).toBe('/marketing/campaigns/2');
+  });
+
+  it('ignores an invalid campaign return parameter', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11?campaign=not-a-campaign');
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush(contactOverview);
+    await stabilize(harness);
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/brevo-integration/`).flush({
+      provider: 'BREVO',
+      marketing_preference: { channel: 'EMAIL', state: 'UNKNOWN', source: null, recorded_at: null, recorded_by_id: null },
+      integration: { status: 'NOT_CONNECTED', reason_code: 'BREVO_NO_ACTIVE_REFERENCE', title: 'Not connected to Brevo', explanation: 'No active connection.', can_reconcile: false },
+    });
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    expect(harness.routeNativeElement?.textContent).not.toContain('Back to Campaign');
   });
 });

@@ -5,8 +5,15 @@ import { renderEnvironment } from './write-environment.mjs';
 
 test('renders the configured API base URL without hardcoding an environment', () => {
   assert.equal(
-    renderEnvironment('https://elevate-mk-api-staging.up.railway.app/api/v1/'),
-    'export const environment = {\n  apiBaseUrl: "https://elevate-mk-api-staging.up.railway.app/api/v1",\n};\n',
+    renderEnvironment('https://crm-api.staging.elevatemk.org/api/v1/'),
+    'export const environment = {\n  apiBaseUrl: "https://crm-api.staging.elevatemk.org/api/v1",\n};\n',
+  );
+});
+
+test('accepts the approved production CRM API hostname', () => {
+  assert.match(
+    renderEnvironment('https://crm-api.elevatemk.org/api/v1'),
+    /https:\/\/crm-api\.elevatemk\.org\/api\/v1/,
   );
 });
 

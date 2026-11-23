@@ -18,7 +18,9 @@ import {
   InterestSummary,
   Industry,
   MakeMembershipRequest,
+  MarketingPreference,
   PersonListItem,
+  PersonRecordType,
   PersonMembership,
   PersonOverview,
   ProfessionalProfile,
@@ -34,6 +36,9 @@ import { DetailListComponent, DetailListItem } from '../../shared/ui/detail-list
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 import { PersonAuditHistorySectionComponent } from './person-audit-history-section.component';
+import { PersonMarketingPreferenceSectionComponent } from './person-marketing-preference-section.component';
+import { PersonBrevoIntegrationSectionComponent } from './person-brevo-integration-section.component';
+import { PersonCommunityAccountSectionComponent } from './person-community-account-section.component';
 import { PersonNotesSectionComponent } from './person-notes-section.component';
 import { PersonProfileHeaderComponent } from './person-profile-header.component';
 
@@ -65,6 +70,9 @@ interface AssignSkillFormValue {
     StateMessageComponent,
     StatusBadgeComponent,
     PersonAuditHistorySectionComponent,
+    PersonMarketingPreferenceSectionComponent,
+    PersonBrevoIntegrationSectionComponent,
+    PersonCommunityAccountSectionComponent,
     PersonNotesSectionComponent,
     PersonProfileHeaderComponent,
     CrmDrawerComponent,
@@ -73,6 +81,9 @@ interface AssignSkillFormValue {
   template: `
     <section class="detail-page">
       <a routerLink="/people" class="back-link">Back to People</a>
+      @if (returnCampaignId(); as campaignId) {
+        <a [routerLink]="['/marketing/campaigns', campaignId]" class="back-link">Back to Campaign</a>
+      }
 
       @if (loading()) {
         <app-state-message
@@ -107,20 +118,51 @@ interface AssignSkillFormValue {
           }
         </nav>
         <div class="detail-grid" [hidden]="selectedTab() !== 'overview'" aria-label="Overview">
-          <app-crm-section-card title="Personal details">
+          <div class="detail-column">
+<app-crm-section-card title="Personal details">
             <app-detail-list [items]="personalDetails()" />
             @if (canManagePeople() && !person()!.archived_at) {
               <button type="button" class="button-secondary" aria-label="Edit personal details" (click)="editPersonOpen.set(true)">Edit</button>
             }
           </app-crm-section-card>
 
-          <app-crm-section-card title="Membership">
-            <p class="membership-summary"><app-status-badge [label]="relationshipLabel()" [tone]="membership()?.status === 'ACTIVE' ? 'info' : membership() ? 'warning' : 'neutral'" /></p>
-            @if (membership()) { <app-detail-list [items]="membershipDetails()" /> }
-            @else { <p class="empty-section-copy">No membership record</p> }
-            <a class="section-link" [routerLink]="[]" fragment="membership" queryParamsHandling="preserve">{{ canMakeMember() || canEndMembership() ? 'Manage membership' : 'View membership' }}</a>
+          <app-crm-section-card title="Identity classification">
+            <p class="taxonomy-supporting-copy">Authoritative classification. Ordinary Person editing cannot change this value.</p>
+            <app-detail-list [items]="classificationDetails()" />
+            @if (canCorrectClassification()) {
+              @if (!showClassificationCorrection()) {
+                <div class="section-actions">
+                  <button type="button" class="button-secondary" (click)="openClassificationCorrection()">Correct classification</button>
+                </div>
+              } @else {
+                <form class="classification-form" [formGroup]="classificationCorrectionForm" (ngSubmit)="submitClassificationCorrection()">
+                  <label>
+                    <span>Target classification</span>
+                    <select formControlName="record_type">
+                      @for (option of classificationOptions; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
+                    </select>
+                  </label>
+                  <label>
+                    <span>Correction reason</span>
+                    <textarea formControlName="reason" rows="3" maxlength="500" placeholder="Explain why this correction is required"></textarea>
+                  </label>
+                  <label class="confirmation-choice">
+                    <input type="checkbox" formControlName="confirmed" />
+                    <span>I confirm this sensitive classification correction is authorized.</span>
+                  </label>
+                  @if (classificationCorrectionForm.controls.reason.invalid && classificationCorrectionForm.controls.reason.touched) { <p class="form-error">A correction reason is required.</p> }
+                  @if (classificationCorrectionForm.controls.confirmed.invalid && classificationCorrectionForm.controls.confirmed.touched) { <p class="form-error">Confirmation is required before applying this correction.</p> }
+                  @if (classificationCorrectionErrorMessage()) { <p class="form-error" role="alert">{{ classificationCorrectionErrorMessage() }}</p> }
+                  <div class="form-actions">
+                    <button type="submit" [disabled]="classificationCorrectionSubmitting()">{{ classificationCorrectionSubmitting() ? 'Saving...' : 'Confirm correction' }}</button>
+                    <button type="button" class="button-secondary" [disabled]="classificationCorrectionSubmitting()" (click)="cancelClassificationCorrection()">Cancel</button>
+                  </div>
+                </form>
+              }
+            }
           </app-crm-section-card>
-          <app-crm-section-card title="Professional Profile">
+
+<app-crm-section-card title="Professional Profile">
             @if (professionalProfile()) {
               <app-detail-list [items]="professionalProfileDetails()" />
 
@@ -160,7 +202,7 @@ interface AssignSkillFormValue {
 
           </app-crm-section-card>
 
-          <app-crm-section-card title="Skills">
+<app-crm-section-card title="Skills">
             @if (skills().length) {
               <div class="skills-list">
                 @for (skill of skills(); track skill.id) {
@@ -270,7 +312,7 @@ interface AssignSkillFormValue {
             }
           </app-crm-section-card>
 
-          <app-crm-section-card title="Interests">
+<app-crm-section-card title="Interests">
             @if (interests().length) {
               <div class="skills-list">
                 @for (interest of interests(); track interest.id) {
@@ -388,7 +430,7 @@ interface AssignSkillFormValue {
             }
           </app-crm-section-card>
 
-          <app-crm-section-card title="Tags">
+<app-crm-section-card title="Tags">
             <p class="taxonomy-supporting-copy">Internal CRM classification.</p>
 
             @if (tags().length) {
@@ -499,9 +541,35 @@ interface AssignSkillFormValue {
               <p class="form-error skills-inline-error">{{ tagWriteErrorMessage() }}</p>
             }
           </app-crm-section-card>
+          </div>
+          <div class="detail-column">
+<app-crm-section-card title="Membership">
+            <p class="membership-summary"><app-status-badge [label]="relationshipLabel()" [tone]="membership()?.status === 'ACTIVE' ? 'info' : membership() ? 'warning' : 'neutral'" /></p>
+            @if (membership()) { <app-detail-list [items]="membershipDetails()" /> }
+            @else { <p class="empty-section-copy">No membership record</p> }
+            <a class="section-link" [routerLink]="[]" fragment="membership" queryParamsHandling="preserve">{{ canMakeMember() || canEndMembership() ? 'Manage membership' : 'View membership' }}</a>
+          </app-crm-section-card>
+          @if (overview()?.community_account; as communityAccount) {
+            <app-person-community-account-section [account]="communityAccount" />
+          }
+
+@if (marketingPreference(); as preference) {
+            <app-person-marketing-preference-section
+              [personId]="person()!.id"
+              [preference]="preference"
+              [canEdit]="canManagePeople() && !person()!.archived_at"
+              (preferenceChanged)="marketingPreferenceChanged($event)"
+            />
+          }
+
+@if (person(); as currentPerson) {
+            <app-person-brevo-integration-section [personId]="currentPerson.id" />
+          }
 
 
 
+
+          </div>
         </div>
         <section [hidden]="selectedTab() !== 'membership'" aria-label="Membership">
           <app-crm-section-card title="Membership">
@@ -696,10 +764,15 @@ export class PersonDetailPageComponent {
   ]);
   readonly selectedTab = computed(() => this.profileTabs().some(tab => tab.id === this.activeTab()) ? this.activeTab() : 'overview');
   readonly initials = computed(() => ((this.person()?.first_name?.[0] ?? '') + (this.person()?.last_name?.[0] ?? '')).toUpperCase());
+  readonly returnCampaignId = signal<number | null>(null);
 
   personSaved(person: PersonListItem): void {
     this.overview.update(overview => overview ? { ...overview, person } : overview);
     this.editPersonOpen.set(false);
+  }
+
+  marketingPreferenceChanged(preference: MarketingPreference): void {
+    this.overview.update(overview => overview ? { ...overview, marketing_preference: preference } : overview);
   }
 
   readonly careerStageOptions = CAREER_STAGE_OPTIONS;
@@ -721,6 +794,9 @@ export class PersonDetailPageComponent {
   readonly showEndMembershipForm = signal(false);
   readonly endMembershipSubmitting = signal(false);
   readonly endMembershipErrorMessage = signal<string | null>(null);
+  readonly showClassificationCorrection = signal(false);
+  readonly classificationCorrectionSubmitting = signal(false);
+  readonly classificationCorrectionErrorMessage = signal<string | null>(null);
   readonly personLifecycleSubmitting = signal(false);
   readonly personLifecycleErrorMessage = signal<string | null>(null);
   readonly industries = signal<Industry[]>([]);
@@ -759,11 +835,16 @@ export class PersonDetailPageComponent {
   readonly removingTagId = signal<TagRemovalState>(null);
   readonly person = computed<PersonListItem | null>(() => this.overview()?.person ?? null);
   readonly canManagePeople = computed(() => canManagePeople(this.auth.currentUser()));
+  readonly canCorrectClassification = computed(() => hasStaffRole(this.auth.currentUser(), 'CRM_ADMIN'));
+  readonly classificationOptions: ReadonlyArray<{ value: PersonRecordType; label: string }> = [
+    { value: 'COMMUNITY', label: 'Community' }, { value: 'STAFF', label: 'Staff' }, { value: 'TECHNICAL', label: 'Technical' },
+  ];
   readonly membership = computed<PersonMembership | null>(() => this.overview()?.membership ?? null);
   readonly professionalProfile = computed<ProfessionalProfile | null>(() => this.overview()?.professional_profile ?? null);
   readonly skills = computed<SkillSummary[]>(() => this.overview()?.skills ?? []);
   readonly interests = computed<InterestSummary[]>(() => this.overview()?.interests ?? []);
   readonly tags = computed<TagSummary[]>(() => this.overview()?.tags ?? []);
+  readonly marketingPreference = computed<MarketingPreference | null>(() => this.overview()?.marketing_preference ?? null);
   readonly relationshipLabel = computed(() => this.overview()?.relationship.label ?? 'Contact');
   readonly canMakeMember = computed(() => {
     const overview = this.overview();
@@ -912,6 +993,11 @@ export class PersonDetailPageComponent {
   readonly assignTagForm = this.fb.nonNullable.group({
     tag: ['', Validators.required],
   });
+  readonly classificationCorrectionForm = this.fb.nonNullable.group({
+    record_type: ['COMMUNITY' as PersonRecordType, Validators.required],
+    reason: ['', [Validators.required, Validators.maxLength(500)]],
+    confirmed: [false, Validators.requiredTrue],
+  });
 
   readonly fullName = computed(() => {
     const person = this.person();
@@ -934,6 +1020,11 @@ export class PersonDetailPageComponent {
       { label: 'Gender', value: genderLabel(person.gender) },
     ];
   });
+
+  readonly classificationDetails = computed<DetailListItem[]>(() => [{
+    label: 'Person classification',
+    value: this.classificationLabel(this.person()?.record_type),
+  }]);
 
   readonly recordInformation = computed<DetailListItem[]>(() => {
     const person = this.person();
@@ -985,6 +1076,9 @@ export class PersonDetailPageComponent {
 
   constructor() {
     this.route.fragment.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(fragment => this.activeTab.set(fragment || 'overview'));
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
+      this.returnCampaignId.set(parseCampaignReturnId(params.get('campaign')));
+    });
     this.route.paramMap
       .pipe(
         map((params) => Number(params.get('id'))),
@@ -1199,6 +1293,68 @@ export class PersonDetailPageComponent {
     this.endMembershipForm.reset({
       ended_at: getLocalTodayDateInputValue(),
     });
+  }
+
+  openClassificationCorrection(): void {
+    const current = this.person()?.record_type ?? 'COMMUNITY';
+    this.classificationCorrectionForm.reset({ record_type: current, reason: '', confirmed: false });
+    this.classificationCorrectionErrorMessage.set(null);
+    this.showClassificationCorrection.set(true);
+  }
+
+  cancelClassificationCorrection(): void {
+    this.showClassificationCorrection.set(false);
+    this.classificationCorrectionSubmitting.set(false);
+    this.classificationCorrectionErrorMessage.set(null);
+    this.classificationCorrectionForm.reset({ record_type: this.person()?.record_type ?? 'COMMUNITY', reason: '', confirmed: false });
+  }
+
+  submitClassificationCorrection(): void {
+    const person = this.person();
+    if (!person || !this.canCorrectClassification() || this.classificationCorrectionSubmitting()) { return; }
+    this.classificationCorrectionForm.markAllAsTouched();
+    if (this.classificationCorrectionForm.invalid) { return; }
+    this.classificationCorrectionSubmitting.set(true);
+    this.classificationCorrectionErrorMessage.set(null);
+    const payload = {
+      record_type: this.classificationCorrectionForm.controls.record_type.value,
+      reason: this.classificationCorrectionForm.controls.reason.value.trim(),
+    };
+    this.peopleService.correctClassification(person.id, payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (updatedPerson) => {
+        this.overview.update(overview => overview ? { ...overview, person: updatedPerson } : overview);
+        this.classificationCorrectionSubmitting.set(false);
+        this.showClassificationCorrection.set(false);
+      },
+      error: (error: HttpErrorResponse) => this.handleClassificationCorrectionError(error),
+    });
+  }
+
+  private handleClassificationCorrectionError(error: HttpErrorResponse): void {
+    this.classificationCorrectionSubmitting.set(false);
+    if (error.status === 401) {
+      this.auth.handleSessionExpired();
+      this.classificationCorrectionErrorMessage.set('Your staff session expired. Sign in again to continue.');
+      return;
+    }
+    if (error.status === 403) {
+      this.classificationCorrectionErrorMessage.set(formatForbiddenError(error, 'Only CRM administrators can correct classifications.'));
+      return;
+    }
+    if (error.status === 409) {
+      this.classificationCorrectionErrorMessage.set(error.error?.detail ?? 'This classification conflicts with the current identity state. Refresh and review the record.');
+      return;
+    }
+    if (error.status === 400) {
+      const fields = error.error?.record_type || error.error?.reason;
+      this.classificationCorrectionErrorMessage.set(typeof fields === 'string' ? fields : 'The correction was rejected by the backend. Review the target and reason.');
+      return;
+    }
+    this.classificationCorrectionErrorMessage.set('The classification correction could not be completed right now. Try again.');
+  }
+
+  classificationLabel(value: string | undefined): string {
+    return this.classificationOptions.find(option => option.value === value)?.label ?? 'Unknown';
   }
 
   archivePerson(): void {
@@ -1817,6 +1973,14 @@ export class PersonDetailPageComponent {
     this.errorMessage.set(null);
     this.notFound.set(true);
   }
+}
+
+function parseCampaignReturnId(value: string | null): number | null {
+  if (!value || !/^[1-9]\d*$/u.test(value)) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 const CAREER_STAGE_OPTIONS: ReadonlyArray<{ value: ProfessionalProfileCareerStage; label: string }> = [

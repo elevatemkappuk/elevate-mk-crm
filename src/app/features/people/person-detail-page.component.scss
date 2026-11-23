@@ -3,7 +3,7 @@
 [hidden] { display:none !important; }
 .detail-page,.detail-grid,.history-panel { display:grid; gap:1.25rem; min-width:0; }
 .detail-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
-.detail-grid > * { display:grid; --crm-card-align:start; }
+.detail-column { display:grid; align-content:start; gap:1.25rem; min-width:0; --crm-card-align:start; }
 .back-link,.state-link,.external-link,.section-link { color:var(--crm-action); font-weight:600; }
 a:hover { text-decoration:underline; }
 .profile-nav { display:flex; gap:.5rem; overflow-x:auto; border-bottom:1px solid var(--crm-border); }
@@ -16,6 +16,7 @@ a:hover { text-decoration:underline; }
 .empty-section-copy,.detail-value,.form-note { color:var(--crm-text-secondary); margin:0; line-height:1.5; }
 .detail-label { color:var(--crm-text-muted); margin:0 0 .25rem; font-size:var(--crm-font-sm); }
 .professional-profile-link-row,.section-actions,.membership-actions,.inline-confirmation { margin-top:1rem; }
+.professional-profile-empty-state { display:grid; gap:1rem; }
 .skills-list,.skill-chip-row,.form-actions { display:flex; align-items:center; flex-wrap:wrap; gap:.5rem; }
 .skill-chip-row { background:var(--crm-surface-subtle); border-radius:var(--crm-radius-pill); padding:.2rem .7rem; max-width:100%; }
 .skill-chip { font-size:var(--crm-font-sm); overflow-wrap:anywhere; }

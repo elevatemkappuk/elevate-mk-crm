@@ -37,11 +37,13 @@ describe('PersonFormComponent', () => {
 
     component.form.setValue({ first_name: ' Ama ', last_name: ' Amoah ', primary_email: 'not-email', mobile: '', location: '', age_range: '25_29', gender: 'NON_BINARY', joined_at: '2026-08-31' });
     component.submit();
+    fixture.detectChanges();
     expect(component.form.controls.primary_email.hasError('email')).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('Enter a valid email address.');
 
-    component.form.patchValue({ primary_email: ' ama@example.com ', mobile: ' 991000001 ' });
+    component.form.patchValue({ primary_email: ' ama@example.com ', mobile: ' 07911 123 456 ' });
     component.submit();
-    expect(submissions).toEqual([{ person: { first_name: 'Ama', last_name: 'Amoah', primary_email: 'ama@example.com', mobile: '991000001', location: '', age_range: '25_29', gender: 'NON_BINARY' }, joined_at: '2026-08-31' }]);
+    expect(submissions).toEqual([{ person: { first_name: 'Ama', last_name: 'Amoah', primary_email: 'ama@example.com', mobile: '07911 123 456', location: '', age_range: '25_29', gender: 'NON_BINARY' }, joined_at: '2026-08-31' }]);
   });
 
   it('renders shared canonical options and preselects canonical demographic values', () => {
@@ -57,5 +59,19 @@ describe('PersonFormComponent', () => {
     expect(genderLabels).toEqual(['Not specified', 'Male', 'Female', 'Non-Binary', 'Transgender', 'Other']);
     expect(ageSelect.value).toBe('25_29');
     expect(genderSelect.value).toBe('NON_BINARY');
+  });
+
+  it('reserves drawer validation space for inline field messages', () => {
+    fixture.componentRef.setInput('drawer', true);
+    fixture.detectChanges();
+    const slots = fixture.nativeElement.querySelectorAll('.validation-slot');
+    expect(slots.length).toBe(4);
+    expect(Array.from(slots).every((slot: unknown) => (slot as HTMLElement).textContent?.trim() === '')).toBe(true);
+    fixture.componentInstance.form.controls.first_name.markAsTouched();
+    fixture.componentInstance.form.controls.primary_email.setValue('invalid');
+    fixture.componentInstance.form.controls.primary_email.markAsTouched();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.validation-slot small')?.textContent).toContain('First name is required.');
+    expect(fixture.nativeElement.querySelectorAll('.validation-slot').length).toBe(4);
   });
 });

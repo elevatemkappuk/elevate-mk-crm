@@ -1,9 +1,9 @@
 import { ParamMap, Params } from '@angular/router';
 
-import { PeopleDirectoryQuery, PeopleOrdering, PeoplePageSize, PersonRecordState, PersonRelationshipFilter, ProfessionalProfileCareerStage } from './people.types';
+import { PeopleDirectoryQuery, PeopleOrdering, PeoplePageSize, PersonRecordState, PersonRecordType, PersonRelationshipFilter, ProfessionalProfileCareerStage } from './people.types';
 
 export const DEFAULT_PEOPLE_DIRECTORY_QUERY: PeopleDirectoryQuery = {
-  q: '', relationship: [], location: [], industry: [], career_stage: [], interest: [], skill: [], tag: [],
+  q: '', relationship: [], location: [], industry: [], career_stage: [], interest: [], skill: [], tag: [], record_type: [],
   record_state: 'active', ordering: 'last_name', page: 1, page_size: 25,
 };
 
@@ -12,6 +12,7 @@ const ORDERINGS: PeopleOrdering[] = ['name', '-name', 'first_name', '-first_name
 const PAGE_SIZES: PeoplePageSize[] = [25, 50, 100];
 const RELATIONSHIPS: PersonRelationshipFilter[] = ['CONTACT', 'ACTIVE_MEMBER', 'FORMER_MEMBER'];
 const CAREER_STAGES: ProfessionalProfileCareerStage[] = ['STUDENT', 'EARLY_CAREER', 'MID_CAREER', 'SENIOR', 'LEADERSHIP', 'FOUNDER_BUSINESS_OWNER', 'OTHER'];
+const RECORD_TYPES: PersonRecordType[] = ['COMMUNITY', 'STAFF', 'TECHNICAL'];
 
 export function parsePeopleDirectoryQuery(params: ParamMap): PeopleDirectoryQuery {
   return {
@@ -23,6 +24,7 @@ export function parsePeopleDirectoryQuery(params: ParamMap): PeopleDirectoryQuer
     interest: parseIdList(params.getAll('interest')),
     skill: parseIdList(params.getAll('skill')),
     tag: parseIdList(params.getAll('tag')),
+    record_type: parseEnumList(params.getAll('record_type'), RECORD_TYPES),
     record_state: parseEnum(params.get('record_state'), RECORD_STATES, DEFAULT_PEOPLE_DIRECTORY_QUERY.record_state),
     ordering: parseEnum(params.get('ordering'), ORDERINGS, DEFAULT_PEOPLE_DIRECTORY_QUERY.ordering),
     page: parsePositiveInt(params.get('page'), DEFAULT_PEOPLE_DIRECTORY_QUERY.page),
@@ -40,6 +42,7 @@ export function serializePeopleDirectoryQuery(query: PeopleDirectoryQuery): Para
     interest: query.interest.length ? query.interest.map(String) : null,
     skill: query.skill.length ? query.skill.map(String) : null,
     tag: query.tag.length ? query.tag.map(String) : null,
+    record_type: query.record_type?.length ? query.record_type : null,
     record_state: query.record_state === DEFAULT_PEOPLE_DIRECTORY_QUERY.record_state ? null : query.record_state,
     ordering: query.ordering === DEFAULT_PEOPLE_DIRECTORY_QUERY.ordering ? null : query.ordering,
     page: query.page === DEFAULT_PEOPLE_DIRECTORY_QUERY.page ? null : String(query.page),
@@ -54,7 +57,7 @@ export function withPeopleDirectoryQueryChange(query: PeopleDirectoryQuery, patc
 export function arePeopleDirectoryQueriesEqual(left: PeopleDirectoryQuery, right: PeopleDirectoryQuery): boolean {
   return left.q === right.q && left.record_state === right.record_state && left.ordering === right.ordering && left.page === right.page && left.page_size === right.page_size
     && arraysEqual(left.relationship, right.relationship) && arraysEqual(left.location, right.location) && arraysEqual(left.industry, right.industry)
-    && arraysEqual(left.career_stage, right.career_stage) && arraysEqual(left.interest, right.interest) && arraysEqual(left.skill, right.skill) && arraysEqual(left.tag, right.tag);
+    && arraysEqual(left.career_stage, right.career_stage) && arraysEqual(left.interest, right.interest) && arraysEqual(left.skill, right.skill) && arraysEqual(left.tag, right.tag) && arraysEqual(left.record_type ?? [], right.record_type ?? []);
 }
 
 function parseIdList(values: string[]): number[] { return unique(values.map(Number).filter((value) => Number.isInteger(value) && value > 0)); }

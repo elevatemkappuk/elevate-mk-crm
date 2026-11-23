@@ -19,6 +19,11 @@ const overview: PersonOverview = {
     mobile: '077000001', location: 'Milton Keynes', age_range: '', gender: '', archived_at: null,
     created_at: '2026-09-01T12:00:00Z', updated_at: '2026-09-01T12:00:00Z' },
   relationship: { type: 'CONTACT', label: 'Contact' }, membership: null, skills: [], interests: [], tags: [],
+  marketing_preference: { channel: 'EMAIL', state: 'UNKNOWN', source: null, recorded_at: null, recorded_by_id: null },
+  community_account: {
+    status: 'NOT_SET_UP', account_email: null, setup_email: null, account_created_at: null,
+    last_login_at: null, invitation_sent_at: null, invitation_expires_at: null, invitation_delivery_status: null,
+  },
   professional_profile: { id: 5, job_title: 'Designer', company: 'Example', industry: null, career_stage: '',
     linkedin_url: '', created_at: '2026-09-01T12:00:00Z', updated_at: '2026-09-01T12:00:00Z' },
 };
@@ -29,6 +34,7 @@ describe('Person profile workspace', () => {
   let service: {
     getPersonOverview: ReturnType<typeof vi.fn>; getPersonNotes: ReturnType<typeof vi.fn>;
     getPersonAuditHistory: ReturnType<typeof vi.fn>; getIndustries: ReturnType<typeof vi.fn>;
+    getPersonBrevoIntegration: ReturnType<typeof vi.fn>;
     updatePerson: ReturnType<typeof vi.fn>; updateProfessionalProfile: ReturnType<typeof vi.fn>;
     archivePerson: ReturnType<typeof vi.fn>; restorePerson: ReturnType<typeof vi.fn>;
   };
@@ -46,6 +52,11 @@ describe('Person profile workspace', () => {
     service = {
       getPersonOverview: vi.fn(() => of(overview)), getPersonNotes: vi.fn(() => of(empty)),
       getPersonAuditHistory: vi.fn(() => of(empty)), getIndustries: vi.fn(() => of([])),
+      getPersonBrevoIntegration: vi.fn(() => of({
+        provider: 'BREVO',
+        marketing_preference: overview.marketing_preference,
+        integration: { status: 'NOT_CONNECTED', reason_code: 'BREVO_NO_ACTIVE_REFERENCE', title: 'Not connected to Brevo', explanation: 'No active Brevo connection is recorded for this person.', can_reconcile: false },
+      })),
       updatePerson: vi.fn(() => update), updateProfessionalProfile: vi.fn(() => of(overview.professional_profile)),
       archivePerson: vi.fn(() => of(undefined)), restorePerson: vi.fn(() => of(undefined)),
     };
@@ -150,6 +161,67 @@ describe('Person profile workspace', () => {
     expect(host.querySelector('dialog .error')?.textContent).toContain('Person details need to be corrected');
     expect(writer().personForm()!.form.controls.first_name.value).toBe('Amara');
     expect(host.querySelector('h1')?.textContent).toBe('Ama Amoah');
+  });
+
+  it('shows a mobile-only duplicate warning, preserves edits, and retries narrowly', async () => {
+    const duplicate = {
+      code: 'duplicate_person', severity: 'WARNING', match_reasons: ['MOBILE'],
+      detail: 'Another Person already uses this mobile number.',
+      matches: [{ id: 22, first_name: 'Sofia', last_name: 'Black', archived_at: null }],
+    };
+    service.updatePerson.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 409, error: duplicate })));
+    const host = await render();
+    (host.querySelector('.edit-person') as HTMLElement).click(); await settle();
+    writer().personForm()!.form.controls.mobile.setValue('07911000000');
+    writer().personForm()!.submit(); await settle();
+    expect(host.textContent).toContain('Another person already uses this mobile number');
+    expect(host.textContent).toContain('Sofia Black');
+    expect(host.textContent).not.toContain('This person state changed');
+    expect(writer().personForm()!.form.controls.mobile.value).toBe('07911000000');
+    (host.querySelector('app-person-duplicate-conflict .button-primary') as HTMLElement).click(); await settle();
+    expect(host.querySelector('app-confirmation-dialog .dialog')).toBeNull();
+    expect(service.updatePerson).toHaveBeenCalledTimes(2);
+    expect(service.updatePerson.mock.calls[1][1]).toMatchObject({ allow_duplicate_mobile: true, mobile: '07911000000' });
+    expect(writer().submitting()).toBe(true);
+    expect((host.querySelector('app-person-form button[type="submit"]') as HTMLButtonElement).disabled).toBe(true);
+    writer().openIdentityOverrideConfirmation();
+    expect(service.updatePerson).toHaveBeenCalledTimes(2);
+    update.next({ ...overview.person, mobile: '07911000000' }); update.complete(); await settle();
+    expect(host.querySelector('dialog')).toBeNull();
+    expect(host.textContent).not.toContain('Shared mobile number');
+  });
+
+  it('renders a backend mobile validation error against the Mobile field without losing edits', async () => {
+    service.updatePerson.mockReturnValue(throwError(() => new HttpErrorResponse({
+      status: 400,
+      error: { mobile: ['Enter a valid mobile number.'] },
+    })));
+    const host = await render();
+    (host.querySelector('.edit-person') as HTMLElement).click(); await settle();
+    writer().personForm()!.form.controls.mobile.setValue('hello123');
+    writer().personForm()!.submit(); await settle();
+
+    expect(host.querySelector('dialog .error')?.textContent).toContain('Person details need to be corrected');
+    const mobileLabel = Array.from(host.querySelectorAll('dialog label')).find(label => label.textContent?.includes('Mobile'));
+    expect(mobileLabel?.textContent).toContain('Enter a valid mobile number.');
+    expect(writer().personForm()!.form.controls.mobile.value).toBe('hello123');
+  });
+
+  it('renders a backend primary email error against Email without losing the entered value', async () => {
+    service.updatePerson.mockReturnValue(throwError(() => new HttpErrorResponse({
+      status: 400,
+      error: { primary_email: ['Enter a valid email address.'] },
+    })));
+    const host = await render();
+    (host.querySelector('.edit-person') as HTMLElement).click(); await settle();
+    writer().personForm()!.form.controls.primary_email.setValue('hello@');
+    writer().personForm()!.form.controls.primary_email.setErrors(null);
+    writer().personForm()!.submit(); await settle();
+
+    expect(host.querySelector('dialog .error')?.textContent).toContain('Person details need to be corrected');
+    const emailLabel = Array.from(host.querySelectorAll('dialog label')).find(label => label.textContent?.includes('Email'));
+    expect(emailLabel?.textContent).toContain('Enter a valid email address.');
+    expect(writer().personForm()!.form.controls.primary_email.value).toBe('hello@');
   });
 
   it('moves Professional Profile editing into the shared drawer and refreshes its card after saving', async () => {

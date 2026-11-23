@@ -33,6 +33,7 @@ class MockAuthService {
   login = vi.fn();
   setAuthenticatedUser = vi.fn();
   getAuthorizedRoute = vi.fn();
+  sessionExpiredMessage = vi.fn(() => null);
 }
 
 describe('LoginPageComponent', () => {

@@ -15,9 +15,12 @@ export class AuthService {
 
   private readonly currentUserState = signal<AuthenticatedUser | null>(null);
   private readonly initializedState = signal(false);
+  private readonly sessionExpiredMessageState = signal<string | null>(null);
+  private sessionExpiryHandled = false;
 
   readonly currentUser = this.currentUserState.asReadonly();
   readonly authInitialized = this.initializedState.asReadonly();
+  readonly sessionExpiredMessage = this.sessionExpiredMessageState.asReadonly();
   readonly isAuthenticated = computed(() => this.currentUser() !== null);
   readonly hasStaffAccess = computed(() => hasStaffCrmAccess(this.currentUser()));
   readonly isCrmAdmin = computed(() => isCrmAdmin(this.currentUser()));
@@ -39,6 +42,8 @@ export class AuthService {
   }
 
   login(credentials: LoginCredentials): Observable<AuthenticatedUser> {
+    this.sessionExpiryHandled = false;
+    this.sessionExpiredMessageState.set(null);
     const payload = {
       email: normalizeEmail(credentials.email),
       password: credentials.password,
@@ -105,6 +110,20 @@ export class AuthService {
 
   clearUserState(): void {
     this.currentUserState.set(null);
+  }
+
+  handleSessionExpired(): boolean {
+    if (this.sessionExpiryHandled) {
+      return false;
+    }
+
+    this.sessionExpiryHandled = true;
+    this.clearUserState();
+    clearCsrfToken();
+    this.sessionExpiredMessageState.set(
+      'Your staff session expired. Sign in again to continue. Unsaved changes may not have been saved.',
+    );
+    return true;
   }
 
   getAuthorizedRoute(user: AuthenticatedUser | null = this.currentUser()): string {

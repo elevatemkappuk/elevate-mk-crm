@@ -17,13 +17,17 @@ import {
   InterestSummary,
   Industry,
   MakeMembershipRequest,
+  MarketingPreferenceMutationRequest,
+  MarketingPreferenceWriteResponse,
   NotesListQuery,
   PaginatedResponse,
   PaginatedPersonAuditHistoryResponse,
   PersonListItem,
   PersonDirectoryItem,
+  PersonClassificationCorrectionRequest,
   PersonMembership,
   PersonOverview,
+  PersonBrevoIntegration,
   PeopleListQueryState,
   ProfessionalProfile,
   ProfessionalProfileWriteRequest,
@@ -55,6 +59,7 @@ export class PeopleService {
     for (const value of query.interest) { params = params.append('interest', String(value)); }
     for (const value of query.skill) { params = params.append('skill', String(value)); }
     for (const value of query.tag) { params = params.append('tag', String(value)); }
+    for (const value of query.record_type ?? []) { params = params.append('record_type', value); }
 
     return this.http.get<PaginatedResponse<PersonDirectoryItem>>(this.buildUrl('/people/'), {
       params,
@@ -69,6 +74,20 @@ export class PeopleService {
     return this.http.get<PersonOverview>(this.buildUrl(`/people/${personId}/overview/`));
   }
 
+  getPersonBrevoIntegration(personId: number): Observable<PersonBrevoIntegration> {
+    return this.http.get<PersonBrevoIntegration>(this.buildUrl(`/people/${personId}/brevo-integration/`));
+  }
+
+  updateMarketingPreference(
+    personId: number,
+    payload: MarketingPreferenceMutationRequest,
+  ): Observable<MarketingPreferenceWriteResponse> {
+    return this.http.post<MarketingPreferenceWriteResponse>(
+      this.buildUrl(`/people/${personId}/marketing-preference/`),
+      payload,
+    );
+  }
+
   createContact(payload: CreateContactRequest | (CreateContactRequest & IdentityOverrideRequest)): Observable<PersonListItem> {
     return this.http.post<PersonListItem>(this.buildUrl('/people/'), payload);
   }
@@ -79,6 +98,10 @@ export class PeopleService {
 
   updatePerson(personId: number, payload: UpdatePersonRequest): Observable<PersonListItem> {
     return this.http.patch<PersonListItem>(this.buildUrl(`/people/${personId}/`), payload);
+  }
+
+  correctClassification(personId: number, payload: PersonClassificationCorrectionRequest): Observable<PersonListItem> {
+    return this.http.post<PersonListItem>(this.buildUrl(`/people/${personId}/classification/`), payload);
   }
 
   archivePerson(personId: number): Observable<PersonListItem> {

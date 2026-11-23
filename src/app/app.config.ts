@@ -12,6 +12,7 @@ import { AuthService } from './core/auth/auth.service';
 import {
   apiCredentialsInterceptor,
   csrfHeaderInterceptor,
+  sessionExpiryInterceptor,
 } from './core/http/auth-http.interceptors';
 import { API_CONFIG } from './core/http/api-config';
 import { routes } from './app.routes';
@@ -20,7 +21,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideHttpClient(withInterceptors([apiCredentialsInterceptor, csrfHeaderInterceptor])),
+    provideHttpClient(withInterceptors([apiCredentialsInterceptor, csrfHeaderInterceptor, sessionExpiryInterceptor])),
     {
       provide: API_CONFIG,
       useValue: environment,

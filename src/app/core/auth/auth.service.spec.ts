@@ -1,3 +1,5 @@
+import '@angular/compiler';
+
 import { DOCUMENT } from '@angular/common';
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';

@@ -2,7 +2,7 @@ import { Component, DestroyRef, computed, effect, inject, input, output, signal 
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { PeopleService } from '../../core/people/people.service';
-import { Industry, InterestSummary, PeopleDirectoryQuery, PersonRelationshipFilter, ProfessionalProfileCareerStage, SkillSummary, TagSummary } from '../../core/people/people.types';
+import { Industry, InterestSummary, PeopleDirectoryQuery, PersonRecordType, PersonRelationshipFilter, ProfessionalProfileCareerStage, SkillSummary, TagSummary } from '../../core/people/people.types';
 import { CrmDrawerComponent } from '../../shared/ui/crm-drawer.component';
 import { FilterMultiselectComponent } from './filter-multiselect.component';
 
@@ -12,8 +12,11 @@ const RELATIONSHIPS: ReadonlyArray<{ value: PersonRelationshipFilter; label: str
 const CAREER_STAGES: ReadonlyArray<{ value: ProfessionalProfileCareerStage; label: string }> = [
   { value: 'STUDENT', label: 'Student' }, { value: 'EARLY_CAREER', label: 'Early Career' }, { value: 'MID_CAREER', label: 'Mid Career' }, { value: 'SENIOR', label: 'Senior' }, { value: 'LEADERSHIP', label: 'Leadership' }, { value: 'FOUNDER_BUSINESS_OWNER', label: 'Founder / Business Owner' }, { value: 'OTHER', label: 'Other' },
 ];
+const RECORD_TYPES: ReadonlyArray<{ value: PersonRecordType; label: string }> = [
+  { value: 'COMMUNITY', label: 'Community' }, { value: 'STAFF', label: 'Staff' }, { value: 'TECHNICAL', label: 'Technical' },
+];
 
-type FilterDraft = Pick<PeopleDirectoryQuery, 'relationship' | 'location' | 'industry' | 'career_stage' | 'interest' | 'skill' | 'tag'>;
+type FilterDraft = Omit<Pick<PeopleDirectoryQuery, 'q' | 'relationship' | 'location' | 'industry' | 'career_stage' | 'interest' | 'skill' | 'tag' | 'record_type'>, 'record_type'> & { record_type: PersonRecordType[] };
 type CatalogKey = 'industry' | 'interest' | 'skill' | 'tag';
 interface AppliedChip { key: string; label: string; patch: Partial<PeopleDirectoryQuery>; }
 let nextFilterDrawerId = 0;
@@ -22,7 +25,18 @@ let nextFilterDrawerId = 0;
   selector: 'app-people-directory-filters',
   imports: [CrmDrawerComponent, FilterMultiselectComponent],
   template: `
-    <section class="filters" aria-label="People directory filters">
+    <section class="filters" [attr.aria-label]="compact() ? 'Audience criteria' : 'People directory filters'">
+      @if (compact()) {
+        <div class="compact-summary">
+          <div class="criteria-chips" aria-label="Current audience criteria">
+            @if (criteriaChips().length) {
+              @for (chip of criteriaChips(); track chip.key) { <span class="crm-chip">{{ chip.label }}</span> }
+            } @else { <span class="empty-criteria">All active People</span> }
+          </div>
+          <button type="button" class="toggle crm-button crm-button--secondary" aria-haspopup="dialog"
+            [attr.aria-expanded]="expanded()" [attr.aria-controls]="expanded() ? drawerId : null" (click)="openDrawer()">Edit criteria</button>
+        </div>
+      } @else {
       <div class="topline">
         <form (submit)="submitSearch($event)" class="search">
           <label for="people-search">Search</label>
@@ -40,10 +54,22 @@ let nextFilterDrawerId = 0;
           <button type="button" class="clear crm-button crm-button--quiet" (click)="cleared.emit()">Clear filters</button>
         </div>
       }
+      }
     </section>
     @if (draft(); as values) {
-      <app-crm-drawer title="Filters" description="Refine the People directory" [dialogId]="drawerId" (closed)="closeDrawer()">
+      <app-crm-drawer [title]="compact() ? 'Audience criteria' : 'Filters'" [description]="compact() ? 'Choose the People included in this marketing preview' : 'Refine the People directory'" [dialogId]="drawerId" (closed)="closeDrawer()">
         <div class="draft-panel">
+          @if (compact()) {
+            <label class="draft-search">Search People
+              <input class="crm-control" [value]="searchValue()" (input)="updateDraftSearch($any($event.target).value)" placeholder="Name, email, mobile, job title, or company" />
+            </label>
+          }
+          <fieldset>
+            <legend>Person type</legend>
+            @for (option of recordTypes; track option.value) {
+              <label class="choice"><input type="checkbox" class="crm-check" [checked]="values.record_type.includes(option.value)" (change)="toggleRecordType(option.value)" />{{ option.label }}</label>
+            }
+          </fieldset>
           <fieldset>
             <legend>Relationship</legend>
             @for (option of relationships; track option.value) {
@@ -86,11 +112,14 @@ let nextFilterDrawerId = 0;
   `,
   styles: `
     :host { display:block; min-width:0; }
-    .filters,.topline,.search,.location-entry { display:grid; gap:.8rem; min-width:0; }
+    .filters,.topline,.search,.location-entry,.draft-search { display:grid; gap:.8rem; min-width:0; }
     .topline { grid-template-columns:minmax(0,1fr) auto; align-items:end; }
     .search,.location-entry { grid-template-columns:minmax(0,1fr) auto; }
     .search label,.location-entry label { grid-column:1/-1; font-weight:600; }
     .applied-chips,.chips,.drawer-actions,.footer-end { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; }
+    .compact-summary { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+    .criteria-chips { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; min-width:0; }
+    .empty-criteria { color:var(--crm-text-secondary); font-weight:600; }
     .crm-chip { max-width:100%; overflow-wrap:anywhere; text-align:left; cursor:pointer; }
     app-crm-drawer { --crm-drawer-width:34rem; }
     .draft-panel { display:grid; gap:1.75rem; padding-bottom:1.5rem; }
@@ -103,13 +132,14 @@ let nextFilterDrawerId = 0;
     .apply:hover { background:#f3c64c; }
     .catalog-error { margin:0; color:var(--crm-error); }
     :is(button,input):focus-visible { outline:2px solid var(--crm-focus-ring); outline-offset:2px; }
-    @media(max-width:580px) { .topline { grid-template-columns:minmax(0,1fr); } .toggle { width:fit-content; } .location-entry { grid-template-columns:minmax(0,1fr); } }
+    @media(max-width:580px) { .topline { grid-template-columns:minmax(0,1fr); } .toggle { width:fit-content; } .location-entry { grid-template-columns:minmax(0,1fr); } .compact-summary { align-items:stretch; flex-direction:column; } }
   `,
 })
 export class PeopleDirectoryFiltersComponent {
   private readonly peopleService = inject(PeopleService);
   private readonly destroyRef = inject(DestroyRef);
   readonly query = input.required<PeopleDirectoryQuery>();
+  readonly compact = input(false);
   readonly changed = output<Partial<PeopleDirectoryQuery>>();
   readonly cleared = output<void>();
   readonly draft = signal<FilterDraft | null>(null);
@@ -119,7 +149,7 @@ export class PeopleDirectoryFiltersComponent {
   readonly locationValue = signal('');
   readonly industries = signal<Industry[]>([]); readonly interests = signal<InterestSummary[]>([]); readonly skills = signal<SkillSummary[]>([]); readonly tags = signal<TagSummary[]>([]);
   readonly catalogError = signal(false);
-  readonly relationships = RELATIONSHIPS; readonly careerStages = CAREER_STAGES;
+  readonly relationships = RELATIONSHIPS; readonly careerStages = CAREER_STAGES; readonly recordTypes = RECORD_TYPES;
 
   constructor() {
     effect(() => {
@@ -130,19 +160,37 @@ export class PeopleDirectoryFiltersComponent {
     this.loadCatalogs();
   }
 
-  activeFilterCount(): number { const query = this.query(); return Number(Boolean(query.q)) + query.relationship.length + query.location.length + query.industry.length + query.career_stage.length + query.interest.length + query.skill.length + query.tag.length + Number(query.record_state !== 'active') + Number(query.ordering !== 'last_name'); }
+  activeFilterCount(): number { const query = this.query(); return Number(Boolean(query.q)) + query.relationship.length + query.location.length + query.industry.length + query.career_stage.length + query.interest.length + query.skill.length + query.tag.length + (query.record_type ?? []).length + Number(query.record_state !== 'active') + Number(query.ordering !== 'last_name'); }
   submitSearch(event: SubmitEvent): void { event.preventDefault(); this.changed.emit({ q: this.searchValue().trim() }); }
 
   openDrawer(): void {
     const query = this.query();
-    this.draft.set({ relationship: [...query.relationship], location: [...query.location], industry: [...query.industry], career_stage: [...query.career_stage], interest: [...query.interest], skill: [...query.skill], tag: [...query.tag] });
+    this.draft.set({ q: query.q, relationship: [...query.relationship], location: [...query.location], industry: [...query.industry], career_stage: [...query.career_stage], interest: [...query.interest], skill: [...query.skill], tag: [...query.tag], record_type: [...(query.record_type ?? [])] });
     this.locationValue.set('');
   }
   closeDrawer(): void { this.draft.set(null); this.locationValue.set(''); }
-  clearDraft(): void { if (this.draft()) this.draft.set({ relationship: [], location: [], industry: [], career_stage: [], interest: [], skill: [], tag: [] }); this.locationValue.set(''); }
+  clearDraft(): void {
+    const draft = this.draft();
+    if (draft) {
+      this.draft.set({
+        q: this.compact() ? '' : draft.q,
+        relationship: [],
+        location: [],
+        industry: [],
+        career_stage: [],
+        interest: [],
+        skill: [],
+        tag: [],
+        record_type: [],
+      });
+    }
+    this.locationValue.set('');
+  }
   applyFilters(): void { const draft = this.draft(); if (!draft) return; this.changed.emit(draft); this.closeDrawer(); }
+  updateDraftSearch(value: string): void { this.searchValue.set(value); this.draft.update((draft) => draft ? { ...draft, q: value } : draft); }
   toggleRelationship(value: PersonRelationshipFilter): void { this.draft.update(draft => draft ? { ...draft, relationship: toggle(draft.relationship, value) } : null); }
   toggleCareerStage(value: ProfessionalProfileCareerStage): void { this.draft.update(draft => draft ? { ...draft, career_stage: toggle(draft.career_stage, value) } : null); }
+  toggleRecordType(value: PersonRecordType): void { this.draft.update(draft => draft ? { ...draft, record_type: toggle(draft.record_type, value) } : null); }
   setSelection(kind: CatalogKey, values: number[]): void { this.draft.update(draft => draft ? { ...draft, [kind]: values } : null); }
   addLocation(): void {
     const location = this.locationValue().trim();
@@ -158,6 +206,7 @@ export class PeopleDirectoryFiltersComponent {
     for (const value of query.relationship) chips.push({ key: 'relationship:' + value, label: RELATIONSHIPS.find(option => option.value === value)!.label, patch: { relationship: query.relationship.filter(item => item !== value) } });
     for (const value of query.location) chips.push({ key: 'location:' + value, label: value, patch: { location: query.location.filter(item => item !== value) } });
     for (const value of query.career_stage) chips.push({ key: 'career_stage:' + value, label: CAREER_STAGES.find(option => option.value === value)!.label, patch: { career_stage: query.career_stage.filter(item => item !== value) } });
+    for (const value of query.record_type ?? []) chips.push({ key: 'record_type:' + value, label: RECORD_TYPES.find(option => option.value === value)!.label, patch: { record_type: (query.record_type ?? []).filter(item => item !== value) } });
     const catalogs = [
       { key: 'industry' as const, label: 'Industry', options: this.industries() },
       { key: 'interest' as const, label: 'Interest', options: this.interests() },
@@ -173,6 +222,7 @@ export class PeopleDirectoryFiltersComponent {
     }
     return chips;
   });
+  readonly criteriaChips = computed(() => this.activeChips().filter((chip) => chip.key !== 'record_state' && chip.key !== 'ordering'));
 
   private loadCatalogs(): void {
     this.peopleService.getIndustries().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ next: (value) => this.industries.set(value), error: () => this.catalogError.set(true) });
