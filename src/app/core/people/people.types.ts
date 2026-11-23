@@ -247,6 +247,11 @@ export interface UpdatePersonRequest extends Partial<PersonWriteFields> {
   allow_duplicate_mobile?: true;
 }
 
+export interface PersonClassificationCorrectionRequest {
+  record_type: PersonRecordType;
+  reason: string;
+}
+
 export interface DuplicatePersonMatch {
   id: number;
   first_name: string;

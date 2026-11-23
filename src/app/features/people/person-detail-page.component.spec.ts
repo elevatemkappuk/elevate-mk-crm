@@ -456,6 +456,46 @@ describe('PersonDetailPageComponent', () => {
     expect(harness.routeNativeElement?.textContent).toContain('Membership');
   });
 
+  it('keeps classification correction unavailable to non-admin staff', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush({ ...contactOverview, person: { ...contactOverview.person, record_type: 'COMMUNITY' } });
+    await stabilize(harness);
+
+    expect(harness.routeNativeElement?.textContent).toContain('Person classification');
+    expect(harness.routeNativeElement?.textContent).not.toContain('Correct classification');
+  });
+
+  it('lets only a CRM admin submit a confirmed classification correction with a reason', async () => {
+    auth.setCurrentUser(adminUser);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people/11');
+    httpTesting.expectOne(`${apiBaseUrl}/people/11/overview/`).flush({ ...contactOverview, person: { ...contactOverview.person, record_type: 'COMMUNITY' } });
+    await stabilize(harness);
+
+    const host = harness.routeNativeElement!;
+    const openButton = Array.from(host.querySelectorAll('button')).find(button => button.textContent?.includes('Correct classification')) as HTMLButtonElement;
+    openButton.click();
+    harness.detectChanges();
+    const form = host.querySelector('form.classification-form') as HTMLFormElement;
+    (form.querySelector('select') as HTMLSelectElement).value = 'STAFF';
+    (form.querySelector('select') as HTMLSelectElement).dispatchEvent(new Event('change'));
+    const reason = form.querySelector('textarea') as HTMLTextAreaElement;
+    reason.value = 'Verified staff identity during controlled onboarding.';
+    reason.dispatchEvent(new Event('input'));
+    (form.querySelector('input[type="checkbox"]') as HTMLInputElement).click();
+    form.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true }));
+    harness.detectChanges();
+
+    const request = httpTesting.expectOne(`${apiBaseUrl}/people/11/classification/`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ record_type: 'STAFF', reason: 'Verified staff identity during controlled onboarding.' });
+    request.flush({ ...contactOverview.person, record_type: 'STAFF' });
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    expect(host.textContent).toContain('Staff');
+  });
+
   it('shows a loading state before the request resolves', async () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/people/11');

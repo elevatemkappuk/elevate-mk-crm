@@ -24,6 +24,7 @@ import {
   PaginatedPersonAuditHistoryResponse,
   PersonListItem,
   PersonDirectoryItem,
+  PersonClassificationCorrectionRequest,
   PersonMembership,
   PersonOverview,
   PersonBrevoIntegration,
@@ -97,6 +98,10 @@ export class PeopleService {
 
   updatePerson(personId: number, payload: UpdatePersonRequest): Observable<PersonListItem> {
     return this.http.patch<PersonListItem>(this.buildUrl(`/people/${personId}/`), payload);
+  }
+
+  correctClassification(personId: number, payload: PersonClassificationCorrectionRequest): Observable<PersonListItem> {
+    return this.http.post<PersonListItem>(this.buildUrl(`/people/${personId}/classification/`), payload);
   }
 
   archivePerson(personId: number): Observable<PersonListItem> {
