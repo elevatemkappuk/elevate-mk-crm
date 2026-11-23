@@ -16,9 +16,12 @@ export type PeopleOrdering =
   | '-membership_joined_at';
 
 export type PeoplePageSize = 25 | 50 | 100;
+export type PersonRecordType = 'COMMUNITY' | 'STAFF' | 'TECHNICAL';
 
 export interface PersonListItem {
   id: number;
+  /** Backend classification; read-only in ordinary CRM editing. */
+  record_type?: PersonRecordType;
   first_name: string;
   last_name: string;
   primary_email: string | null;
