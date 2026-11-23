@@ -135,8 +135,8 @@ Set one `API_BASE_URL` variable per Railway environment:
 
 | Frontend environment | `API_BASE_URL` |
 | --- | --- |
-| Staging | `https://elevate-mk-api-staging.up.railway.app/api/v1` |
-| Production | `https://elevate-mk-api-production.up.railway.app/api/v1` |
+| Staging | `https://crm-api.staging.elevatemk.org/api/v1` |
+| Production | `https://crm-api.elevatemk.org/api/v1` |
 
 The same frontend commit and Railway build/start configuration can be deployed
 to both environments; only `API_BASE_URL` changes. The local source environment
@@ -163,4 +163,3 @@ frontend domains belong in CORS and CSRF configuration. Backend
 header settings should remain enabled for both environments.
 
 Run `npm run test:config` to validate the generator before deploying.
- tt

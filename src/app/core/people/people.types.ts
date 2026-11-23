@@ -16,9 +16,12 @@ export type PeopleOrdering =
   | '-membership_joined_at';
 
 export type PeoplePageSize = 25 | 50 | 100;
+export type PersonRecordType = 'COMMUNITY' | 'STAFF' | 'TECHNICAL';
 
 export interface PersonListItem {
   id: number;
+  /** Backend classification; read-only in ordinary CRM editing. */
+  record_type?: PersonRecordType;
   first_name: string;
   last_name: string;
   primary_email: string | null;
@@ -244,6 +247,11 @@ export interface UpdatePersonRequest extends Partial<PersonWriteFields> {
   allow_duplicate_mobile?: true;
 }
 
+export interface PersonClassificationCorrectionRequest {
+  record_type: PersonRecordType;
+  reason: string;
+}
+
 export interface DuplicatePersonMatch {
   id: number;
   first_name: string;
@@ -341,6 +349,7 @@ export interface PeopleDirectoryQuery {
   interest: number[];
   skill: number[];
   tag: number[];
+  record_type?: PersonRecordType[];
   record_state: PersonRecordState;
   ordering: PeopleOrdering;
   page: number;

@@ -20,6 +20,7 @@ import {
   MakeMembershipRequest,
   MarketingPreference,
   PersonListItem,
+  PersonRecordType,
   PersonMembership,
   PersonOverview,
   ProfessionalProfile,
@@ -122,6 +123,42 @@ interface AssignSkillFormValue {
             <app-detail-list [items]="personalDetails()" />
             @if (canManagePeople() && !person()!.archived_at) {
               <button type="button" class="button-secondary" aria-label="Edit personal details" (click)="editPersonOpen.set(true)">Edit</button>
+            }
+          </app-crm-section-card>
+
+          <app-crm-section-card title="Identity classification">
+            <p class="taxonomy-supporting-copy">Authoritative classification. Ordinary Person editing cannot change this value.</p>
+            <app-detail-list [items]="classificationDetails()" />
+            @if (canCorrectClassification()) {
+              @if (!showClassificationCorrection()) {
+                <div class="section-actions">
+                  <button type="button" class="button-secondary" (click)="openClassificationCorrection()">Correct classification</button>
+                </div>
+              } @else {
+                <form class="classification-form" [formGroup]="classificationCorrectionForm" (ngSubmit)="submitClassificationCorrection()">
+                  <label>
+                    <span>Target classification</span>
+                    <select formControlName="record_type">
+                      @for (option of classificationOptions; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
+                    </select>
+                  </label>
+                  <label>
+                    <span>Correction reason</span>
+                    <textarea formControlName="reason" rows="3" maxlength="500" placeholder="Explain why this correction is required"></textarea>
+                  </label>
+                  <label class="confirmation-choice">
+                    <input type="checkbox" formControlName="confirmed" />
+                    <span>I confirm this sensitive classification correction is authorized.</span>
+                  </label>
+                  @if (classificationCorrectionForm.controls.reason.invalid && classificationCorrectionForm.controls.reason.touched) { <p class="form-error">A correction reason is required.</p> }
+                  @if (classificationCorrectionForm.controls.confirmed.invalid && classificationCorrectionForm.controls.confirmed.touched) { <p class="form-error">Confirmation is required before applying this correction.</p> }
+                  @if (classificationCorrectionErrorMessage()) { <p class="form-error" role="alert">{{ classificationCorrectionErrorMessage() }}</p> }
+                  <div class="form-actions">
+                    <button type="submit" [disabled]="classificationCorrectionSubmitting()">{{ classificationCorrectionSubmitting() ? 'Saving...' : 'Confirm correction' }}</button>
+                    <button type="button" class="button-secondary" [disabled]="classificationCorrectionSubmitting()" (click)="cancelClassificationCorrection()">Cancel</button>
+                  </div>
+                </form>
+              }
             }
           </app-crm-section-card>
 
@@ -757,6 +794,9 @@ export class PersonDetailPageComponent {
   readonly showEndMembershipForm = signal(false);
   readonly endMembershipSubmitting = signal(false);
   readonly endMembershipErrorMessage = signal<string | null>(null);
+  readonly showClassificationCorrection = signal(false);
+  readonly classificationCorrectionSubmitting = signal(false);
+  readonly classificationCorrectionErrorMessage = signal<string | null>(null);
   readonly personLifecycleSubmitting = signal(false);
   readonly personLifecycleErrorMessage = signal<string | null>(null);
   readonly industries = signal<Industry[]>([]);
@@ -795,6 +835,10 @@ export class PersonDetailPageComponent {
   readonly removingTagId = signal<TagRemovalState>(null);
   readonly person = computed<PersonListItem | null>(() => this.overview()?.person ?? null);
   readonly canManagePeople = computed(() => canManagePeople(this.auth.currentUser()));
+  readonly canCorrectClassification = computed(() => hasStaffRole(this.auth.currentUser(), 'CRM_ADMIN'));
+  readonly classificationOptions: ReadonlyArray<{ value: PersonRecordType; label: string }> = [
+    { value: 'COMMUNITY', label: 'Community' }, { value: 'STAFF', label: 'Staff' }, { value: 'TECHNICAL', label: 'Technical' },
+  ];
   readonly membership = computed<PersonMembership | null>(() => this.overview()?.membership ?? null);
   readonly professionalProfile = computed<ProfessionalProfile | null>(() => this.overview()?.professional_profile ?? null);
   readonly skills = computed<SkillSummary[]>(() => this.overview()?.skills ?? []);
@@ -949,6 +993,11 @@ export class PersonDetailPageComponent {
   readonly assignTagForm = this.fb.nonNullable.group({
     tag: ['', Validators.required],
   });
+  readonly classificationCorrectionForm = this.fb.nonNullable.group({
+    record_type: ['COMMUNITY' as PersonRecordType, Validators.required],
+    reason: ['', [Validators.required, Validators.maxLength(500)]],
+    confirmed: [false, Validators.requiredTrue],
+  });
 
   readonly fullName = computed(() => {
     const person = this.person();
@@ -971,6 +1020,11 @@ export class PersonDetailPageComponent {
       { label: 'Gender', value: genderLabel(person.gender) },
     ];
   });
+
+  readonly classificationDetails = computed<DetailListItem[]>(() => [{
+    label: 'Person classification',
+    value: this.classificationLabel(this.person()?.record_type),
+  }]);
 
   readonly recordInformation = computed<DetailListItem[]>(() => {
     const person = this.person();
@@ -1239,6 +1293,68 @@ export class PersonDetailPageComponent {
     this.endMembershipForm.reset({
       ended_at: getLocalTodayDateInputValue(),
     });
+  }
+
+  openClassificationCorrection(): void {
+    const current = this.person()?.record_type ?? 'COMMUNITY';
+    this.classificationCorrectionForm.reset({ record_type: current, reason: '', confirmed: false });
+    this.classificationCorrectionErrorMessage.set(null);
+    this.showClassificationCorrection.set(true);
+  }
+
+  cancelClassificationCorrection(): void {
+    this.showClassificationCorrection.set(false);
+    this.classificationCorrectionSubmitting.set(false);
+    this.classificationCorrectionErrorMessage.set(null);
+    this.classificationCorrectionForm.reset({ record_type: this.person()?.record_type ?? 'COMMUNITY', reason: '', confirmed: false });
+  }
+
+  submitClassificationCorrection(): void {
+    const person = this.person();
+    if (!person || !this.canCorrectClassification() || this.classificationCorrectionSubmitting()) { return; }
+    this.classificationCorrectionForm.markAllAsTouched();
+    if (this.classificationCorrectionForm.invalid) { return; }
+    this.classificationCorrectionSubmitting.set(true);
+    this.classificationCorrectionErrorMessage.set(null);
+    const payload = {
+      record_type: this.classificationCorrectionForm.controls.record_type.value,
+      reason: this.classificationCorrectionForm.controls.reason.value.trim(),
+    };
+    this.peopleService.correctClassification(person.id, payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (updatedPerson) => {
+        this.overview.update(overview => overview ? { ...overview, person: updatedPerson } : overview);
+        this.classificationCorrectionSubmitting.set(false);
+        this.showClassificationCorrection.set(false);
+      },
+      error: (error: HttpErrorResponse) => this.handleClassificationCorrectionError(error),
+    });
+  }
+
+  private handleClassificationCorrectionError(error: HttpErrorResponse): void {
+    this.classificationCorrectionSubmitting.set(false);
+    if (error.status === 401) {
+      this.auth.handleSessionExpired();
+      this.classificationCorrectionErrorMessage.set('Your staff session expired. Sign in again to continue.');
+      return;
+    }
+    if (error.status === 403) {
+      this.classificationCorrectionErrorMessage.set(formatForbiddenError(error, 'Only CRM administrators can correct classifications.'));
+      return;
+    }
+    if (error.status === 409) {
+      this.classificationCorrectionErrorMessage.set(error.error?.detail ?? 'This classification conflicts with the current identity state. Refresh and review the record.');
+      return;
+    }
+    if (error.status === 400) {
+      const fields = error.error?.record_type || error.error?.reason;
+      this.classificationCorrectionErrorMessage.set(typeof fields === 'string' ? fields : 'The correction was rejected by the backend. Review the target and reason.');
+      return;
+    }
+    this.classificationCorrectionErrorMessage.set('The classification correction could not be completed right now. Try again.');
+  }
+
+  classificationLabel(value: string | undefined): string {
+    return this.classificationOptions.find(option => option.value === value)?.label ?? 'Unknown';
   }
 
   archivePerson(): void {

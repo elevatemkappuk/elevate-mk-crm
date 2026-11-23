@@ -2,7 +2,7 @@ import { Component, DestroyRef, computed, effect, inject, input, output, signal 
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { PeopleService } from '../../core/people/people.service';
-import { Industry, InterestSummary, PeopleDirectoryQuery, PersonRelationshipFilter, ProfessionalProfileCareerStage, SkillSummary, TagSummary } from '../../core/people/people.types';
+import { Industry, InterestSummary, PeopleDirectoryQuery, PersonRecordType, PersonRelationshipFilter, ProfessionalProfileCareerStage, SkillSummary, TagSummary } from '../../core/people/people.types';
 import { CrmDrawerComponent } from '../../shared/ui/crm-drawer.component';
 import { FilterMultiselectComponent } from './filter-multiselect.component';
 
@@ -12,8 +12,11 @@ const RELATIONSHIPS: ReadonlyArray<{ value: PersonRelationshipFilter; label: str
 const CAREER_STAGES: ReadonlyArray<{ value: ProfessionalProfileCareerStage; label: string }> = [
   { value: 'STUDENT', label: 'Student' }, { value: 'EARLY_CAREER', label: 'Early Career' }, { value: 'MID_CAREER', label: 'Mid Career' }, { value: 'SENIOR', label: 'Senior' }, { value: 'LEADERSHIP', label: 'Leadership' }, { value: 'FOUNDER_BUSINESS_OWNER', label: 'Founder / Business Owner' }, { value: 'OTHER', label: 'Other' },
 ];
+const RECORD_TYPES: ReadonlyArray<{ value: PersonRecordType; label: string }> = [
+  { value: 'COMMUNITY', label: 'Community' }, { value: 'STAFF', label: 'Staff' }, { value: 'TECHNICAL', label: 'Technical' },
+];
 
-type FilterDraft = Pick<PeopleDirectoryQuery, 'q' | 'relationship' | 'location' | 'industry' | 'career_stage' | 'interest' | 'skill' | 'tag'>;
+type FilterDraft = Omit<Pick<PeopleDirectoryQuery, 'q' | 'relationship' | 'location' | 'industry' | 'career_stage' | 'interest' | 'skill' | 'tag' | 'record_type'>, 'record_type'> & { record_type: PersonRecordType[] };
 type CatalogKey = 'industry' | 'interest' | 'skill' | 'tag';
 interface AppliedChip { key: string; label: string; patch: Partial<PeopleDirectoryQuery>; }
 let nextFilterDrawerId = 0;
@@ -61,6 +64,12 @@ let nextFilterDrawerId = 0;
               <input class="crm-control" [value]="searchValue()" (input)="updateDraftSearch($any($event.target).value)" placeholder="Name, email, mobile, job title, or company" />
             </label>
           }
+          <fieldset>
+            <legend>Person type</legend>
+            @for (option of recordTypes; track option.value) {
+              <label class="choice"><input type="checkbox" class="crm-check" [checked]="values.record_type.includes(option.value)" (change)="toggleRecordType(option.value)" />{{ option.label }}</label>
+            }
+          </fieldset>
           <fieldset>
             <legend>Relationship</legend>
             @for (option of relationships; track option.value) {
@@ -140,7 +149,7 @@ export class PeopleDirectoryFiltersComponent {
   readonly locationValue = signal('');
   readonly industries = signal<Industry[]>([]); readonly interests = signal<InterestSummary[]>([]); readonly skills = signal<SkillSummary[]>([]); readonly tags = signal<TagSummary[]>([]);
   readonly catalogError = signal(false);
-  readonly relationships = RELATIONSHIPS; readonly careerStages = CAREER_STAGES;
+  readonly relationships = RELATIONSHIPS; readonly careerStages = CAREER_STAGES; readonly recordTypes = RECORD_TYPES;
 
   constructor() {
     effect(() => {
@@ -151,12 +160,12 @@ export class PeopleDirectoryFiltersComponent {
     this.loadCatalogs();
   }
 
-  activeFilterCount(): number { const query = this.query(); return Number(Boolean(query.q)) + query.relationship.length + query.location.length + query.industry.length + query.career_stage.length + query.interest.length + query.skill.length + query.tag.length + Number(query.record_state !== 'active') + Number(query.ordering !== 'last_name'); }
+  activeFilterCount(): number { const query = this.query(); return Number(Boolean(query.q)) + query.relationship.length + query.location.length + query.industry.length + query.career_stage.length + query.interest.length + query.skill.length + query.tag.length + (query.record_type ?? []).length + Number(query.record_state !== 'active') + Number(query.ordering !== 'last_name'); }
   submitSearch(event: SubmitEvent): void { event.preventDefault(); this.changed.emit({ q: this.searchValue().trim() }); }
 
   openDrawer(): void {
     const query = this.query();
-    this.draft.set({ q: query.q, relationship: [...query.relationship], location: [...query.location], industry: [...query.industry], career_stage: [...query.career_stage], interest: [...query.interest], skill: [...query.skill], tag: [...query.tag] });
+    this.draft.set({ q: query.q, relationship: [...query.relationship], location: [...query.location], industry: [...query.industry], career_stage: [...query.career_stage], interest: [...query.interest], skill: [...query.skill], tag: [...query.tag], record_type: [...(query.record_type ?? [])] });
     this.locationValue.set('');
   }
   closeDrawer(): void { this.draft.set(null); this.locationValue.set(''); }
@@ -172,6 +181,7 @@ export class PeopleDirectoryFiltersComponent {
         interest: [],
         skill: [],
         tag: [],
+        record_type: [],
       });
     }
     this.locationValue.set('');
@@ -180,6 +190,7 @@ export class PeopleDirectoryFiltersComponent {
   updateDraftSearch(value: string): void { this.searchValue.set(value); this.draft.update((draft) => draft ? { ...draft, q: value } : draft); }
   toggleRelationship(value: PersonRelationshipFilter): void { this.draft.update(draft => draft ? { ...draft, relationship: toggle(draft.relationship, value) } : null); }
   toggleCareerStage(value: ProfessionalProfileCareerStage): void { this.draft.update(draft => draft ? { ...draft, career_stage: toggle(draft.career_stage, value) } : null); }
+  toggleRecordType(value: PersonRecordType): void { this.draft.update(draft => draft ? { ...draft, record_type: toggle(draft.record_type, value) } : null); }
   setSelection(kind: CatalogKey, values: number[]): void { this.draft.update(draft => draft ? { ...draft, [kind]: values } : null); }
   addLocation(): void {
     const location = this.locationValue().trim();
@@ -195,6 +206,7 @@ export class PeopleDirectoryFiltersComponent {
     for (const value of query.relationship) chips.push({ key: 'relationship:' + value, label: RELATIONSHIPS.find(option => option.value === value)!.label, patch: { relationship: query.relationship.filter(item => item !== value) } });
     for (const value of query.location) chips.push({ key: 'location:' + value, label: value, patch: { location: query.location.filter(item => item !== value) } });
     for (const value of query.career_stage) chips.push({ key: 'career_stage:' + value, label: CAREER_STAGES.find(option => option.value === value)!.label, patch: { career_stage: query.career_stage.filter(item => item !== value) } });
+    for (const value of query.record_type ?? []) chips.push({ key: 'record_type:' + value, label: RECORD_TYPES.find(option => option.value === value)!.label, patch: { record_type: (query.record_type ?? []).filter(item => item !== value) } });
     const catalogs = [
       { key: 'industry' as const, label: 'Industry', options: this.industries() },
       { key: 'interest' as const, label: 'Interest', options: this.interests() },

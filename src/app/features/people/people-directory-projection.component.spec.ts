@@ -15,7 +15,7 @@ import { PeoplePageComponent } from './people-page.component';
 const basePerson: PersonDirectoryItem = {
   id: 11, first_name: 'Amina', last_name: 'Zulu', primary_email: 'amina@example.com',
   mobile: '991000001', location: 'Lilongwe', age_range: '', gender: '', archived_at: null,
-  created_at: '2026-08-29T12:00:00Z', updated_at: '2026-08-29T12:00:00Z',
+  created_at: '2026-08-29T12:00:00Z', updated_at: '2026-08-29T12:00:00Z', record_type: 'COMMUNITY',
   job_title: 'Programme Manager', relationship: 'ACTIVE_MEMBER', community_account_status: 'ACTIVE',
 };
 
@@ -70,13 +70,13 @@ describe('People directory projected columns', () => {
       { ...basePerson, id: 14, job_title: '   ', relationship: 'CONTACT', archived_at: '2026-09-01T00:00:00Z' },
     ]);
     expect(Array.from(host.querySelectorAll('[data-label="Type"]'), td => td.textContent?.trim()))
-      .toEqual(['Member', 'Former member', 'Contact', 'Contact']);
+      .toEqual(['Community', 'Community', 'Community', 'Community']);
     expect(Array.from(host.querySelectorAll('[data-label="Job title"]'), td => td.textContent?.trim()))
       .toEqual(['Programme Manager', '-', '-', '-']);
     expect(Array.from(host.querySelectorAll('[data-label="Status"]'), td => td.textContent?.trim()))
       .toEqual(['Archived', 'Active', 'Active', 'Archived']);
     expect(Array.from(host.querySelectorAll('[data-label="Type"] [data-tone]'), badge => badge.getAttribute('data-tone')))
-      .toEqual(['info', 'warning', 'neutral', 'neutral']);
+      .toEqual(['neutral', 'neutral', 'neutral', 'neutral']);
     expect(Array.from(host.querySelectorAll('[data-label="Status"] [data-tone]'), badge => badge.getAttribute('data-tone')))
       .toEqual(['muted', 'success', 'success', 'muted']);
   });
@@ -100,7 +100,7 @@ describe('People directory projected columns', () => {
   it.each(['CRM_ADMIN', 'CRM_MANAGER', 'CRM_VIEWER'] as const)('shows linked rows to %s without granting write actions', async role => {
     currentUser.update(user => ({ ...user!, staff_roles: [role] }));
     const host = await render([basePerson]);
-    expect(host.querySelector('[data-label="Type"]')?.textContent?.trim()).toBe('Member');
+    expect(host.querySelector('[data-label="Type"]')?.textContent?.trim()).toBe('Community');
     expect(host.querySelector('.row-link')?.getAttribute('href')).toBe('/people/11');
     expect(!!host.querySelector('.page-actions')).toBe(true);
     expect(host.querySelector('.page-actions a')).toBeNull();

@@ -41,6 +41,9 @@ import { AuthPasswordVisibilityComponent } from './auth-password-visibility.comp
           }
         </div>
         <div class="auth-forgot"><a class="auth-link crm-focusable" routerLink="/forgot-password">Forgot password?</a></div>
+        @if (auth.sessionExpiredMessage()) {
+          <p class="crm-banner crm-banner--warning" role="alert">{{ auth.sessionExpiredMessage() }}</p>
+        }
         @if (errorMessage()) {
           <p class="crm-banner crm-banner--error" role="alert">{{ errorMessage() }}</p>
         }
@@ -55,7 +58,7 @@ import { AuthPasswordVisibilityComponent } from './auth-password-visibility.comp
 export class LoginPageComponent {
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
-  private readonly auth = inject(AuthService);
+  readonly auth = inject(AuthService);
 
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
