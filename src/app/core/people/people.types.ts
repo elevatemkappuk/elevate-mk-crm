@@ -344,6 +344,7 @@ export interface PeopleDirectoryQuery {
   interest: number[];
   skill: number[];
   tag: number[];
+  record_type?: PersonRecordType[];
   record_state: PersonRecordState;
   ordering: PeopleOrdering;
   page: number;

@@ -120,7 +120,7 @@ interface OrderingOption {
                     <td data-label="Email">{{ person.primary_email || '-' }}</td>
                     <td data-label="Mobile">{{ person.mobile || '-' }}</td>
                     <td data-label="Job title">{{ person.job_title?.trim() || '-' }}</td>
-                    <td data-label="Type"><app-status-badge [label]="relationshipLabels[person.relationship] || '-'" [tone]="relationshipTones[person.relationship] || 'neutral'" /></td>
+                    <td data-label="Type"><app-status-badge [label]="recordTypeLabel(person.record_type)" [tone]="person.record_type === 'STAFF' ? 'info' : 'neutral'" /></td>
                     <td data-label="Location">{{ person.location || '-' }}</td>
                     <td data-label="Status"><app-status-badge [label]="person.archived_at ? 'Archived' : 'Active'" [tone]="person.archived_at ? 'muted' : 'success'" /></td>
                     <td data-label="Community"><app-status-badge [label]="communityStatusLabels[person.community_account_status] || 'Unavailable'" [tone]="communityStatusTones[person.community_account_status] || 'neutral'" /></td>
@@ -481,6 +481,7 @@ export class PeoplePageComponent {
   };
   readonly queryState = signal<PeopleDirectoryQuery>(DEFAULT_PEOPLE_DIRECTORY_QUERY);
   readonly canManagePeople = computed(() => canManagePeople(this.auth.currentUser()));
+  recordTypeLabel(value: string | undefined): string { return value === 'STAFF' ? 'Staff' : value === 'TECHNICAL' ? 'Technical' : value === 'COMMUNITY' ? 'Community' : 'Unknown'; }
 
   readonly currentPage = computed(() => this.queryState().page);
   readonly totalPages = computed(() => {

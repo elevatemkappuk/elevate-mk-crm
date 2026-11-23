@@ -58,6 +58,7 @@ export class PeopleService {
     for (const value of query.interest) { params = params.append('interest', String(value)); }
     for (const value of query.skill) { params = params.append('skill', String(value)); }
     for (const value of query.tag) { params = params.append('tag', String(value)); }
+    for (const value of query.record_type ?? []) { params = params.append('record_type', value); }
 
     return this.http.get<PaginatedResponse<PersonDirectoryItem>>(this.buildUrl('/people/'), {
       params,
