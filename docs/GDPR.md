@@ -182,19 +182,51 @@ Community sessions, Community projections, and existing CRM role semantics are
 outside this implementation; their cross-repository compatibility is
 **Unverified**.
 
+## Phase 1A.4C.3 Staff Privacy Administration
+
+Status: **Implemented / source-inspected; CRM build verified; runtime and
+cross-repository capability disclosure remain unverified.**
+
+The CRM now contains a separate `/privacy-administration` route and navigation
+entry guarded by the backend-projected `STAFF_CAPABILITY_ADMIN` capability. Existing CRM_ADMIN
+Administration and import routes remain unchanged. The separate route is
+intended for eligible delegated CRM staff when the API disclosure policy
+provides that capability; the current empty disclosure allowlist therefore
+fails closed until that policy is activated.
+
+The final local validation covered 50 test files and 450/450 tests, and
+`npm run build` passed. The initial sandbox test attempt was blocked by the
+Windows `spawn EPERM` executor restriction; the elevated local rerun completed
+successfully.
+
+`PrivacyAdministrationService` consumes the API governance contracts for safe
+target detail, role-default state, proposal creation, direct individual
+mutations and proposal resolution. `PrivacyAdministrationPageComponent`
+renders only identifiers, staff-role state, capability assignment/restriction
+state and backend-permitted actions. It does not display contact or demographic
+fields, store capability data in browser storage, or authorize requests
+client-side. Reasons are collected for each mutation, and backend responses
+remain authoritative for approval, audit, eligibility and errors.
+
+Permission changes during an active session are reflected by the existing
+memory-only StaffAccess projection refresh/invalidation model. A missing,
+stale, empty or failed projection keeps the route unavailable. Browser runtime,
+manual isolated-environment acceptance, cross-repository compatibility and
+non-empty API capability disclosure remain **Unverified/Deferred**.
+
 ## Deferred functionality
 
 The following are approved for later stages but are not implemented here:
 
-- staff capability management screens, routes, services, or forms;
-- grant, restriction, suspension, revocation, or approval workflows;
-- capability-aware navigation, capability-consuming UI, route guards, or
-  directives;
+- broader staff capability management screens and role-default workflows;
+- contact masking, demographic restriction and other Person privacy workflows;
+- broader capability-consuming UI, additional route guards, or directives;
 - contact masking and demographic restrictions;
 - Person creation/editing privacy enforcement;
 - search, filtering, marketing, campaign, and export protection;
 - privacy audit history presentation;
-- Phase 1A.4C functionality.
+- broader Phase 1A.4C workflows beyond the separate capability-protected
+  administration foundation described above.
 
 Capability-consuming UI, backend enforcement, masking, and user-facing privacy
 workflows remain deferred. The Phase 1A.4B memory-only Staff Access integration
@@ -207,8 +239,10 @@ deployment, and cross-repository behavior remain **Unverified**.
   contracts.
 - **Implemented / Source-inspected:** the existing API capability foundation,
   the API-only Phase 1A.4A Staff Access contract, the implemented Phase 1A.4B
-  `StaffAccessService`, projection types/signals, and AuthService lifecycle
-  integration; no CRM backend authorization or governance UI implementation.
+  `StaffAccessService`, projection types/signals, AuthService lifecycle
+  integration, and the Phase 1A.4C.3 privacy-administration route, service,
+  guard, page and safe-presentation contracts; backend authorization remains
+  authoritative.
 - **Source-inspected / Source-confirmed:** CRM `/auth/me/`, `staff_roles`,
   session, CSRF, role-guard conventions, `StaffAccessService`, access types,
   AuthService lifecycle integration, and interceptors were inspected in
@@ -223,8 +257,10 @@ deployment, and cross-repository behavior remain **Unverified**.
   tests; `npm run build` passed; `npm run test:config` passed 3/3; and
   `git diff --check` passed.
 - **Unverified:** CRM runtime behavior, Mobile and Community compatibility,
-  cross-repository runtime behavior, deployment behavior, and runtime
-  consumption of the Staff Access contract remain unverified.
+  cross-repository runtime behavior, deployment behavior, and browser/manual
+  consumption of the Staff Access contract remain unverified. The route is
+  intentionally inaccessible while the API capability disclosure allowlist is
+  empty.
 - **Verified elsewhere:** prior isolated local API governance migration, schema
   and focused PostgreSQL test evidence is recorded in the API repository's [GDPR guide](../../elevate-mk-api/docs/GDPR.md).
   The latest authorized API validation passed 69/69 focused tests and 9/9

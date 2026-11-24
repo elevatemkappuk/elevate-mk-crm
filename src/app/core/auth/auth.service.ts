@@ -26,6 +26,7 @@ export class AuthService {
   readonly isAuthenticated = computed(() => this.currentUser() !== null);
   readonly hasStaffAccess = computed(() => hasStaffCrmAccess(this.currentUser()));
   readonly isCrmAdmin = computed(() => isCrmAdmin(this.currentUser()));
+  readonly hasPrivacyAdministration = computed(() => this.staffAccess.hasCapability('STAFF_CAPABILITY_ADMIN'));
 
   async initialize(): Promise<void> {
     await firstValueFrom(

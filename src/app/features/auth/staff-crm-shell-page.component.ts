@@ -105,6 +105,9 @@ export class StaffCrmShellPageComponent {
       items.push({ label: 'Historical Imports', path: '/imports', group: 'Management', icon: 'M12 16V3m-5 5 5-5 5 5M4 14v7h16v-7' });
       items.push({ label: 'Administration', path: '/administration', group: 'Management', icon: 'm9 3-1 3-3 1-2 5 2 5 3 1 1 3h6l1-3 3-1 2-5-2-5-3-1-1-3ZM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8' });
     }
+    if (this.auth.hasPrivacyAdministration()) {
+      items.push({ label: 'Privacy administration', path: '/privacy-administration', group: 'Management', icon: 'M12 3 4 6v5c0 5 3.4 8.4 8 10 4.6-1.6 8-5 8-10V6Zm0 5v5m0 3h.01' });
+    }
     return items;
   });
 

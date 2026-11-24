@@ -6,6 +6,7 @@ import {
   loginGuard,
   staffAccessGuard,
   moderationGuard,
+  privacyAdministrationGuard,
 } from './core/guards/auth.guards';
 export const routes: Routes = [
   {
@@ -80,6 +81,11 @@ export const routes: Routes = [
         path: 'administration',
         loadComponent: () => import('./features/administration/administration-page.component').then((module) => module.AdministrationPageComponent),
         canActivate: [administrationGuard],
+      },
+      {
+        path: 'privacy-administration',
+        loadComponent: () => import('./features/administration/privacy-administration-page.component').then((module) => module.PrivacyAdministrationPageComponent),
+        canActivate: [privacyAdministrationGuard],
       },
       {
         path: 'imports',

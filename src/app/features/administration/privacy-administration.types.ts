@@ -1,0 +1,43 @@
+export interface GovernanceCapabilityState {
+  readonly assignment_state: string | null;
+  readonly restriction_active: boolean;
+  readonly permitted_actions: readonly string[];
+}
+
+export interface GovernanceTargetDetail {
+  readonly target_user_id: number;
+  readonly person_id: number;
+  readonly is_active: boolean;
+  readonly record_type: string;
+  readonly staff_roles: readonly { id: number; code: string; is_active: boolean }[];
+  readonly capabilities: Readonly<Record<string, GovernanceCapabilityState>>;
+}
+
+export interface GovernanceRoleDefaults {
+  readonly policy_version: number;
+  readonly role_defaults: readonly {
+    id: number;
+    role_id: number;
+    role_code: string;
+    capability: string;
+    is_enabled: boolean;
+  }[];
+}
+
+export interface GovernanceProposal {
+  readonly public_id: string;
+  readonly operation: string;
+  readonly status: string;
+  readonly role_id: number | null;
+  readonly role_code: string | null;
+  readonly target_user_id: number | null;
+  readonly capability: string;
+  readonly proposed_by_id: number;
+  readonly reason: string;
+  readonly policy_version: number;
+  readonly expires_at: string;
+  readonly created_at: string;
+  readonly resolved_at: string | null;
+  readonly resolution_reason: string;
+  readonly decision: unknown;
+}
