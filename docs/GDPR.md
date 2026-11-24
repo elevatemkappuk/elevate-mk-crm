@@ -3,7 +3,7 @@
 Status: Living Documentation. The backend capability foundation and governance
 implementation are source-inspected, with focused isolated PostgreSQL
 migration/test validation recorded by the API repository. The latest targeted
-Phase 1A.3 remediation is API-only and CRM integration remains unverified.
+Phase 1A.4A contract is API-only and CRM integration remains unverified.
 CRM scope remains documentation-only and no CRM application
 changes are included in this stage.
 
@@ -13,13 +13,15 @@ The Angular Staff CRM presents CRM workflows, but Django remains authoritative
 for authentication, authorization, privacy protection, and data projections.
 Existing CRM roles remain `CRM_ADMIN`, `CRM_MANAGER`, and `CRM_VIEWER`.
 
-This CRM work is documentation-only: no CRM application source,
-API contract, tests, or runtime behavior are changed or validated by this
-stage.
+This CRM work is documentation-only: no CRM application source, CRM-side API
+consumer contract, tests, or runtime behavior are changed or validated by this
+stage. The API-owned Phase 1A.4A contract is documented below; it is not
+implemented or consumed in this CRM repository.
 
 The foundation adds no capability response to `/auth/me/`, no Angular capability
 guard, no masking behavior, no Person projection changes, and no new sensitive
-data access path.
+data access path. Phase 1A.4A adds an API-only Staff Access contract, but the CRM
+does not consume it yet.
 
 ## API-authoritative capability foundation
 
@@ -37,12 +39,13 @@ links to the API's [GDPR guide](../../elevate-mk-api/docs/GDPR.md),
 [AUTHORIZATION.md](../../elevate-mk-api/docs/AUTHORIZATION.md), and
 [DATABASE.md](../../elevate-mk-api/docs/DATABASE.md) rather than duplicating
 those backend contracts. No CRM capability projection, UI, or enforcement
-integration is included; CRM consumes no new capability API contract.
+integration is included. The API's new Staff Access contract is authoritative,
+but CRM consumption remains deferred and unverified.
 
 The approved Django superuser authority change is backend-only. Active
 superusers may use the API's audited direct governance service path, while
 ordinary CRM administrators remain subject to the existing governance rules.
-No CRM UI, route, permission guard, or governance API contract was added;
+No CRM UI, route, permission guard, or capability disclosure consumer was added;
 runtime compatibility remains unverified.
 
 The API's catalogue extension advances policy version atomically and records
@@ -52,6 +55,47 @@ The operational Person audit-history contract excludes privacy-domain events;
 the dedicated privacy projection remains API-only and requires backend
 capability plus Person-scope authorization. No CRM privacy-audit route or
 projection is exposed.
+
+### Phase 1A.4A Staff Access contract
+
+The API now exposes `GET /api/v1/staff/access/me/`. It is a session-only CRM
+endpoint admitted for authenticated users with an active `CRM_ADMIN`,
+`CRM_MANAGER`, or `CRM_VIEWER` role. Anonymous callers receive `401`, other
+authenticated users receive `403`, mobile JWTs are not accepted, and Django
+`is_staff` or `is_superuser` alone does not grant admission.
+
+The successful response has exactly two fields:
+
+```json
+{
+  "capability_codes": [],
+  "policy_version": 2
+}
+```
+
+The initial CRM capability disclosure allowlist is intentionally empty to avoid
+exposing capability decisions before a later approved CRM consumer and disclosure
+policy exist. `policy_version` is informational only; `2` is the verified
+current example value, not a fixed contract value, and it is not a grant, token,
+or client precondition. The API reads the locked singleton policy state and
+performs the effective-access evaluation in one transaction; no policy mutation
+is performed. The response is marked `Cache-Control: private, no-store`.
+
+An admitted Django superuser remains subject to the active CRM-role admission
+boundary. Its existing audited superuser evaluator path remains in force, but
+the empty allowlist means no capability codes are disclosed. Phase 1A.4B is
+deferred.
+
+Evidence classification: **API source-inspected; CRM integration unverified.**
+The route, view, serializer, permission, allowlist, transaction, and cache
+behavior were inspected in the API repository. The API focused suite passed
+34/34 against isolated PostgreSQL database
+`test_elevate_gdpr_phase1a4a_20261124`; `manage.py check` passed;
+`makemigrations --check --dry-run` reported `No changes detected`;
+`migrate --plan` reported no planned migration operations; and `git diff --check`
+was clean. No schema or migration files changed or were applied. CRM tests,
+builds, runtime, deployment, and cross-repository compatibility remain
+unverified.
 
 The revised superuser authority was runtime-verified in the API's final
 isolated validation: capability foundation 13/13 passed, CRM-admin concurrency
@@ -91,16 +135,23 @@ documentation-only stage.
 
 - **Approved:** CRM remains a permission-aware client of backend-authoritative
   contracts.
-- **Implemented:** the existing API capability foundation and this initial CRM
-  guide; no CRM governance implementation.
+- **Implemented:** the existing API capability foundation, the API-only Phase
+  1A.4A Staff Access contract, and this CRM guide; no CRM consumer or governance
+  UI implementation.
 - **Source-inspected / Source-confirmed:** existing CRM `/auth/me/`,
   `staff_roles`, session, CSRF, and role-guard conventions were inspected in
   `src/app/core/auth/auth.service.ts`, `src/app/core/auth/auth.types.ts`, and
   the API `accounts/serializers.py`; no CRM application source, UI, service,
-  or capability API contract changes were made.
+  or CRM-side capability API consumer changes were made.
+- **Verified elsewhere:** the API Phase 1A.4A focused suite passed 34/34 against
+  isolated PostgreSQL database `test_elevate_gdpr_phase1a4a_20261124`;
+  `manage.py check` passed; `makemigrations --check --dry-run` reported `No
+  changes detected`; `migrate --plan` reported no planned migration operations;
+  and `git diff --check` was clean. No schema or migration files changed or were
+  applied.
 - **Unverified:** CRM tests, builds, runtime behavior, Mobile and Community
-  compatibility, cross-repository runtime behavior, and future capability API
-  integration were not executed.
+  compatibility, cross-repository runtime behavior, deployment behavior, and
+  CRM consumption of the Staff Access contract were not verified.
 - **Verified elsewhere:** prior isolated local API governance migration, schema
   and focused PostgreSQL test evidence is recorded in the API repository's [GDPR guide](../../elevate-mk-api/docs/GDPR.md).
   The latest authorized API validation passed 69/69 focused tests and 9/9
@@ -108,6 +159,7 @@ documentation-only stage.
   does not verify CRM, Mobile, or
   Community runtime compatibility.
 - **Planned:** later CRM integration and user-facing privacy workflows.
+- **Deferred:** Phase 1A.4B and any non-empty CRM capability disclosure allowlist.
 - **Unverified:** runtime behavior after future capability API integration.
 
 Detailed backend schemas and evaluator rules are maintained in the API
