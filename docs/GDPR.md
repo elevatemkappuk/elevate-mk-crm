@@ -2,8 +2,9 @@
 
 Status: Living Documentation. The backend capability foundation and governance
 implementation are source-inspected, with focused isolated PostgreSQL
-migration/test validation recorded by the API repository. CRM integration
-remains unverified. CRM scope remains documentation-only and no CRM application
+migration/test validation recorded by the API repository. The latest targeted
+Phase 1A.3 remediation is API-only and CRM integration remains unverified.
+CRM scope remains documentation-only and no CRM application
 changes are included in this stage.
 
 ## Purpose and boundary
@@ -27,7 +28,10 @@ governance migration/test execution is verified in the API's isolated
 PostgreSQL validation, while CRM capability integration remains Planned and
 Unverified.
 
-The API repository is authoritative for the capability catalog, role defaults,
+The API repository is authoritative for the current seven-capability catalog;
+the original six-capability Phase 1A.2 baseline and separately audited
+`LEGAL_HOLD_ADMIN` catalogue extension remain distinct. It is authoritative
+for role defaults,
 evaluator precedence, governance boundary, schema, and indexes. CRM maintains
 links to the API's [GDPR guide](../../elevate-mk-api/docs/GDPR.md),
 [AUTHORIZATION.md](../../elevate-mk-api/docs/AUTHORIZATION.md), and
@@ -40,6 +44,14 @@ superusers may use the API's audited direct governance service path, while
 ordinary CRM administrators remain subject to the existing governance rules.
 No CRM UI, route, permission guard, or governance API contract was added;
 runtime compatibility remains unverified.
+
+The API's catalogue extension advances policy version atomically and records
+migration provenance without adding a CRM role default. Its historical Person
+subject backfill preserves unresolved references without inventing Persons.
+The operational Person audit-history contract excludes privacy-domain events;
+the dedicated privacy projection remains API-only and requires backend
+capability plus Person-scope authorization. No CRM privacy-audit route or
+projection is exposed.
 
 The revised superuser authority was runtime-verified in the API's final
 isolated validation: capability foundation 13/13 passed, CRM-admin concurrency
@@ -91,8 +103,9 @@ documentation-only stage.
   integration were not executed.
 - **Verified elsewhere:** prior isolated local API governance migration, schema
   and focused PostgreSQL test evidence is recorded in the API repository's [GDPR guide](../../elevate-mk-api/docs/GDPR.md).
-  The final isolated API validation passed 41/41 focused tests and synthetic
-  baseline migration verification. This does not verify CRM, Mobile, or
+  The latest authorized API validation passed 69/69 focused tests and 9/9
+  remediation tests, including synthetic subject/catalogue verification. This
+  does not verify CRM, Mobile, or
   Community runtime compatibility.
 - **Planned:** later CRM integration and user-facing privacy workflows.
 - **Unverified:** runtime behavior after future capability API integration.
@@ -101,3 +114,23 @@ Detailed backend schemas and evaluator rules are maintained in the API
 repository's [GDPR guide](../../elevate-mk-api/docs/GDPR.md),
 [DATABASE.md](../../elevate-mk-api/docs/DATABASE.md), and
 [AUTHORIZATION.md](../../elevate-mk-api/docs/AUTHORIZATION.md).
+
+## Phase 1A.3 status
+
+This CRM repository has no Phase 1A.3 application change. The API-only
+privacy-audit foundation is **Implemented and verified in the API's isolated
+PostgreSQL validation**, but remains **Unverified from the CRM runtime
+perspective**. It introduces separate operational and
+privacy audit domains, normalized Person associations, `LEGAL_HOLD_ADMIN`,
+versioned retention policy records, legal holds, and a non-destructive dry-run
+evaluator. No CRM route, Angular service, interface, guard, state store, or
+response contract was added.
+
+The API remains authoritative for authorization, masking, privacy projections,
+retention, and legal-hold behavior. CRM integration, privacy-audit history
+presentation, capability management, active-session refresh, and later
+Person/search/campaign/export enforcement remain **Planned/Deferred**. The
+provisional 24-month retention period is subject to formal legal/privacy
+approval; no disposal is enabled. Earlier 19/19, 41/41, and 102/102 results
+remain historical evidence in the API guide. API evidence is not CRM or
+cross-repository runtime evidence; no CRM test or build was run.
