@@ -14,6 +14,7 @@ import { CrmSectionCardComponent } from '../../shared/ui/crm-section-card.compon
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
 
 const ACTIVITY_OPTIONS = [
+  ['PRIVACY_PERSON_DISCLOSED', 'Protected Person data disclosed'],
   ['PERSON_CREATED', 'Person created'],
   ['PERSON_UPDATED', 'Person updated'],
   ['PERSON_ARCHIVED', 'Person archived'],
@@ -34,80 +35,8 @@ const OUTCOME_OPTIONS = [
 @Component({
   selector: 'app-person-privacy-audit-section',
   imports: [CommonModule, FormsModule, CrmSectionCardComponent, StateMessageComponent],
-  template: `
-    <app-crm-section-card title="Privacy audit history">
-      @if (loading() && !loaded()) {
-        <app-state-message title="Loading privacy history" message="Retrieving privacy events for this person." />
-      } @else if (errorMessage()) {
-        <app-state-message title="Privacy history could not be loaded" [message]="errorMessage()!" tone="error">
-          <button type="button" class="button-secondary" (click)="retry()">Retry</button>
-        </app-state-message>
-      } @else {
-        <div class="privacy-results">
-          <form class="privacy-filters" (ngSubmit)="applyFilters()">
-            <label>From <input type="date" name="from" [(ngModel)]="occurredFrom" /></label>
-            <label>To <input type="date" name="to" [(ngModel)]="occurredTo" /></label>
-            <label>Activity <select name="activity" [(ngModel)]="activityType"><option value="">All activities</option>@for (option of activityOptions; track option[0]) { <option [value]="option[0]">{{ option[1] }}</option> }</select></label>
-            <label>Outcome <select name="outcome" [(ngModel)]="outcome"><option value="">All outcomes</option>@for (option of outcomeOptions; track option[0]) { <option [value]="option[0]">{{ option[1] }}</option> }</select></label>
-            <label class="checkbox-filter"><input type="checkbox" name="superuser" [(ngModel)]="superuserOnly" /> Superuser operations</label>
-            <button type="submit" class="button-secondary" [disabled]="loading()">Filter</button>
-          </form>
-          <p class="supporting-copy">{{ countLabel() }}</p>
-          @if (!events().length) {
-            <app-state-message message="No privacy audit history recorded." />
-          } @else {
-            <ol class="privacy-list" aria-live="polite">
-              @for (event of events(); track event.id) {
-                <li>
-                  <article class="privacy-event">
-                    <div class="event-summary">
-                      <h4>{{ event.description }}</h4>
-                      <p>{{ formatDateTime(event.occurred_at) }} · {{ actorLabel(event) }}</p>
-                    </div>
-                    <div class="event-details">
-                      <span>{{ event.outcome }}</span>
-                      @if (event.capability) { <span>Capability: {{ event.capability }}</span> }
-                      @if (event.superuser_operation) { <span>Audited superuser operation</span> }
-                      @if (event.permitted_actions.includes('place_event_hold')) { <button type="button" class="button-secondary" (click)="placeEventHold(event.legal_hold_event_reference!)">Place event hold</button> }
-                    </div>
-                  </article>
-                </li>
-              }
-            </ol>
-          }
-
-          @if (loading() && loaded()) { <p class="supporting-copy">Refreshing privacy history.</p> }
-          @if (hasPagination()) {
-            <div class="pagination">
-              <button type="button" class="button-secondary" [disabled]="!hasPreviousPage() || loading()" (click)="goToPreviousPage()">Previous</button>
-              <p>Showing newest privacy events first.</p>
-              <button type="button" class="button-secondary" [disabled]="!hasNextPage() || loading()" (click)="goToNextPage()">Next</button>
-            </div>
-          }
-        </div>
-      }
-    </app-crm-section-card>
-  `,
-  styles: `
-    :host { display: block; }
-    .privacy-results, .privacy-list, .privacy-event { display: grid; gap: .85rem; }
-    .privacy-filters { display: flex; gap: .65rem; flex-wrap: wrap; align-items: end; }
-    .privacy-filters label { display: grid; gap: .25rem; color: var(--crm-text-secondary); font-size: .88rem; }
-    .privacy-filters input, .privacy-filters select { min-height: 2.2rem; }
-    .privacy-filters input[type='checkbox'] { width: 1rem; min-height: 1rem; accent-color: var(--crm-accent); }
-    .privacy-filters .checkbox-filter { display: flex; align-items: center; gap: .4rem; }
-    .privacy-list { list-style: none; padding: 0; margin: 0; }
-    .privacy-event { padding: .25rem 0 1rem 1.25rem; border-left: 2px solid var(--crm-border); background: var(--crm-surface); }
-    .event-summary { display: grid; gap: .3rem; }
-    .event-summary h4, .event-summary p, .event-details, .supporting-copy, .pagination p { margin: 0; }
-    .event-summary h4 { color: #1a3142; font-size: 1rem; }
-    .event-summary p, .event-details, .supporting-copy, .pagination p { color: #4f697b; line-height: 1.5; }
-    .event-details { display: flex; gap: .65rem; flex-wrap: wrap; font-size: .88rem; }
-    .event-details span { padding: .2rem .5rem; border-radius: 999px; background: rgba(79, 105, 123, .1); }
-    .pagination { display: flex; justify-content: space-between; align-items: center; gap: .75rem; flex-wrap: wrap; }
-    button { cursor: pointer; }
-    button[disabled] { cursor: not-allowed; }
-  `,
+  templateUrl: './person-privacy-audit-section.component.html',
+  styleUrl: './person-privacy-audit-section.component.css',
 })
 export class PersonPrivacyAuditSectionComponent {
   readonly personId = input.required<number>();
@@ -248,7 +177,6 @@ export class PersonPrivacyAuditSectionComponent {
     });
   }
 }
-
 function formatPrivacyHistoryError(error: HttpErrorResponse): string {
   if (error.status === 403) return formatForbiddenError(error, 'This account is not authorized to view privacy audit history.');
   if (error.status === 404) return "We couldn't load privacy history for this person.";

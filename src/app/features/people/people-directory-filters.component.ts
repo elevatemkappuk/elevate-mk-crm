@@ -24,121 +24,14 @@ let nextFilterDrawerId = 0;
 @Component({
   selector: 'app-people-directory-filters',
   imports: [CrmDrawerComponent, FilterMultiselectComponent],
-  template: `
-    <section class="filters" [attr.aria-label]="compact() ? 'Audience criteria' : 'People directory filters'">
-      @if (compact()) {
-        <div class="compact-summary">
-          <div class="criteria-chips" aria-label="Current audience criteria">
-            @if (criteriaChips().length) {
-              @for (chip of criteriaChips(); track chip.key) { <span class="crm-chip">{{ chip.label }}</span> }
-            } @else { <span class="empty-criteria">All active People</span> }
-          </div>
-          <button type="button" class="toggle crm-button crm-button--secondary" aria-haspopup="dialog"
-            [attr.aria-expanded]="expanded()" [attr.aria-controls]="expanded() ? drawerId : null" (click)="openDrawer()">Edit criteria</button>
-        </div>
-      } @else {
-      <div class="topline">
-        <form (submit)="submitSearch($event)" class="search">
-          <label for="people-search">Search</label>
-          <input id="people-search" class="crm-control" [value]="searchValue()" (input)="searchValue.set($any($event.target).value)" placeholder="Name, email, mobile, job title, or company" />
-          <button type="submit" class="crm-button crm-button--secondary">Search</button>
-        </form>
-        <button type="button" class="toggle crm-button crm-button--secondary" aria-haspopup="dialog"
-          [attr.aria-expanded]="expanded()" [attr.aria-controls]="expanded() ? drawerId : null" (click)="openDrawer()">Filters ({{ activeFilterCount() }})</button>
-      </div>
-      @if (activeChips().length) {
-        <div class="applied-chips" aria-label="Applied filters">
-          @for (chip of activeChips(); track chip.key) {
-            <button type="button" class="crm-chip" [attr.aria-label]="'Remove ' + chip.label" (click)="changed.emit(chip.patch)">{{ chip.label }} <span aria-hidden="true">&times;</span></button>
-          }
-          <button type="button" class="clear crm-button crm-button--quiet" (click)="cleared.emit()">Clear filters</button>
-        </div>
-      }
-      }
-    </section>
-    @if (draft(); as values) {
-      <app-crm-drawer [title]="compact() ? 'Audience criteria' : 'Filters'" [description]="compact() ? 'Choose the People included in this marketing preview' : 'Refine the People directory'" [dialogId]="drawerId" (closed)="closeDrawer()">
-        <div class="draft-panel">
-          @if (compact()) {
-            <label class="draft-search">Search People
-              <input class="crm-control" [value]="searchValue()" (input)="updateDraftSearch($any($event.target).value)" placeholder="Name, email, mobile, job title, or company" />
-            </label>
-          }
-          <fieldset>
-            <legend>Person type</legend>
-            @for (option of recordTypes; track option.value) {
-              <label class="choice"><input type="checkbox" class="crm-check" [checked]="values.record_type.includes(option.value)" (change)="toggleRecordType(option.value)" />{{ option.label }}</label>
-            }
-          </fieldset>
-          <fieldset>
-            <legend>Relationship</legend>
-            @for (option of relationships; track option.value) {
-              <label class="choice"><input type="checkbox" class="crm-check" [checked]="values.relationship.includes(option.value)" (change)="toggleRelationship(option.value)" />{{ option.label }}</label>
-            }
-          </fieldset>
-          <fieldset>
-            <legend>Location</legend>
-            <form class="location-entry" (submit)="$event.preventDefault(); addLocation()">
-              <input id="filter-exact-location" class="crm-control" aria-label="Exact location" [value]="locationValue()" (input)="locationValue.set($any($event.target).value)" placeholder="Exact location" />
-              <button type="submit" class="crm-button crm-button--secondary">Add</button>
-            </form>
-            <div class="chips">
-              @for (location of values.location; track location) {
-                <button type="button" class="crm-chip" [attr.aria-label]="'Remove location ' + location" (click)="removeLocation(location)">{{ location }} <span aria-hidden="true">&times;</span></button>
-              }
-            </div>
-          </fieldset>
-          <app-filter-multiselect label="Industry" fallbackLabel="Industry" [options]="industries()" [selected]="values.industry" (selectionChanged)="setSelection('industry', $event)" />
-          <fieldset>
-            <legend>Career stage</legend>
-            @for (option of careerStages; track option.value) {
-              <label class="choice"><input type="checkbox" class="crm-check" [checked]="values.career_stage.includes(option.value)" (change)="toggleCareerStage(option.value)" />{{ option.label }}</label>
-            }
-          </fieldset>
-          <app-filter-multiselect label="Interests" fallbackLabel="Interest" [options]="interests()" [selected]="values.interest" (selectionChanged)="setSelection('interest', $event)" />
-          <app-filter-multiselect label="Skills" fallbackLabel="Skill" [options]="skills()" [selected]="values.skill" (selectionChanged)="setSelection('skill', $event)" />
-          <app-filter-multiselect label="Tags" fallbackLabel="Tag" [options]="tags()" [selected]="values.tag" (selectionChanged)="setSelection('tag', $event)" />
-          @if (catalogError()) { <p class="catalog-error" role="status">Some filter options could not be loaded. Existing URL filters remain active.</p> }
-        </div>
-        <div drawerFooter class="drawer-actions">
-          <button type="button" class="crm-button crm-button--quiet" (click)="clearDraft()">Clear all</button>
-          <div class="footer-end">
-            <button type="button" class="crm-button crm-button--secondary" (click)="closeDrawer()">Cancel</button>
-            <button type="button" class="apply crm-button" (click)="applyFilters()">Apply filters</button>
-          </div>
-        </div>
-      </app-crm-drawer>
-    }
-  `,
-  styles: `
-    :host { display:block; min-width:0; }
-    .filters,.topline,.search,.location-entry,.draft-search { display:grid; gap:.8rem; min-width:0; }
-    .topline { grid-template-columns:minmax(0,1fr) auto; align-items:end; }
-    .search,.location-entry { grid-template-columns:minmax(0,1fr) auto; }
-    .search label,.location-entry label { grid-column:1/-1; font-weight:600; }
-    .applied-chips,.chips,.drawer-actions,.footer-end { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; }
-    .compact-summary { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
-    .criteria-chips { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; min-width:0; }
-    .empty-criteria { color:var(--crm-text-secondary); font-weight:600; }
-    .crm-chip { max-width:100%; overflow-wrap:anywhere; text-align:left; cursor:pointer; }
-    app-crm-drawer { --crm-drawer-width:34rem; }
-    .draft-panel { display:grid; gap:1.75rem; padding-bottom:1.5rem; }
-    fieldset { display:grid; gap:.4rem; min-width:0; margin:0; padding:0; border:0; }
-    legend { padding:0; margin-bottom:.65rem; font-weight:600; }
-    .choice { display:flex; align-items:center; gap:.65rem; min-height:2.5rem; cursor:pointer; }
-    .drawer-actions { justify-content:space-between; }
-    .footer-end { margin-left:auto; }
-    .apply { background:var(--crm-shell-accent); color:var(--crm-text-strong); }
-    .apply:hover { background:#f3c64c; }
-    .catalog-error { margin:0; color:var(--crm-error); }
-    :is(button,input):focus-visible { outline:2px solid var(--crm-focus-ring); outline-offset:2px; }
-    @media(max-width:580px) { .topline { grid-template-columns:minmax(0,1fr); } .toggle { width:fit-content; } .location-entry { grid-template-columns:minmax(0,1fr); } .compact-summary { align-items:stretch; flex-direction:column; } }
-  `,
+  templateUrl: './people-directory-filters.component.html',
+  styleUrl: './people-directory-filters.component.css',
 })
 export class PeopleDirectoryFiltersComponent {
   private readonly peopleService = inject(PeopleService);
   private readonly destroyRef = inject(DestroyRef);
   readonly query = input.required<PeopleDirectoryQuery>();
+  readonly contactSearchAllowed = input(false);
   readonly compact = input(false);
   readonly changed = output<Partial<PeopleDirectoryQuery>>();
   readonly cleared = output<void>();
@@ -231,5 +124,4 @@ export class PeopleDirectoryFiltersComponent {
     this.peopleService.getTags().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ next: (value) => this.tags.set(value), error: () => this.catalogError.set(true) });
   }
 }
-
 function toggle<T>(values: T[], value: T): T[] { return values.includes(value) ? values.filter(item => item !== value) : [...values, value]; }

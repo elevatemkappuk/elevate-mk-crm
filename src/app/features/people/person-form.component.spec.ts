@@ -74,4 +74,24 @@ describe('PersonFormComponent', () => {
     expect(fixture.nativeElement.querySelector('.validation-slot small')?.textContent).toContain('First name is required.');
     expect(fixture.nativeElement.querySelectorAll('.validation-slot').length).toBe(4);
   });
+
+  it('omits protected fields when the effective capabilities do not allow editing', () => {
+    const component = fixture.componentInstance;
+    fixture.componentRef.setInput('contactFieldsEditable', false);
+    fixture.componentRef.setInput('demographicFieldsEditable', false);
+    fixture.detectChanges();
+    component.form.setValue({
+      first_name: 'Ama', last_name: 'Amoah', primary_email: 'masked@example.com',
+      mobile: 'Restricted', location: 'Lilongwe', age_range: '25_29',
+      gender: 'NON_BINARY', joined_at: '2026-08-31',
+    });
+    const submissions: PersonFormSubmission[] = [];
+    component.submitted.subscribe(value => submissions.push(value));
+    component.submit();
+
+    expect(submissions).toEqual([{
+      person: { first_name: 'Ama', last_name: 'Amoah', location: 'Lilongwe' },
+      joined_at: '2026-08-31',
+    }]);
+  });
 });

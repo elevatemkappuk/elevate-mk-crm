@@ -492,3 +492,49 @@ limit prevented the remaining delegations. All implementation-stage regression
 tests remain **Implemented / Unexecuted**. Production activation still requires
 the final security, QA, architecture and documentation gates plus runtime and
 deployment verification.
+
+## Phase 1B.1 People privacy
+
+Status: **Implemented / source-inspected; automated tests and runtime
+verification deferred to GDPR Phase 1C hardening**.
+
+The CRM consumes backend-authoritative Person projections. The People
+directory, Person profile, create/edit forms, nested community-account display,
+and search controls do not infer privacy authority locally. Contact and
+demographic capability state comes from the existing staff-access projection;
+contact search is not offered when `PERSON_CONTACT_READ` is absent, and
+protected form controls and payload fields are disabled/omitted when the
+corresponding capability is absent. The backend remains the security boundary.
+
+The API returns masked or `Restricted` values plus explicit privacy indicators.
+When effective access is revoked during an active CRM session, loaded People
+and Person overview state is redacted in memory and protected edits are no
+longer constructed. Response effects also re-redact late in-flight responses,
+preventing protected values from repopulating state after access loss. Browser
+storage is not used for protected values. The CRM does not persist masked
+values back to the API and preserves ordinary CRM session behavior.
+
+The API/CRM capability contract now discloses `PERSON_CONTACT_READ` and
+`PERSON_DEMOGRAPHIC_READ` in addition to the existing CRM privacy capabilities.
+The two repositories must be deployed compatibly; older strict CRM clients
+may not consume the expanded disclosure. Affected Angular tests remain
+**Implemented / Unexecuted** under the deferred-test policy.
+
+The implementation does not yet classify location, professional profile,
+skills/interests/tags, notes, membership, marketing preferences, Community
+provider/lifecycle data, audit history, or exports beyond the approved fields.
+Those classifications and later enforcement remain deferred pending the
+appropriate product/legal/privacy decisions. Independent specialist acceptance
+was unavailable because the active agent-thread limit prevented delegation; no
+independent acceptance is claimed.
+
+The CRM consumes the API's authorized Privacy Audit projection and includes the
+`PRIVACY_PERSON_DISCLOSED` activity filter. The API remains authoritative for
+deliberate disclosure auditing: explicit protected Person detail and overview
+disclosures are audited server-side before response, while masked, list and
+ordinary unprotected reads are not treated as raw disclosure events. The
+projection exposes safe event fields only; it does not expose raw AuditEvent
+metadata or protected Person values. The audit-choice migration is generated
+but not applied, and frontend/runtime verification remains deferred to GDPR
+Phase 1C hardening. Comprehensive Person access auditing remains the deferred
+`GDPR-FUTURE-001` enhancement.

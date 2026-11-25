@@ -1,0 +1,18 @@
+    form,.field-group,.fields { display:grid; gap:1rem; } .field-group { padding:1.15rem; border:1px solid rgba(22,39,53,.09); border-radius:1rem; background:#fff; }
+    h3 { margin:0; color:#173248; font-size:1.05rem; } .fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    label { display:grid; gap:.38rem; font-weight:650; color:#294456; } input,select { min-width:0; padding:.68rem .78rem; border:1px solid #b7c7d4; border-radius:.7rem; font:inherit; color:#173248; background:#fff; }
+    input:focus-visible,select:focus-visible { outline:0; border-color:#5d88a0; box-shadow:0 0 0 3px rgba(108,154,180,.2); } small { color:#a12929; font-weight:600; }
+    .drawer-layout .validation-slot { min-height:1.1em; }
+    .membership { max-width:22rem; } .actions { display:flex; gap:.7rem; flex-wrap:wrap; } button { border:0; border-radius:999px; padding:.72rem 1.1rem; font:inherit; font-weight:700; cursor:pointer; }
+    .button-primary { color:#fff; background:#1d6077; } .button-secondary { color:#244359; background:#edf3f6; } button:disabled { opacity:.6; cursor:not-allowed; }
+    fieldset { display:grid; gap:1rem; border:0; margin:0; padding:0; min-width:0; }
+    .drawer-layout .field-group { padding:0; border:0; border-radius:0; }
+    .drawer-layout h3 { font-size:.75rem; text-transform:uppercase; letter-spacing:.08em; }
+    .drawer-layout input,.drawer-layout select { min-height:2.75rem; border-radius:var(--crm-radius-sm); }
+    .drawer-layout .actions { position:sticky; bottom:0; padding:1rem 0; background:var(--crm-surface); border-top:1px solid var(--crm-border); justify-content:space-between; }
+    .drawer-layout .button-primary { order:1; background:var(--crm-shell-accent); color:var(--crm-text-strong); }
+    .drawer-layout .button-primary:hover:not(:disabled) { background:#f3c64c; }
+    .drawer-layout button { border-radius:var(--crm-radius-sm); min-height:2.75rem; }
+    button:focus-visible { outline:2px solid var(--crm-focus-ring); outline-offset:3px; }
+    @media (max-width:650px) { .fields { grid-template-columns:1fr; } }
+

@@ -1,0 +1,115 @@
+    <section class="workspace" aria-labelledby="legal-holds-title">
+      <p class="eyebrow">Privacy administration</p>
+      <h2 id="legal-holds-title">Legal holds</h2>
+      <p class="intro">Manage retention-protection holds through the backend-governed workflow. The API remains authoritative for access, scope and release approval.</p>
+
+      @if (errorMessage()) {
+        <p class="error" role="alert">{{ errorMessage() }}</p>
+        <button type="button" class="button-secondary" (click)="loadHolds()" [disabled]="loading()">Retry</button>
+      }
+      @if (feedback()) { <p class="success" role="status">{{ feedback() }}</p> }
+
+      <section class="card" aria-labelledby="create-hold-title">
+        <h3 id="create-hold-title">Place a legal hold</h3>
+        <p class="notice">Choose a Person or use an opaque audit-event reference from an authorized privacy-audit context.</p>
+        <form (ngSubmit)="createHold()">
+          <div class="person-picker">
+            <label for="hold-person-search">Person</label>
+            <div class="picker-search">
+              <input id="hold-person-search" name="personSearch" type="search" [(ngModel)]="personSearch" (ngModelChange)="onPersonSearchChange($event)" placeholder="Search by name" />
+              <button type="button" class="button-secondary" (click)="searchPeople()" [disabled]="personSearchLoading()">{{ personSearchLoading() ? 'Searching...' : 'Find Person' }}</button>
+            </div>
+            @if (personSearchError()) { <p class="error" role="alert">{{ personSearchError() }}</p> }
+            @if (personOptions().length) {
+              <div class="person-options" role="listbox" aria-label="Person results">
+                @for (person of personOptions(); track person.id) {
+                  <button type="button" class="person-option" [class.selected]="personId === person.id" (click)="selectPerson(person)">
+                    <strong>{{ person.first_name }} {{ person.last_name }}</strong><span>{{ person.record_type }} Â· {{ person.id }}</span>
+                  </button>
+                }
+              </div>
+            }
+            @if (selectedPersonLabel()) { <p class="selected-target">Selected: <strong>{{ selectedPersonLabel() }}</strong></p> }
+          </div>
+          <div class="form-grid">
+            <label for="hold-event-reference">Opaque audit-event reference</label>
+            <input id="hold-event-reference" name="eventReference" type="text" [(ngModel)]="auditEventReference" />
+          </div>
+          <label for="hold-reason">Justification</label>
+          <textarea id="hold-reason" name="createReason" rows="3" required [(ngModel)]="createReason"></textarea>
+          @if (createValidationMessage()) { <p class="error" role="alert">{{ createValidationMessage() }}</p> }
+          <button type="submit" [disabled]="saving()">{{ saving() ? 'Saving...' : 'Place hold' }}</button>
+        </form>
+      </section>
+
+      <section class="card" aria-labelledby="holds-list-title">
+        <h3 id="holds-list-title">Current holds</h3>
+        @if (loading()) {
+          <app-state-message title="Loading legal holds" message="Retrieving backend-projected legal holds." />
+        } @else {
+          <div class="hold-list">
+            @for (hold of holds(); track hold.public_id) {
+              <article class="hold-row">
+                <div>
+                  <strong>{{ hold.scope }} hold Â· {{ hold.status }}</strong>
+                  <p>Placed {{ formatDateTime(hold.placed_at) }} Â· {{ actorLabel(hold.placed_by) }}</p>
+                  @if (hold.person_id) { <p>Person: {{ hold.person_display_name || 'Restricted Person' }}</p> }
+                  @if (hold.audit_event_reference) { <p>Audit-event reference available</p> }
+                  @if (hold.justification) { <p>Justification: {{ hold.justification }}</p> }
+                </div>
+                @if (hold.status === 'ACTIVE' && (hold.permitted_actions.includes('request_release') || hold.permitted_actions.includes('direct_release'))) {
+                  <button type="button" (click)="beginRelease(hold)" [disabled]="saving()">
+                    {{ hold.permitted_actions.includes('direct_release') ? 'Direct release' : 'Request release' }}
+                  </button>
+                }
+              </article>
+              @if (releaseHoldId() === hold.public_id) {
+                <form class="inline-form" (ngSubmit)="releaseHold(hold)">
+                  <label [for]="'release-reason-' + hold.public_id">Release reason</label>
+                  <textarea [id]="'release-reason-' + hold.public_id" name="releaseReason" rows="2" required [(ngModel)]="releaseReason"></textarea>
+                  <div class="actions">
+                    <button type="submit" [disabled]="saving()">Confirm</button>
+                    <button type="button" class="button-secondary" (click)="cancelRelease()" [disabled]="saving()">Cancel</button>
+                  </div>
+                </form>
+              }
+               @for (releaseRequest of hold.release_requests; track releaseRequest.public_id) {
+                 <div class="release-request" [attr.aria-label]="'Release request ' + releaseRequest.status">
+                   <strong>Release request Â· {{ releaseRequest.status }}</strong>
+                   <p>Requested by {{ actorLabel(releaseRequest.requested_by) }} Â· {{ formatDateTime(releaseRequest.requested_at) }}</p>
+                   <p>Justification: {{ releaseRequest.justification }}</p>
+                   @if (releaseRequest.approved_by) { <p>Approved by {{ actorLabel(releaseRequest.approved_by) }} Â· {{ formatDateTime(releaseRequest.approved_at!) }}<br />Reason: {{ releaseRequest.approval_justification }}</p> }
+                   @if (releaseRequest.rejected_by) { <p>Rejected by {{ actorLabel(releaseRequest.rejected_by) }} Â· {{ formatDateTime(releaseRequest.rejected_at!) }}<br />Reason: {{ releaseRequest.rejection_reason }}</p> }
+                   @if (releaseRequest.rejection_reason) { <p>Rejection reason: {{ releaseRequest.rejection_reason }}</p> }
+                   @if (releaseRequest.permitted_actions.includes('approve') || releaseRequest.permitted_actions.includes('reject')) {
+                     <div class="actions">
+                       @if (releaseRequest.permitted_actions.includes('approve')) {
+                         <button type="button" (click)="beginResolve(releaseRequest, 'approve')" [disabled]="saving()">Approve request</button>
+                       }
+                       @if (releaseRequest.permitted_actions.includes('reject')) {
+                         <button type="button" class="button-secondary" (click)="beginResolve(releaseRequest, 'reject')" [disabled]="saving()">Reject request</button>
+                       }
+                     </div>
+                   }
+                 </div>
+               }
+            } @empty {
+              <app-state-message message="No legal holds were returned." />
+            }
+          </div>
+        }
+      </section>
+
+      @if (resolvingRequest()) {
+        <section class="card" aria-labelledby="resolve-request-title">
+          <h3 id="resolve-request-title">Resolve release request</h3>
+          <label for="resolve-reason">Decision reason</label>
+          <textarea id="resolve-reason" name="resolveReason" rows="2" required [(ngModel)]="resolveReason"></textarea>
+          <div class="actions">
+            <button type="button" [disabled]="saving()" (click)="resolveRequest()">{{ resolveAction === 'approve' ? 'Approve' : 'Reject' }}</button>
+            <button type="button" class="button-secondary" (click)="cancelResolve()" [disabled]="saving()">Cancel</button>
+          </div>
+        </section>
+      }
+    </section>
+

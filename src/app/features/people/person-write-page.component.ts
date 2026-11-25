@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, DestroyRef, effect, inject, input, output, signal, viewChild } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, input, output, signal, untracked, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { canManagePeople } from '../../core/auth/auth-access';
 import { AuthService } from '../../core/auth/auth.service';
+import { StaffAccessService } from '../../core/auth/staff-access.service';
 import { formatForbiddenError } from '../../core/http/forbidden-error';
 import { PeopleService } from '../../core/people/people.service';
 import { CreateMemberRequest, DuplicatePersonConflict, IdentityOverrideRequest, PersonListItem, UpdatePersonRequest } from '../../core/people/people.types';
@@ -13,74 +14,21 @@ import { ConfirmationDialogComponent } from '../../shared/ui/confirmation-dialog
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
 import { PersonDuplicateConflictComponent } from './person-duplicate-conflict.component';
 import { PersonFormComponent, PersonFormSubmission } from './person-form.component';
+import { redactPersonAfterAccessLoss } from '../../core/people/person-privacy';
 
 type WriteMode = 'contact' | 'member' | 'edit';
 
 @Component({
   selector: 'app-person-write-page',
   imports: [CommonModule, PersonFormComponent, PersonDuplicateConflictComponent, ConfirmationDialogComponent, StateMessageComponent],
-  template: `
-    @if (!canManagePeople()) {
-      <app-state-message title="Access denied" message="You do not have permission to manage People." tone="error" />
-    } @else if (loading()) {
-      <app-state-message title="Loading person" message="Retrieving the person record." />
-    } @else if (notFound()) {
-      <app-state-message title="Person not found" message="The requested person record is not available in the CRM People domain." tone="error" />
-    } @else {
-      <section class="page">
-        @if (drawer() && mode() !== 'edit') {
-          <fieldset class="person-types" [disabled]="submitting()">
-            <legend>Person type</legend>
-            <label [class.selected]="mode() === 'member'"><input type="radio" name="person-type" value="member" [checked]="mode() === 'member'" (change)="changeType('member')" /><span><strong>Member</strong><small>Person + active Membership</small></span></label>
-            <label [class.selected]="mode() === 'contact'"><input type="radio" name="person-type" value="contact" [checked]="mode() === 'contact'" (change)="changeType('contact')" /><span><strong>Contact</strong><small>Person only</small></span></label>
-          </fieldset>
-        } @else if (!drawer()) { <div class="intro"><p>{{ intro() }}</p></div> }
-        @if (errorMessage()) { <p class="error" aria-live="assertive">{{ errorMessage() }}</p> }
-        @if (duplicateConflict()) {
-          <app-person-duplicate-conflict [conflict]="duplicateConflict()!" [message]="duplicateMessage()" (createSeparatePerson)="openIdentityOverrideConfirmation()" />
-        }
-        <app-person-form
-          [initialPerson]="person()"
-          [member]="mode() === 'member'"
-          [submitLabel]="submitLabel()"
-          [pending]="submitting()"
-          [emailError]="emailFieldError()"
-          [mobileError]="mobileFieldError()"
-          [drawer]="drawer()"
-          (edited)="clearCollisionReview()"
-          (submitted)="submit($event)"
-          (cancelled)="cancel()"
-        />
-      </section>
-    }
-    <div (keydown.escape)="$event.preventDefault(); $event.stopPropagation()">
-    <app-confirmation-dialog
-      [open]="identityOverrideConfirmationOpen()"
-      title="Create a separate CRM Person?"
-      [message]="identityOverrideConfirmationMessage()"
-      confirmLabel="Create separate Person"
-      [busy]="submitting()"
-      (cancelled)="cancelIdentityOverrideConfirmation()"
-      (confirmed)="confirmIdentityOverride()"
-    />
-    </div>
-  `,
-  styles: `
-    .page { display:grid; gap:1rem; max-width:58rem; } .intro { color:#526f81; } .intro p,.error { margin:0; line-height:1.5; }
-    .error { padding:.85rem 1rem; border-radius:.75rem; background:#fff5f5; color:#9b1c1c; font-weight:600; }
-    .person-types { display:flex; flex-wrap:wrap; gap:.75rem; padding:0; margin:0 0 .5rem; border:0; min-width:0; }
-    legend { padding:0; margin-bottom:.75rem; font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
-    .person-types label { display:flex; flex:1 1 12rem; align-items:start; gap:.65rem; padding:1rem; border:1px solid var(--crm-border); border-radius:var(--crm-radius-md); cursor:pointer; }
-    .person-types .selected { background:#fff9e7; border-color:#ad8422; }
-    .person-types small { display:block; margin-top:.3rem; font-size:.75rem; color:var(--crm-text-secondary); }
-    .person-types input { margin:.2rem 0 0; accent-color:var(--crm-shell-sidebar); }
-    .person-types label:focus-within { outline:2px solid var(--crm-focus-ring); outline-offset:2px; }
-  `,
+  templateUrl: './person-write-page.component.html',
+  styleUrl: './person-write-page.component.css',
 })
 export class PersonWritePageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
+  private readonly staffAccess = inject(StaffAccessService, { optional: true });
   private readonly peopleService = inject(PeopleService);
   private readonly destroyRef = inject(DestroyRef);
   readonly drawer = input(false);
@@ -100,6 +48,8 @@ export class PersonWritePageComponent {
   readonly pendingSubmission = signal<PersonFormSubmission | null>(null);
   readonly identityOverrideConfirmationOpen = signal(false);
   readonly canManagePeople = computed(() => canManagePeople(this.auth.currentUser()));
+  readonly contactFieldsEditable = computed(() => !this.staffAccess || this.staffAccess.hasCapability('PERSON_CONTACT_READ'));
+  readonly demographicFieldsEditable = computed(() => !this.staffAccess || this.staffAccess.hasCapability('PERSON_DEMOGRAPHIC_READ'));
   readonly submitLabel = computed(() => this.mode() === 'edit' ? 'Save changes' : this.drawer() ? 'Add person' : this.mode() === 'contact' ? 'Create Contact' : 'Create Member');
   readonly intro = computed(() => this.mode() === 'member' ? 'Create a new Person and active Membership in one step.' : this.mode() === 'contact' ? 'Create a new CRM Person without a Membership.' : 'Update the Person-owned details for this CRM record.');
   readonly duplicateMessage = computed(() => {
@@ -117,6 +67,15 @@ export class PersonWritePageComponent {
 
   constructor() {
     effect(() => {
+      const staffAccess = this.staffAccess;
+      if (!staffAccess?.isReady()) return;
+      const contactLost = !staffAccess.hasCapability('PERSON_CONTACT_READ');
+      const demographicLost = !staffAccess.hasCapability('PERSON_DEMOGRAPHIC_READ');
+      if (!contactLost && !demographicLost) return;
+      const person = this.person();
+      if (person) untracked(() => this.person.set(redactPersonAfterAccessLoss(person, contactLost, demographicLost)));
+    });
+    effect(() => {
       const person = this.existingPerson();
       if (person) { this.mode.set('edit'); this.person.set(person); this.loading.set(false); }
     });
@@ -127,9 +86,8 @@ export class PersonWritePageComponent {
         next: (person) => { this.person.set(person); this.loading.set(false); },
         error: (error: HttpErrorResponse) => { this.notFound.set(error.status === 404); this.errorMessage.set(error.status === 404 ? null : 'The person record could not be loaded right now.'); this.loading.set(false); },
       });
-    }
   }
-
+}
   submit(submission: PersonFormSubmission): void {
     if (this.submitting() || !this.canManagePeople()) { return; }
     this.emailFieldError.set(null);
@@ -249,7 +207,6 @@ export class PersonWritePageComponent {
     this.errorMessage.set('The person could not be saved right now. Try again.');
   }
 }
-
 function getFieldError(payload: unknown, field: string): string | null {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
   const value = (payload as Record<string, unknown>)[field];

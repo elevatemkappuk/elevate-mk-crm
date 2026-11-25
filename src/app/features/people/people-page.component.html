@@ -1,0 +1,121 @@
+    <section class="page">
+      <app-people-directory-filters [query]="queryState()" [contactSearchAllowed]="contactSearchAllowed()" (changed)="changeDirectoryQuery($event)" (cleared)="clearFilters()" />
+      <div class="controls" aria-label="People list display controls">
+        <div class="display-controls">
+        <label class="record-control">
+          <span>Record state</span>
+          <select [value]="queryState().record_state" (change)="changeDirectoryQuery({ record_state: $any($event.target).value })">
+            <option value="active">Active</option>
+            <option value="archived">Archived</option>
+            <option value="all">All</option>
+          </select>
+        </label>
+
+        <label class="ordering-control">
+          <span>Order by</span>
+          <select [value]="queryState().ordering" (change)="changeDirectoryQuery({ ordering: $any($event.target).value })">
+            @for (option of orderingOptions; track option.value) {
+              <option [value]="option.value" [selected]="queryState().ordering === option.value">{{ option.label }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="size-control">
+          <span>Page size</span>
+          <select [value]="queryState().page_size" (change)="changeDirectoryQuery({ page_size: parsePageSize($any($event.target).value) })">
+            @for (size of pageSizes; track size) {
+              <option [value]="size" [selected]="queryState().page_size === size">{{ size }}</option>
+            }
+          </select>
+        </label>
+        </div>
+        @if (canManagePeople()) {
+          <div class="page-actions">
+            <button type="button" class="add-person crm-button" (click)="addPersonOpen.set(true)">Add person</button>
+          </div>
+        }
+        <div class="page-actions">
+          <button type="button" class="crm-button crm-button--secondary" (click)="previewMarketingAudience()">Preview marketing audience</button>
+        </div>
+      </div>
+
+      @if (loading()) {
+        <section class="state-card" aria-live="polite">
+          <p>Loading people...</p>
+        </section>
+      } @else if (errorMessage()) {
+        <section class="state-card state-card-error" aria-live="polite">
+          <p>{{ errorMessage() }}</p>
+          <button type="button" class="pagination-button" (click)="retry()">Retry</button>
+        </section>
+      } @else if (!peopleResponse() || peopleResponse()!.results.length === 0) {
+        <section class="state-card" aria-live="polite">
+          <p>{{ emptyMessage() }}</p>
+        </section>
+      } @else {
+        <section class="results-card">
+          <div class="results-meta">
+            <p class="results-count">{{ peopleResponse()!.count }} people</p>
+            <p class="results-page">Page {{ currentPage() }} of {{ totalPages() }}</p>
+          </div>
+
+          <div class="table-wrap">
+            <table aria-label="People directory">
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">Email</th>
+                  <th scope="col">Mobile</th>
+                  <th scope="col">Job title</th>
+                  <th scope="col">Type</th>
+                  <th scope="col">Location</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Community</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (person of peopleResponse()!.results; track person.id) {
+                  <tr class="person-row" (click)="openPersonRow($event, person)">
+                    <td data-label="Name">
+                      <a [routerLink]="['/people', person.id]" class="row-link" (keydown)="activatePersonLink($event, person)">
+                        {{ fullName(person) }}
+                      </a>
+                    </td>
+                    <td data-label="Email">{{ person.primary_email || '-' }}</td>
+                    <td data-label="Mobile">{{ person.mobile || '-' }}</td>
+                    <td data-label="Job title">{{ person.job_title?.trim() || '-' }}</td>
+                    <td data-label="Type"><app-status-badge [label]="recordTypeLabel(person.record_type)" [tone]="person.record_type === 'STAFF' ? 'info' : 'neutral'" /></td>
+                    <td data-label="Location">{{ person.location || '-' }}</td>
+                    <td data-label="Status"><app-status-badge [label]="person.archived_at ? 'Archived' : 'Active'" [tone]="person.archived_at ? 'muted' : 'success'" /></td>
+                    <td data-label="Community"><app-status-badge [label]="communityStatusLabels[person.community_account_status] || 'Unavailable'" [tone]="communityStatusTones[person.community_account_status] || 'neutral'" /></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pagination">
+            <button
+              type="button"
+              class="pagination-button"
+              (click)="goToPage(currentPage() - 1)"
+              [disabled]="!peopleResponse()!.previous"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              class="pagination-button"
+              (click)="goToPage(currentPage() + 1)"
+              [disabled]="!peopleResponse()!.next"
+            >
+              Next
+            </button>
+          </div>
+        </section>
+      }
+    </section>
+    @if (addPersonOpen() && canManagePeople()) {
+      <app-add-person-drawer (closed)="addPersonOpen.set(false)" />
+    }
+

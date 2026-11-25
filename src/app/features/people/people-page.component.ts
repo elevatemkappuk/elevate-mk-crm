@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, distinctUntilChanged, map, of, switchMap, tap } from 'rxjs';
@@ -8,6 +8,7 @@ import { catchError, distinctUntilChanged, map, of, switchMap, tap } from 'rxjs'
 import { PeopleService } from '../../core/people/people.service';
 import { canManagePeople } from '../../core/auth/auth-access';
 import { AuthService } from '../../core/auth/auth.service';
+import { StaffAccessService } from '../../core/auth/staff-access.service';
 import {
   PaginatedResponse,
   PersonListItem,
@@ -22,6 +23,7 @@ import { PeopleDirectoryFiltersComponent } from './people-directory-filters.comp
 import { StatusBadgeComponent, StatusBadgeTone } from '../../shared/ui/status-badge.component';
 import { AddPersonDrawerComponent } from './add-person-drawer.component';
 import { audienceQueryFromPeopleDirectory, serializeAudiencePreviewQuery } from '../../core/marketing/audience-preview-query';
+import { redactPersonAfterAccessLoss } from '../../core/people/person-privacy';
 
 const VALID_PAGE_SIZES: PeoplePageSize[] = [25, 50, 100];
 
@@ -29,419 +31,18 @@ interface OrderingOption {
   label: string;
   value: PeopleOrdering;
 }
-
 @Component({
   selector: 'app-people-page',
   imports: [CommonModule, RouterLink, PeopleDirectoryFiltersComponent, StatusBadgeComponent, AddPersonDrawerComponent],
-  template: `
-    <section class="page">
-      <app-people-directory-filters [query]="queryState()" (changed)="changeDirectoryQuery($event)" (cleared)="clearFilters()" />
-      <div class="controls" aria-label="People list display controls">
-        <div class="display-controls">
-        <label class="record-control">
-          <span>Record state</span>
-          <select [value]="queryState().record_state" (change)="changeDirectoryQuery({ record_state: $any($event.target).value })">
-            <option value="active">Active</option>
-            <option value="archived">Archived</option>
-            <option value="all">All</option>
-          </select>
-        </label>
-
-        <label class="ordering-control">
-          <span>Order by</span>
-          <select [value]="queryState().ordering" (change)="changeDirectoryQuery({ ordering: $any($event.target).value })">
-            @for (option of orderingOptions; track option.value) {
-              <option [value]="option.value" [selected]="queryState().ordering === option.value">{{ option.label }}</option>
-            }
-          </select>
-        </label>
-
-        <label class="size-control">
-          <span>Page size</span>
-          <select [value]="queryState().page_size" (change)="changeDirectoryQuery({ page_size: parsePageSize($any($event.target).value) })">
-            @for (size of pageSizes; track size) {
-              <option [value]="size" [selected]="queryState().page_size === size">{{ size }}</option>
-            }
-          </select>
-        </label>
-        </div>
-        @if (canManagePeople()) {
-          <div class="page-actions">
-            <button type="button" class="add-person crm-button" (click)="addPersonOpen.set(true)">Add person</button>
-          </div>
-        }
-        <div class="page-actions">
-          <button type="button" class="crm-button crm-button--secondary" (click)="previewMarketingAudience()">Preview marketing audience</button>
-        </div>
-      </div>
-
-      @if (loading()) {
-        <section class="state-card" aria-live="polite">
-          <p>Loading people...</p>
-        </section>
-      } @else if (errorMessage()) {
-        <section class="state-card state-card-error" aria-live="polite">
-          <p>{{ errorMessage() }}</p>
-          <button type="button" class="pagination-button" (click)="retry()">Retry</button>
-        </section>
-      } @else if (!peopleResponse() || peopleResponse()!.results.length === 0) {
-        <section class="state-card" aria-live="polite">
-          <p>{{ emptyMessage() }}</p>
-        </section>
-      } @else {
-        <section class="results-card">
-          <div class="results-meta">
-            <p class="results-count">{{ peopleResponse()!.count }} people</p>
-            <p class="results-page">Page {{ currentPage() }} of {{ totalPages() }}</p>
-          </div>
-
-          <div class="table-wrap">
-            <table aria-label="People directory">
-              <thead>
-                <tr>
-                  <th scope="col">Name</th>
-                  <th scope="col">Email</th>
-                  <th scope="col">Mobile</th>
-                  <th scope="col">Job title</th>
-                  <th scope="col">Type</th>
-                  <th scope="col">Location</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Community</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (person of peopleResponse()!.results; track person.id) {
-                  <tr class="person-row" (click)="openPersonRow($event, person)">
-                    <td data-label="Name">
-                      <a [routerLink]="['/people', person.id]" class="row-link" (keydown)="activatePersonLink($event, person)">
-                        {{ fullName(person) }}
-                      </a>
-                    </td>
-                    <td data-label="Email">{{ person.primary_email || '-' }}</td>
-                    <td data-label="Mobile">{{ person.mobile || '-' }}</td>
-                    <td data-label="Job title">{{ person.job_title?.trim() || '-' }}</td>
-                    <td data-label="Type"><app-status-badge [label]="recordTypeLabel(person.record_type)" [tone]="person.record_type === 'STAFF' ? 'info' : 'neutral'" /></td>
-                    <td data-label="Location">{{ person.location || '-' }}</td>
-                    <td data-label="Status"><app-status-badge [label]="person.archived_at ? 'Archived' : 'Active'" [tone]="person.archived_at ? 'muted' : 'success'" /></td>
-                    <td data-label="Community"><app-status-badge [label]="communityStatusLabels[person.community_account_status] || 'Unavailable'" [tone]="communityStatusTones[person.community_account_status] || 'neutral'" /></td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-
-          <div class="pagination">
-            <button
-              type="button"
-              class="pagination-button"
-              (click)="goToPage(currentPage() - 1)"
-              [disabled]="!peopleResponse()!.previous"
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              class="pagination-button"
-              (click)="goToPage(currentPage() + 1)"
-              [disabled]="!peopleResponse()!.next"
-            >
-              Next
-            </button>
-          </div>
-        </section>
-      }
-    </section>
-    @if (addPersonOpen() && canManagePeople()) {
-      <app-add-person-drawer (closed)="addPersonOpen.set(false)" />
-    }
-  `,
-  styles: `
-    :host {
-      display: block;
-    }
-
-    .page {
-      display: grid;
-      gap: 0.9rem;
-    }
-
-    .page-actions { display:flex; margin-left:auto; gap:.7rem; flex-wrap:wrap; }
-    .add-person { background:var(--crm-shell-accent); color:var(--crm-text-strong); }
-    .add-person:hover { background:#f3c64c; }
-
-    .controls,
-    .results-card,
-    .state-card {
-      display: grid;
-      gap: 0.9rem;
-      padding: 1.2rem 1.25rem;
-      border-radius: 1.1rem;
-      border: 1px solid rgba(22, 39, 53, 0.08);
-      background: rgba(255, 255, 255, 0.88);
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.85),
-        0 10px 24px rgba(17, 29, 40, 0.04);
-    }
-
-    .state-card p {
-      margin: 0;
-    }
-
-    .state-card p {
-      max-width: 42rem;
-      color: #4f697b;
-      line-height: 1.5;
-    }
-
-    .controls {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: end;
-      gap: 0.85rem 1rem;
-    }
-    .display-controls {
-      display: flex;
-      flex: 1 1 31.5rem;
-      min-width: 0;
-      flex-wrap: wrap;
-      align-items: end;
-      gap: 0.85rem 1rem;
-    }
-    .controls label { min-width: 0; max-width: 100%; }
-    .controls select { width: 100%; min-width: 0; }
-    .record-control { width: 8.5rem; }
-    .ordering-control { width: 15rem; }
-    .size-control { width: 6rem; }
-
-    label {
-      display: grid;
-      gap: 0.4rem;
-      color: #1c3344;
-      font-weight: 600;
-    }
-
-    label span {
-      margin: 0;
-      font-size: 0.8rem;
-      font-weight: 700;
-      color: #5c7789;
-    }
-
-    input,
-    select,
-    .pagination-button {
-      border: 1px solid #b7c7d4;
-      border-radius: 0.8rem;
-      padding: 0.72rem 0.88rem;
-      font: inherit;
-      background: #fdfefe;
-      color: #173248;
-      transition:
-        border-color 120ms ease,
-        box-shadow 120ms ease,
-        background-color 120ms ease,
-        color 120ms ease;
-    }
-
-    input::placeholder {
-      color: #8097a6;
-    }
-
-    input:focus-visible,
-    select:focus-visible,
-    .pagination-button:focus-visible,
-    .row-link:focus-visible {
-      outline: none;
-      border-color: #5d88a0;
-      box-shadow: 0 0 0 3px rgba(108, 154, 180, 0.2);
-    }
-
-    .results-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-    }
-
-    .results-count,
-    .results-page {
-      margin: 0;
-      font-size: 0.9rem;
-      color: #5b7383;
-    }
-
-    .results-count {
-      font-weight: 700;
-      color: #234257;
-    }
-
-    .table-wrap {
-      min-width: 0;
-      overflow-x: auto;
-      border-radius: 0.9rem;
-      border: 1px solid rgba(22, 39, 53, 0.08);
-      background: rgba(251, 253, 254, 0.92);
-    }
-
-    table {
-      width: 100%;
-      min-width: 56rem;
-      border-collapse: collapse;
-    }
-
-    th,
-    td {
-      padding: 0.82rem 1rem;
-      border-bottom: 1px solid rgba(22, 39, 53, 0.08);
-      text-align: left;
-      vertical-align: top;
-    }
-
-    th {
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      color: #5b7383;
-      background: rgba(244, 248, 250, 0.94);
-    }
-
-    td {
-      color: #274356;
-      overflow-wrap: anywhere;
-    }
-
-    .person-row {
-      cursor: pointer;
-      transition: background-color 120ms ease;
-    }
-
-    .person-row:hover,
-    .person-row:focus-within {
-      background: rgba(240, 246, 249, 0.96);
-    }
-    .person-row:focus-within { outline: 2px solid var(--crm-focus-ring); outline-offset: -2px; }
-
-    .row-link {
-      display: inline-block;
-      border-radius: 0.35rem;
-      color: #173248;
-      font-weight: 700;
-      text-decoration: none;
-    }
-
-    .row-link:hover,
-    .row-link:focus-visible {
-      color: #1d6077;
-      text-decoration: underline;
-    }
-
-    .pagination {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-      padding-top: 0.15rem;
-    }
-
-    .pagination-button {
-      min-width: 7.25rem;
-      font-weight: 700;
-      cursor: pointer;
-      background: #f8fbfc;
-    }
-
-    .pagination-button:not(:disabled):hover {
-      background: #f0f6f8;
-      border-color: #9db7c6;
-    }
-
-    .pagination-button:disabled {
-      cursor: not-allowed;
-      opacity: 1;
-      color: #8aa0ae;
-      border-color: #d5dfe6;
-      background: #f3f6f8;
-      box-shadow: none;
-    }
-
-    .state-card {
-      min-height: 9.5rem;
-      align-content: center;
-    }
-
-    .state-card-error {
-      background: rgba(255, 250, 250, 0.94);
-      border-color: rgba(184, 81, 81, 0.16);
-    }
-
-    .state-card-error p {
-      color: #9b1c1c;
-      font-weight: 600;
-    }
-
-    @media (max-width: 680px) {
-      .table-wrap {
-        border: 0;
-        background: transparent;
-      }
-
-      table,
-      thead,
-      tbody,
-      tr,
-      th,
-      td {
-        display: block;
-      }
-
-      table {
-        min-width: 0;
-      }
-
-      thead {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-        clip-path: inset(50%);
-      }
-
-      tr {
-        padding: 0.2rem 0;
-        border-bottom: 1px solid rgba(22, 39, 53, 0.08);
-      }
-
-      td {
-        padding: 0.5rem 0.95rem;
-        border-bottom: 0;
-      }
-
-      td::before {
-        content: attr(data-label);
-        display: block;
-        margin-bottom: 0.15rem;
-        font-size: 0.74rem;
-        font-weight: 700;
-        color: #617d90;
-      }
-
-      .pagination {
-        justify-content: stretch;
-      }
-
-      .pagination-button {
-        flex: 1 1 10rem;
-      }
-    }
-  `,
+  templateUrl: './people-page.component.html',
+  styleUrl: './people-page.component.css',
 })
 export class PeoplePageComponent {
   readonly addPersonOpen = signal(false);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
+  private readonly staffAccess = inject(StaffAccessService, { optional: true });
   private readonly peopleService = inject(PeopleService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -481,6 +82,7 @@ export class PeoplePageComponent {
   };
   readonly queryState = signal<PeopleDirectoryQuery>(DEFAULT_PEOPLE_DIRECTORY_QUERY);
   readonly canManagePeople = computed(() => canManagePeople(this.auth.currentUser()));
+  readonly contactSearchAllowed = computed(() => !this.staffAccess || this.staffAccess.hasCapability('PERSON_CONTACT_READ'));
   recordTypeLabel(value: string | undefined): string { return value === 'STAFF' ? 'Staff' : value === 'TECHNICAL' ? 'Technical' : value === 'COMMUNITY' ? 'Community' : 'Unknown'; }
 
   readonly currentPage = computed(() => this.queryState().page);
@@ -507,6 +109,20 @@ export class PeoplePageComponent {
   });
 
   constructor() {
+    effect(() => {
+      const staffAccess = this.staffAccess;
+      if (!staffAccess?.isReady()) return;
+      const contactLost = !staffAccess.hasCapability('PERSON_CONTACT_READ');
+      const demographicLost = !staffAccess.hasCapability('PERSON_DEMOGRAPHIC_READ');
+      if (!contactLost && !demographicLost) return;
+      const response = this.peopleResponse();
+      if (response) {
+        untracked(() => this.peopleResponse.set({
+          ...response,
+          results: response.results.map(person => redactPersonAfterAccessLoss(person, contactLost, demographicLost)),
+        }));
+      }
+    });
     this.route.queryParamMap
       .pipe(
         map((params) => parsePeopleDirectoryQuery(params)),

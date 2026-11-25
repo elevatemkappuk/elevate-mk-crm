@@ -1,0 +1,162 @@
+    <section class="workspace" aria-labelledby="privacy-admin-title">
+      <p class="eyebrow">Privacy administration</p>
+      <h2 id="privacy-admin-title">Staff capability governance</h2>
+      <p class="intro">Review governed staff capability state without exposing Person contact or demographic data.</p>
+
+      <form class="lookup" (ngSubmit)="searchStaff()">
+        <label for="staff-search">Find staff</label>
+        <div class="lookup-row">
+          <input id="staff-search" name="staffSearch" type="search" [(ngModel)]="staffSearch" placeholder="Name" />
+          <button type="submit" [disabled]="loadingDirectory()">{{ loadingDirectory() ? 'Searching...' : 'Search staff' }}</button>
+        </div>
+        @if (loadingDirectory()) { <p class="notice" role="status">Searching...</p> }
+        @if (!loadingDirectory() && directoryStatus() === 'error') {
+          <p class="error" role="alert">{{ directoryError() }}</p>
+          <button type="button" (click)="searchStaff()">Retry staff search</button>
+        }
+        <div class="directory" aria-label="Staff directory">
+          @for (staff of staffDirectory(); track staff.user_id) {
+            <button class="staff-result" type="button" (click)="selectStaff(staff.user_id)" [disabled]="!staff.can_manage_privacy_permissions">
+              <strong>{{ staff.display_name }}</strong>
+              <span>User {{ staff.user_id }} Â· {{ staff.role_codes.join(', ') || 'No active CRM role' }} Â· {{ staff.eligible ? 'Eligible' : 'Not eligible' }}</span>
+            </button>
+          } @empty { @if (!loadingDirectory() && directoryStatus() === 'empty') { <span class="notice">No eligible staff matches.</span> } }
+        </div>
+      </form>
+
+      <form class="lookup" (ngSubmit)="loadTarget()">
+        <label for="target-user-id">Staff user ID (direct lookup)</label>
+        <div class="lookup-row">
+          <input id="target-user-id" name="targetUserId" type="number" min="1" required [(ngModel)]="targetUserId" />
+          <button type="submit" [disabled]="loading()">{{ loading() ? 'Loading...' : 'Load access' }}</button>
+        </div>
+      </form>
+
+      @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+      @if (feedback()) { <p class="success" role="status">{{ feedback() }}</p> }
+      @if (target(); as detail) {
+        <section class="card" aria-labelledby="target-title">
+          <h3 id="target-title">Target {{ detail.target_user_id }}</h3>
+          <p>Person {{ detail.person_id }} Â· {{ detail.record_type }} Â· {{ detail.is_active ? 'Active' : 'Inactive' }}</p>
+          <div class="roles" aria-label="Staff roles">
+            @for (role of detail.staff_roles; track role.id) {
+              <span [class.inactive]="!role.is_active">{{ role.code }}</span>
+            }
+          </div>
+          <div class="capabilities">
+            @for (entry of capabilityEntries(detail); track entry.code) {
+              <article class="capability">
+                <div>
+                  <strong>{{ capabilityName(entry.code) }}</strong>
+                  <small>{{ capabilityDescription(entry.code) }}</small>
+                  <span>{{ entry.state.effective ? 'Effective' : 'Not effective' }}</span>
+                  <span>Source: {{ effectiveSources(entry.state) }}</span>
+                  <small>{{ entry.state.effective_explanation.reason }}</small>
+                  @if (entry.state.effective_explanation.pending_change; as pending) {
+                    <span class="notice">Pending {{ actionLabel(pending.operation).toLowerCase() }}; current access is unchanged.</span>
+                  }
+                  @if (entry.state.assignment_state) { <span>Individual assignment: {{ entry.state.assignment_state }}</span> }
+                  @if (entry.state.restriction_active) { <span class="restricted">Restricted</span> }
+                </div>
+                <div class="actions">
+                  @for (action of entry.state.permitted_actions; track action) {
+                    <button type="button" (click)="beginApply(entry.code, action)" [disabled]="saving()">{{ actionLabel(action) }}</button>
+                  }
+                </div>
+              </article>
+            }
+          </div>
+        </section>
+      }
+      <section class="card" aria-labelledby="governance-overview-title">
+        <h3 id="governance-overview-title">Governance overview</h3>
+        @if (roleDefaults(); as defaults) {
+          <p>Policy version {{ defaults.policy_version }}</p>
+          <div class="history-list" aria-label="Role defaults">
+            @for (entry of defaults.role_defaults; track entry.id) {
+              <article class="history-row">
+                <span><strong>{{ entry.role_code }}</strong> Â· {{ capabilityName(entry.capability) }} Â· {{ entry.is_enabled ? 'Enabled' : 'Disabled' }}</span>
+                <span>{{ roleDefaultStatus(entry) }}</span>
+                <div class="actions">
+                  @for (action of entry.permitted_actions; track action) {
+                    <button type="button" (click)="beginRoleDefaultAction(entry, action)" [disabled]="saving()">{{ actionLabel(action) }}</button>
+                  }
+                </div>
+              </article>
+            } @empty { <span class="notice">No role defaults returned.</span> }
+          </div>
+        }
+        <h4>Pending proposals</h4>
+        <div class="history-list">
+          @for (proposal of pendingProposals(); track proposal.public_id) {
+            <article class="history-row">
+              <span><strong>{{ proposal.operation }}</strong> Â· {{ capabilityName(proposal.capability) }} Â· {{ proposal.target_user_id ? 'User ' + proposal.target_user_id : 'Role ' + proposal.role_code }}</span>
+              <span>Expires {{ proposal.expires_at | date:'mediumDate' }}</span>
+              <div class="actions">
+                @for (action of proposal.permitted_actions; track action) {
+                  <button type="button" (click)="beginProposalAction(proposal, action)" [disabled]="saving()">{{ actionLabel(action) }}</button>
+                }
+              </div>
+            </article>
+          } @empty { <span class="notice">No pending proposals.</span> }
+        </div>
+        <h4>Governance history</h4>
+        <div class="history-list">
+          @for (proposal of historyItems(); track proposal.public_id) {
+            <article class="history-row">
+              <strong>{{ actionLabel(proposal.operation) }} Â· {{ capabilityName(proposal.capability) }}</strong>
+              <span>{{ proposal.target_label || (proposal.target_user_id ? 'User ' + proposal.target_user_id : 'Role ' + proposal.role_code) }} Â· Actor {{ proposal.actor_user_id ?? proposal.proposed_by_id }}</span>
+              <span>{{ (proposal.timestamp || proposal.created_at) | date:'medium' }} Â· {{ proposal.status }} Â· {{ proposal.decision?.outcome || (proposal.superuser_operation ? 'Applied by superuser' : 'Recorded') }}</span>
+              @if (proposal.proposed_state) { <small>Previous/proposed state: {{ stateSummary(proposal.proposed_state) }}</small> }
+              @if (proposal.resulting_state) { <small>Resulting state: {{ stateSummary(proposal.resulting_state) }}</small> }
+              @if (proposal.reason || proposal.decision?.reason) { <small>Reason: {{ proposal.decision?.reason || proposal.reason }}</small> }
+            </article>
+          }
+          @empty { <span class="notice">No completed governance history.</span> }
+        </div>
+      </section>
+      @if (pendingAction(); as action) {
+        <app-confirmation-dialog
+          [open]="true"
+          [title]="'Confirm ' + actionLabel(action.operation)"
+          [message]="'Target staff user ' + action.targetUserId + ' Â· ' + capabilityName(action.capability) + '. ' + actionDescription(action.operation) + ' ' + (action.executionMode === 'PROPOSAL' ? 'This request requires approval by another authorized administrator.' : 'This change is applied immediately and is audited.')"
+          [confirmLabel]="action.executionMode === 'PROPOSAL' ? 'Submit proposal' : 'Apply change'"
+          [busy]="saving()"
+          [requireReason]="true"
+          [reason]="reason"
+          (reasonChanged)="reason = $event"
+          (confirmed)="confirmApply()"
+          (cancelled)="cancelApply()"
+        />
+      }
+      @if (pendingRoleAction(); as action) {
+        <app-confirmation-dialog
+          [open]="true"
+          [title]="'Confirm ' + actionLabel(action.operation)"
+          [message]="'Role ' + action.roleCode + ' Â· ' + capabilityName(action.capability) + '. ' + (action.executionMode === 'DIRECT_SUPERUSER' ? 'This change is applied immediately through the audited superuser path.' : 'This role-default change requires independent approval and is recorded in governance history.')"
+          [confirmLabel]="action.executionMode === 'DIRECT_SUPERUSER' ? 'Apply change' : 'Submit proposal'"
+          [busy]="saving()"
+          [requireReason]="true"
+          [reason]="reason"
+          (reasonChanged)="reason = $event"
+          (confirmed)="confirmRoleDefaultAction()"
+          (cancelled)="pendingRoleAction.set(null)"
+        />
+      }
+      @if (pendingProposalAction(); as action) {
+        <app-confirmation-dialog
+          [open]="true"
+          [title]="(action.action | titlecase) + ' proposal'"
+          [message]="action.proposal.operation + ' Â· ' + capabilityName(action.proposal.capability)"
+          confirmLabel="Confirm"
+          [busy]="saving()"
+          [requireReason]="true"
+          [reason]="proposalReason"
+          (reasonChanged)="proposalReason = $event"
+          (confirmed)="confirmProposalAction()"
+          (cancelled)="cancelProposalAction()"
+        />
+      }
+      <p class="notice">The API remains authoritative. Changes are audited and may require a second administrator.</p>
+    </section>
+
