@@ -33,11 +33,12 @@ export interface GovernanceStaffDirectory {
 export interface GovernanceRoleDefaults {
   readonly policy_version: number;
   readonly role_defaults: readonly {
-    id: number;
+    id: number | null;
     role_id: number;
     role_code: string;
     capability: string;
     is_enabled: boolean;
+    permitted_actions: readonly string[];
   }[];
 }
 
@@ -56,6 +57,7 @@ export interface GovernanceProposal {
   readonly created_at: string;
   readonly resolved_at: string | null;
   readonly resolution_reason: string;
+  readonly permitted_actions: readonly ('approve' | 'reject' | 'cancel')[];
   readonly decision: {
     readonly outcome: string;
     readonly decided_by_id: number;

@@ -10,6 +10,7 @@ export interface AuthenticatedUser {
   email: string;
   person: PersonIdentity;
   staff_roles: string[];
+  readonly is_superuser?: boolean;
 }
 
 export interface LoginCredentials {

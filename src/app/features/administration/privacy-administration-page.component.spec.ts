@@ -78,4 +78,75 @@ describe('PrivacyAdministrationPageComponent', () => {
     expect(component.pendingProposalAction()).toBeNull();
     expect(navigateByUrl).toHaveBeenCalledWith('/access-denied');
   });
+
+  it('submits a backend-permitted role-default proposal with justification', () => {
+    http.expectOne(`${apiBaseUrl}/staff/governance/targets/`).flush({ count: 0, page: 1, page_size: 25, results: [] });
+    const entry = {
+      id: null,
+      role_id: 3,
+      role_code: 'CRM_VIEWER',
+      capability: 'PERSON_CONTACT_READ',
+      is_enabled: false,
+      permitted_actions: ['ROLE_DEFAULT_ENABLE'],
+    } as const;
+    http.expectOne(`${apiBaseUrl}/staff/governance/role-defaults/`).flush({ policy_version: 2, role_defaults: [entry] });
+    http.expectOne(`${apiBaseUrl}/staff/governance/history/individual/`).flush({ results: [] });
+    http.expectOne(`${apiBaseUrl}/staff/governance/history/role-defaults/`).flush({ results: [] });
+    http.expectOne(`${apiBaseUrl}/staff/governance/history/decisions/`).flush({ results: [] });
+
+    component.beginRoleDefaultAction(entry, 'ROLE_DEFAULT_ENABLE');
+    component.reason = 'Enable the approved viewer contact workflow';
+    component.confirmRoleDefaultAction();
+
+    const proposal = http.expectOne(`${apiBaseUrl}/staff/governance/proposals/`);
+    expect(proposal.request.body).toEqual({
+      operation: 'ROLE_DEFAULT_ENABLE',
+      capability: 'PERSON_CONTACT_READ',
+      role_id: 3,
+      reason: 'Enable the approved viewer contact workflow',
+    });
+    proposal.flush({ status: 'PENDING' });
+    flushOverviewRequests();
+
+    expect(component.feedback()).toBe('The role-default proposal is awaiting independent approval.');
+  });
+
+  it('routes admitted superuser role-default actions through the audited direct endpoint', () => {
+    http.expectOne(`${apiBaseUrl}/staff/governance/targets/`).flush({ count: 0, page: 1, page_size: 25, results: [] });
+    const entry = {
+      id: null,
+      role_id: 3,
+      role_code: 'CRM_VIEWER',
+      capability: 'PERSON_CONTACT_READ',
+      is_enabled: false,
+      permitted_actions: ['ROLE_DEFAULT_ENABLE'],
+    } as const;
+    http.expectOne(`${apiBaseUrl}/staff/governance/role-defaults/`).flush({ policy_version: 2, role_defaults: [entry] });
+    http.expectOne(`${apiBaseUrl}/staff/governance/history/individual/`).flush({ results: [] });
+    http.expectOne(`${apiBaseUrl}/staff/governance/history/role-defaults/`).flush({ results: [] });
+    http.expectOne(`${apiBaseUrl}/staff/governance/history/decisions/`).flush({ results: [] });
+
+    TestBed.inject(AuthService).setCurrentUserForTest({
+      id: 1,
+      email: 'superuser@example.invalid',
+      person: { id: 1, first_name: 'Synthetic', last_name: 'Superuser', primary_email: null },
+      staff_roles: ['CRM_ADMIN'],
+      is_superuser: true,
+    });
+    component.beginRoleDefaultAction(entry, 'ROLE_DEFAULT_ENABLE');
+    component.reason = 'Direct audited superuser role-default change';
+    component.confirmRoleDefaultAction();
+
+    const action = http.expectOne(`${apiBaseUrl}/staff/governance/superuser-actions/`);
+    expect(action.request.body).toEqual({
+      operation: 'ROLE_DEFAULT_ENABLE',
+      capability: 'PERSON_CONTACT_READ',
+      role_id: 3,
+      reason: 'Direct audited superuser role-default change',
+    });
+    action.flush({ status: 'APPLIED', operation: 'ROLE_DEFAULT_ENABLE', capability: 'PERSON_CONTACT_READ', role_id: 3, target_user_id: null, state: {} });
+    flushOverviewRequests();
+
+    expect(component.feedback()).toBe('The role-default change was applied and audited.');
+  });
 });

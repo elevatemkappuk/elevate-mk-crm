@@ -213,6 +213,31 @@ Reasons are collected for each mutation, duplicate pending proposals have a
 stable user-facing error, and backend responses remain authoritative for
 approval, audit, eligibility and errors.
 
+Role-default management uses the backend's `permitted_actions` projection.
+The CRM displays every active canonical CRM role and capability, including
+disabled defaults, and offers only the server-provided enable or disable
+operation. A submitted role-default change is sent through the existing
+proposal endpoint with a mandatory justification and is clearly shown as
+awaiting independent approval. Matching pending proposals suppress further
+role-default actions; duplicate, stale, rejected, cancelled, expired and
+invalidated outcomes remain backend-authoritative and are reported as
+operation feedback rather than success.
+
+When the authenticated user is an admitted Django superuser, the CRM uses the
+backend-provided `is_superuser` identity flag and routes permitted individual
+and role-default actions to the dedicated `/staff/governance/superuser-actions/`
+endpoint. The backend remains authoritative for CRM admission, mandatory
+justification, transactional auditing and the direct operation result. The
+ordinary proposal workflow is not used for these direct actions. A superuser
+without an active operational CRM role remains denied.
+
+Individual and role-default changes use the same accessible in-page
+confirmation dialog pattern with operation, target, capability, proposed
+state, justification, loading, confirm and cancel controls. The CRM does not
+reimplement eligibility, separation-of-duty, self-approval, or superuser
+rules. The dedicated API superuser route remains the authoritative direct
+exception and is not replaced by the ordinary proposal flow.
+
 Permission changes during an active session are handled through the shared
 `StaffAccessService`. When a protected governance read returns `403`, the page
 immediately clears protected state, invalidates its request epoch, and prevents
@@ -227,6 +252,11 @@ denials: mutation errors continue to be presented locally and do not remove
 valid governance access merely because an operation such as self-approval is
 prohibited. Search loading state is reset on success, failure, and cancellation,
 so a failed request can be retried.
+
+The role-default workflow is implemented against the additive API projection:
+disabled defaults are visible, only backend-permitted enable/disable actions
+are shown, pending proposals suppress duplicate actions, and proposal actions
+are limited by the backend-provided actor-specific `permitted_actions` list.
 
 Isolated local manual acceptance verified the two-browser suspension scenario:
 an administrator suspended the viewer's `STAFF_CAPABILITY_ADMIN` grant, the
@@ -276,7 +306,8 @@ deployment, and cross-repository behavior remain **Unverified**.
   applied.
 - **Verified:** Phase 1A.4B focused Angular validation passed 5 files and 38
   tests; the final CRM validation passed 51 files and 454/454 tests;
-  `npm run build` passed; `npm run test:config` passed 3/3; and
+  the role-default UI changes were included in that run; `npm run build` passed;
+  `npm run test:config` passed 3/3; and
   `git diff --check` passed.
 - **Verified / isolated local runtime:** `http://localhost:4200` consumed the
   isolated API projection; a synthetic delegated manager reached

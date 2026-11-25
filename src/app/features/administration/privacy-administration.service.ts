@@ -44,6 +44,10 @@ export class PrivacyAdministrationService {
     return this.http.post<GovernanceProposal>(`${this.baseUrl}/individual-changes/`, request);
   }
 
+  applySuperuserAction(request: GovernanceMutationRequest): Observable<GovernanceSuperuserResult> {
+    return this.http.post<GovernanceSuperuserResult>(`${this.baseUrl}/superuser-actions/`, request);
+  }
+
   resolveProposal(
     proposalId: string,
     action: 'approve' | 'reject' | 'cancel',
@@ -55,4 +59,13 @@ export class PrivacyAdministrationService {
   history(historyType: 'individual' | 'role-defaults' | 'decisions'): Observable<{ readonly results: readonly GovernanceProposal[] }> {
     return this.http.get<{ readonly results: readonly GovernanceProposal[] }>(`${this.baseUrl}/history/${historyType}/`);
   }
+}
+
+export interface GovernanceSuperuserResult {
+  readonly status: 'APPLIED';
+  readonly operation: string;
+  readonly capability: string;
+  readonly role_id: number | null;
+  readonly target_user_id: number | null;
+  readonly state: unknown;
 }

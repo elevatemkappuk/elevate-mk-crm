@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { finalize } from 'rxjs';
+import { finalize, Observable } from 'rxjs';
 import { Router } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
@@ -48,6 +48,7 @@ import { GovernanceProposal, GovernanceRoleDefaults, GovernanceStaffSummary, Gov
       </form>
 
       @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+      @if (feedback()) { <p class="success" role="status">{{ feedback() }}</p> }
       @if (target(); as detail) {
         <section class="card" aria-labelledby="target-title">
           <h3 id="target-title">Target {{ detail.target_user_id }}</h3>
@@ -82,7 +83,15 @@ import { GovernanceProposal, GovernanceRoleDefaults, GovernanceStaffSummary, Gov
           <p>Policy version {{ defaults.policy_version }}</p>
           <div class="history-list" aria-label="Role defaults">
             @for (entry of defaults.role_defaults; track entry.id) {
-              <span>{{ entry.role_code }} · {{ capabilityName(entry.capability) }} · {{ entry.is_enabled ? 'Enabled' : 'Disabled' }}</span>
+              <article class="history-row">
+                <span><strong>{{ entry.role_code }}</strong> · {{ capabilityName(entry.capability) }} · {{ entry.is_enabled ? 'Enabled' : 'Disabled' }}</span>
+                <span>{{ roleDefaultStatus(entry) }}</span>
+                <div class="actions">
+                  @for (action of entry.permitted_actions; track action) {
+                    <button type="button" (click)="beginRoleDefaultAction(entry, action)" [disabled]="saving()">{{ actionLabel(action) }}</button>
+                  }
+                </div>
+              </article>
             } @empty { <span class="notice">No role defaults returned.</span> }
           </div>
         }
@@ -93,9 +102,9 @@ import { GovernanceProposal, GovernanceRoleDefaults, GovernanceStaffSummary, Gov
               <span><strong>{{ proposal.operation }}</strong> · {{ capabilityName(proposal.capability) }} · {{ proposal.target_user_id ? 'User ' + proposal.target_user_id : 'Role ' + proposal.role_code }}</span>
               <span>Expires {{ proposal.expires_at | date:'mediumDate' }}</span>
               <div class="actions">
-                <button type="button" (click)="beginProposalAction(proposal, 'approve')">Approve</button>
-                <button type="button" (click)="beginProposalAction(proposal, 'reject')">Reject</button>
-                <button type="button" (click)="beginProposalAction(proposal, 'cancel')">Cancel</button>
+                @for (action of proposal.permitted_actions; track action) {
+                  <button type="button" (click)="beginProposalAction(proposal, action)" [disabled]="saving()">{{ actionLabel(action) }}</button>
+                }
               </div>
             </article>
           } @empty { <span class="notice">No pending proposals.</span> }
@@ -124,6 +133,19 @@ import { GovernanceProposal, GovernanceRoleDefaults, GovernanceStaffSummary, Gov
           <div class="dialog-actions">
             <button type="button" (click)="cancelApply()" [disabled]="saving()">Cancel</button>
             <button type="button" (click)="confirmApply()" [disabled]="saving() || !reason.trim()">{{ saving() ? 'Submitting...' : 'Confirm change' }}</button>
+          </div>
+        </section>
+      }
+      @if (pendingRoleAction(); as action) {
+        <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="role-default-action-title">
+          <h3 id="role-default-action-title">Confirm {{ actionLabel(action.operation) }}</h3>
+          <p>Role {{ action.roleCode }} · {{ capabilityName(action.capability) }}</p>
+        <p>{{ isSuperuser() ? 'This change is applied immediately through the audited superuser path.' : 'This role-default change requires independent approval and is recorded in governance history.' }}</p>
+          <label for="role-default-reason">Justification</label>
+          <textarea id="role-default-reason" name="roleDefaultReason" rows="4" required [(ngModel)]="reason"></textarea>
+          <div class="dialog-actions">
+            <button type="button" (click)="pendingRoleAction.set(null)" [disabled]="saving()">Cancel</button>
+            <button type="button" (click)="confirmRoleDefaultAction()" [disabled]="saving() || !reason.trim()">{{ saving() ? 'Submitting...' : (isSuperuser() ? 'Apply change' : 'Submit proposal') }}</button>
           </div>
         </section>
       }
@@ -162,6 +184,7 @@ import { GovernanceProposal, GovernanceRoleDefaults, GovernanceStaffSummary, Gov
     .capability span { color: #6f5220; font-size: .85rem; }
     .restricted { color: #743f2b !important; background: #f4d9ce; }
     .error { padding: .75rem; color: #743f2b; background: #f4d9ce; border-radius: .5rem; }
+    .success { padding: .75rem; color: #245b36; background: #e1f2e5; border-radius: .5rem; }
     .dialog { display: grid; gap: .75rem; padding: 1rem; border: 2px solid #8b6519; border-radius: .9rem; background: #fff8e8; }
     textarea { width: 100%; border: 1px solid #b69a66; border-radius: .5rem; padding: .5rem; font: inherit; box-sizing: border-box; }
     .dialog-actions { display: flex; gap: .5rem; justify-content: flex-end; }
@@ -182,10 +205,12 @@ export class PrivacyAdministrationPageComponent {
   private revalidatingAuthorization = false;
   readonly target = signal<GovernanceTargetDetail | null>(null);
   readonly error = signal<string | null>(null);
+  readonly feedback = signal<string | null>(null);
   readonly loading = signal(false);
   readonly saving = signal(false);
   readonly pendingAction = signal<{ capability: string; operation: string; targetUserId: number } | null>(null);
   readonly pendingProposalAction = signal<{ proposal: GovernanceProposal; action: 'approve' | 'reject' | 'cancel' } | null>(null);
+  readonly pendingRoleAction = signal<{ roleId: number; roleCode: string; capability: string; operation: string } | null>(null);
   readonly staffDirectory = signal<readonly GovernanceStaffSummary[]>([]);
   readonly roleDefaults = signal<GovernanceRoleDefaults | null>(null);
   readonly individualHistory = signal<readonly GovernanceProposal[]>([]);
@@ -215,6 +240,16 @@ export class PrivacyAdministrationPageComponent {
   pendingProposals(): GovernanceProposal[] {
     const proposals = [...this.individualHistory(), ...this.roleDefaultHistory()];
     return proposals.filter((proposal, index, all) => proposal.status === 'PENDING' && all.findIndex(item => item.public_id === proposal.public_id) === index);
+  }
+
+  roleDefaultStatus(entry: GovernanceRoleDefaults['role_defaults'][number]): string {
+    const pending = this.roleDefaultHistory().find(proposal =>
+      proposal.status === 'PENDING'
+      && proposal.role_id === entry.role_id
+      && proposal.capability === entry.capability,
+    );
+    if (pending) return `Pending ${this.actionLabel(pending.operation).toLowerCase()}`;
+    return entry.is_enabled ? 'Current default' : 'Disabled default';
   }
 
   searchStaff(): void {
@@ -287,14 +322,17 @@ export class PrivacyAdministrationPageComponent {
     if (!action || !detail || detail.target_user_id !== action.targetUserId || !reason) return;
     this.saving.set(true);
     this.error.set(null);
+    this.feedback.set(null);
     const request = { operation: action.operation, capability: action.capability, target_user_id: action.targetUserId, reason };
     const governedByProposal = this.requiresApproval(action.operation, action.capability);
-    const mutation = governedByProposal
-      ? this.service.createProposal(request)
-      : this.service.applyIndividualChange(request);
+    const mutation: Observable<unknown> = this.isSuperuser()
+      ? this.service.applySuperuserAction(request)
+      : governedByProposal
+        ? this.service.createProposal(request)
+        : this.service.applyIndividualChange(request);
     mutation.subscribe({
-      next: () => { this.pendingAction.set(null); this.loadTarget(); this.refreshGovernance(); },
-      error: error => this.showError(error),
+      next: () => { this.pendingAction.set(null); this.feedback.set('The capability change was applied and audited.'); this.loadTarget(); this.refreshGovernance(); },
+      error: (error: { error?: { code?: string; detail?: string }; status?: number }) => this.showError(error),
       complete: () => this.saving.set(false),
     });
   }
@@ -302,6 +340,12 @@ export class PrivacyAdministrationPageComponent {
   beginProposalAction(proposal: GovernanceProposal, action: 'approve' | 'reject' | 'cancel'): void {
     this.proposalReason = '';
     this.pendingProposalAction.set({ proposal, action });
+  }
+
+  beginRoleDefaultAction(entry: GovernanceRoleDefaults['role_defaults'][number], operation: string): void {
+    if (!entry.permitted_actions.includes(operation) || this.saving()) return;
+    this.reason = '';
+    this.pendingRoleAction.set({ roleId: entry.role_id, roleCode: entry.role_code, capability: entry.capability, operation });
   }
 
   cancelProposalAction(): void {
@@ -314,15 +358,42 @@ export class PrivacyAdministrationPageComponent {
     if (!pending || !reason) return;
     this.saving.set(true);
     this.error.set(null);
+    this.feedback.set(null);
     this.service.resolveProposal(pending.proposal.public_id, pending.action, reason).subscribe({
-      next: () => { this.pendingProposalAction.set(null); this.refreshGovernance(); },
+      next: value => { this.pendingProposalAction.set(null); this.feedback.set(`Proposal ${value.status.toLowerCase()}.`); this.refreshGovernance(); },
       error: error => this.showError(error),
       complete: () => this.saving.set(false),
     });
   }
 
+  confirmRoleDefaultAction(): void {
+    const action = this.pendingRoleAction();
+    const reason = this.reason.trim();
+    if (!action || !reason) return;
+    this.saving.set(true);
+    this.error.set(null);
+    this.feedback.set(null);
+    const mutation: Observable<unknown> = this.isSuperuser()
+      ? this.service.applySuperuserAction({ operation: action.operation, capability: action.capability, role_id: action.roleId, reason })
+      : this.service.createProposal({ operation: action.operation, capability: action.capability, role_id: action.roleId, reason });
+    mutation.subscribe({
+      next: () => {
+        this.pendingRoleAction.set(null);
+        this.feedback.set(this.isSuperuser() ? 'The role-default change was applied and audited.' : 'The role-default proposal is awaiting independent approval.');
+        this.refreshGovernance();
+      },
+      error: (error: { error?: { code?: string; detail?: string }; status?: number }) => this.showError(error),
+      complete: () => this.saving.set(false),
+    });
+  }
+
   requiresApproval(operation: string, capability: string): boolean {
+    if (this.isSuperuser()) return false;
     return capability === 'STAFF_CAPABILITY_ADMIN' && ['INDIVIDUAL_GRANT', 'INDIVIDUAL_RESTORE', 'INDIVIDUAL_UNRESTRICT'].includes(operation);
+  }
+
+  isSuperuser(): boolean {
+    return this.auth.currentUser()?.is_superuser === true;
   }
 
   capabilityName(capability: string): string {
@@ -407,6 +478,8 @@ export class PrivacyAdministrationPageComponent {
     this.decisionHistory.set([]);
     this.pendingAction.set(null);
     this.pendingProposalAction.set(null);
+    this.pendingRoleAction.set(null);
     this.saving.set(false);
+    this.feedback.set(null);
   }
 }
