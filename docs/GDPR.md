@@ -469,3 +469,26 @@ the current API projection. The complete Phase 1A.4D isolated manual UAT is
 accepted for the API/CRM workflow. Minor UX polish remains deferred as
 non-blocking backlog work; operational migrations, deployment, cross-repository
 release compatibility, and final-hardening evidence remain outstanding.
+
+## Phase 1A.4E and 1A.6 consolidated status
+
+Status: **Implemented / source-inspected; final automated hardening deferred.**
+The CRM continues to consume backend-calculated capability state, permitted
+actions, privacy projections, and revocation behavior through the accepted
+Django session-authenticated API contracts. Mobile JWT authentication remains
+outside Staff CRM routes; no duplicate frontend authorization system was added.
+
+Phase 1A.5 legacy reconciliation is explicitly skipped because the current
+dataset is test data. No CRM reconciliation UI, dashboard, or remediation flow
+was added. Minor UX polish remains a non-blocking backlog item. Automated tests,
+cross-repository deployment verification, and final hardening remain unverified
+until the consolidated GDPR hardening stage.
+
+The unresolved API security and governance obligations (AUTH-001, AUTH-002,
+GOV-003, GOV-005, uncovered GOV-006 paths, and trusted-provenance verification)
+are carried into GDPR Phase 1C final hardening and are not risk-accepted here.
+Independent specialist acceptance was incomplete because the active agent-thread
+limit prevented the remaining delegations. All implementation-stage regression
+tests remain **Implemented / Unexecuted**. Production activation still requires
+the final security, QA, architecture and documentation gates plus runtime and
+deployment verification.
