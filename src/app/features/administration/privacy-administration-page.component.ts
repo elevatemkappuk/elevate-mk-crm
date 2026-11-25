@@ -65,7 +65,13 @@ import { ConfirmationDialogComponent } from '../../shared/ui/confirmation-dialog
                 <div>
                   <strong>{{ capabilityName(entry.code) }}</strong>
                   <small>{{ capabilityDescription(entry.code) }}</small>
-                  <span>{{ entry.state.assignment_state || 'No individual assignment' }}</span>
+                  <span>{{ entry.state.effective ? 'Effective' : 'Not effective' }}</span>
+                  <span>Source: {{ effectiveSources(entry.state) }}</span>
+                  <small>{{ entry.state.effective_explanation.reason }}</small>
+                  @if (entry.state.effective_explanation.pending_change; as pending) {
+                    <span class="notice">Pending {{ actionLabel(pending.operation).toLowerCase() }}; current access is unchanged.</span>
+                  }
+                  @if (entry.state.assignment_state) { <span>Individual assignment: {{ entry.state.assignment_state }}</span> }
                   @if (entry.state.restriction_active) { <span class="restricted">Restricted</span> }
                 </div>
                 <div class="actions">
@@ -112,15 +118,17 @@ import { ConfirmationDialogComponent } from '../../shared/ui/confirmation-dialog
         </div>
         <h4>Governance history</h4>
         <div class="history-list">
-          @for (proposal of individualHistory(); track proposal.public_id) {
-            <span>Individual · {{ proposal.operation }} · {{ proposal.status }} · {{ capabilityName(proposal.capability) }}</span>
+          @for (proposal of historyItems(); track proposal.public_id) {
+            <article class="history-row">
+              <strong>{{ actionLabel(proposal.operation) }} · {{ capabilityName(proposal.capability) }}</strong>
+              <span>{{ proposal.target_label || (proposal.target_user_id ? 'User ' + proposal.target_user_id : 'Role ' + proposal.role_code) }} · Actor {{ proposal.actor_user_id ?? proposal.proposed_by_id }}</span>
+              <span>{{ (proposal.timestamp || proposal.created_at) | date:'medium' }} · {{ proposal.status }} · {{ proposal.decision?.outcome || (proposal.superuser_operation ? 'Applied by superuser' : 'Recorded') }}</span>
+              @if (proposal.proposed_state) { <small>Previous/proposed state: {{ stateSummary(proposal.proposed_state) }}</small> }
+              @if (proposal.resulting_state) { <small>Resulting state: {{ stateSummary(proposal.resulting_state) }}</small> }
+              @if (proposal.reason || proposal.decision?.reason) { <small>Reason: {{ proposal.decision?.reason || proposal.reason }}</small> }
+            </article>
           }
-          @for (proposal of roleDefaultHistory(); track proposal.public_id) {
-            <span>Role default · {{ proposal.operation }} · {{ proposal.status }} · {{ capabilityName(proposal.capability) }}</span>
-          }
-          @for (proposal of decisionHistory(); track proposal.public_id) {
-            <span>Decision · {{ proposal.operation }} · {{ proposal.status }} · {{ proposal.decision?.outcome || 'Recorded' }}</span>
-          }
+          @empty { <span class="notice">No completed governance history.</span> }
         </div>
       </section>
       @if (pendingAction(); as action) {
@@ -405,6 +413,34 @@ export class PrivacyAdministrationPageComponent {
       LEGAL_HOLD_ADMIN: 'Manage legal-hold administration workflows.',
     };
     return descriptions[capability] ?? 'Governed privacy capability.';
+  }
+
+  effectiveSources(state: GovernanceTargetDetail['capabilities'][string]): string {
+    return state.effective_explanation.sources.length
+      ? state.effective_explanation.sources.map(source => this.actionLabel(source)).join(', ')
+      : 'None';
+  }
+
+  historyItems(): GovernanceProposal[] {
+    const seen = new Set<string>();
+    return [...this.individualHistory(), ...this.roleDefaultHistory(), ...this.decisionHistory()]
+      .filter(item => item.status !== 'PENDING')
+      .filter(item => {
+        if (seen.has(item.public_id)) return false;
+        seen.add(item.public_id);
+        return true;
+      })
+      .sort((left, right) => {
+        const leftTimestamp = Date.parse(left.timestamp || left.created_at || '');
+        const rightTimestamp = Date.parse(right.timestamp || right.created_at || '');
+        return rightTimestamp - leftTimestamp;
+      });
+  }
+
+  stateSummary(state: Record<string, unknown>): string {
+    return Object.entries(state)
+      .map(([key, value]) => `${key.replaceAll('_', ' ')}: ${Array.isArray(value) ? value.join(', ') : String(value)}`)
+      .join(' · ');
   }
 
   actionDescription(operation: string): string {

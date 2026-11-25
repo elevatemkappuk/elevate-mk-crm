@@ -4,7 +4,7 @@ Status: Living Documentation. The backend capability foundation and governance
 implementation are source-inspected, with focused isolated PostgreSQL
 migration/test validation recorded by the API repository. The latest targeted
 Phase 1A.4C CRM governance consumer is implemented in source. The repository
-native Angular unit-test runner passed 456/456 tests and the build passed in
+native Angular unit-test runner passed 457/457 tests and the build passed in
 the isolated local environment. Cross-repository deployment behavior remains
 unverified.
 
@@ -197,7 +197,7 @@ privacy capabilities.
 
 An earlier local validation covered 51 test files and 454/454 tests; that count
 is historical. The current repository-native Angular run passed 51 files and
-456/456 tests, and `npm run build` passed. The additional lifecycle regression
+457/457 tests, and `npm run build` passed. The additional lifecycle regression
 covers a governance read denied after capability suspension.
 
 `PrivacyAdministrationService` consumes the API governance contracts for safe
@@ -310,7 +310,7 @@ deployment, and cross-repository behavior remain **Unverified**.
 - **Verified:** Phase 1A.4B focused Angular validation passed 5 files and 38
   tests; the historical CRM validation passed 51 files and 454/454 tests;
   the current repository-native Angular validation passed 51 files and
-  456/456 tests;
+  457/457 tests;
   the role-default UI changes were included in that run; `npm run build` passed;
   `npm run test:config` passed 3/3; and
   `git diff --check` passed.
@@ -378,9 +378,35 @@ recorded above.
 - Vertical escalation prevention: **Implemented; partially runtime verified.**
 - Authorization revocation: **Implemented; runtime verified in focused CRM
   lifecycle coverage.**
-- Security-sensitive authorization-failure logging: **Unverified.**
+- Security-sensitive authorization-failure logging: **Implemented in the API;
+  CRM/browser-runtime verification for this closure batch remains unverified.**
 - Privileged-operation auditing: **Implemented; backend runtime evidence exists.**
-- Functional access-control regression testing: **Verified; 456/456 CRM tests
+- Functional access-control regression testing: **Verified; 457/457 CRM tests
   passed, with backend evidence recorded separately.**
 - OWASP review: **Implemented review gate; independent runtime security evidence
   remains unverified.**
+
+### Final Phase 1A.4C closure-batch presentation
+
+The CRM governance page renders backend-projected effective capability state,
+including whether a capability is effective, its source (role default,
+individual grant, explicit restriction, suspended/revoked assignment or
+superuser bypass), the backend reason, and any pending change. Pending
+proposals are never treated as effective permissions.
+
+Revoked assignments remain visible as historical state, are not effective, and
+may be granted again through the backend-permitted `INDIVIDUAL_GRANT` action;
+the revoked record is not silently deleted or reactivated.
+
+Governance history is presented as one de-duplicated safe view with a
+human-readable operation and capability, target, actor, timestamp, outcome,
+reason, proposal/decision status, and before/resulting state where supplied by
+the API. Direct audited superuser operations are visibly marked. The CRM does
+not consume unrestricted AuditEvent metadata and does not calculate authority
+locally.
+
+The API records applicable governance authorization denials with safe opaque
+references and reason codes. The CRM preserves the existing authorization
+error and access-loss handling; independent browser/runtime verification for
+this closure batch remains unverified until the focused frontend validation
+and specialist acceptance are complete.

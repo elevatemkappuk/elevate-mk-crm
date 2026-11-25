@@ -144,4 +144,60 @@ describe('PrivacyAdministrationPageComponent', () => {
 
     expect(component.feedback()).toBe('The role-default change was applied and audited.');
   });
+
+  it('renders backend effective explanations and de-duplicates governance history', () => {
+    http.expectOne(`${apiBaseUrl}/staff/governance/targets/`).flush({ count: 0, page: 1, page_size: 25, results: [] });
+    flushOverviewRequests();
+
+    const entry = {
+      public_id: 'proposal-1',
+      operation: 'ROLE_DEFAULT_ENABLE',
+      status: 'APPROVED',
+      role_id: 3,
+      role_code: 'CRM_VIEWER',
+      target_user_id: null,
+      capability: 'PERSON_CONTACT_READ',
+      proposed_by_id: 7,
+      reason: 'Approved governance change',
+      policy_version: 2,
+      expires_at: '2026-01-01T00:00:00Z',
+      created_at: '2025-12-01T00:00:00Z',
+      resolved_at: '2025-12-02T00:00:00Z',
+      resolution_reason: 'Approved',
+      permitted_actions: [],
+      proposed_state: { target_kind: 'role_default', enabled: false },
+      resulting_state: { target_kind: 'role_default', enabled: true },
+      decision: null,
+    } as any;
+    component.roleDefaultHistory.set([entry]);
+    component.decisionHistory.set([entry]);
+    component.target.set({
+      target_user_id: 5,
+      person_id: 5,
+      is_active: true,
+      record_type: 'STAFF',
+      staff_roles: [{ id: 3, code: 'CRM_VIEWER', is_active: true }],
+      capabilities: {
+        PERSON_CONTACT_READ: {
+          assignment_state: null,
+          restriction_active: false,
+          effective: true,
+          effective_explanation: {
+            effective: true,
+            sources: ['ROLE_DEFAULT'],
+            reason: 'Effective from an active role default.',
+            pending_change: null,
+          },
+          permitted_actions: [],
+          permitted_action_modes: {},
+        },
+      },
+    } as any);
+    fixture.detectChanges();
+
+    expect(component.historyItems()).toHaveLength(1);
+    expect(fixture.nativeElement.textContent).toContain('Effective');
+    expect(fixture.nativeElement.textContent).toContain('Role default enable');
+    expect(fixture.nativeElement.textContent).toContain('Previous/proposed state:');
+  });
 });
