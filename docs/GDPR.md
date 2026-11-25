@@ -184,35 +184,56 @@ outside this implementation; their cross-repository compatibility is
 
 ## Phase 1A.4C.3 Staff Privacy Administration
 
-Status: **Implemented / source-inspected; CRM build verified; runtime and
-cross-repository capability disclosure remain unverified.**
+Status: **Implemented / isolated local runtime verified; deployment and
+cross-repository production compatibility remain unverified.**
 
 The CRM now contains a separate `/privacy-administration` route and navigation
 entry guarded by the backend-projected `STAFF_CAPABILITY_ADMIN` capability. Existing CRM_ADMIN
 Administration and import routes remain unchanged. The separate route is
-intended for eligible delegated CRM staff when the API disclosure policy
-provides that capability; the current empty disclosure allowlist therefore
-fails closed until that policy is activated.
+available for eligible delegated CRM staff when the API projects
+`STAFF_CAPABILITY_ADMIN`; the API allowlist intentionally excludes the other
+privacy capabilities.
 
-The final local validation covered 50 test files and 450/450 tests, and
+The final local validation covered 51 test files and 454/454 tests, and
 `npm run build` passed. The initial sandbox test attempt was blocked by the
 Windows `spawn EPERM` executor restriction; the elevated local rerun completed
-successfully.
+successfully. The additional lifecycle regression covers a governance read
+denied after capability suspension.
 
 `PrivacyAdministrationService` consumes the API governance contracts for safe
-target detail, role-default state, proposal creation, direct individual
-mutations and proposal resolution. `PrivacyAdministrationPageComponent`
+Staff directory search, target detail, role-default state, proposal creation,
+direct individual mutations and proposal resolution. `PrivacyAdministrationPageComponent`
 renders only identifiers, staff-role state, capability assignment/restriction
 state and backend-permitted actions. It does not display contact or demographic
 fields, store capability data in browser storage, or authorize requests
-client-side. Reasons are collected for each mutation, and backend responses
-remain authoritative for approval, audit, eligibility and errors.
+client-side. Human-readable capability labels/descriptions and an inline
+confirmation dialog are used; ordinary individual changes apply immediately,
+while `STAFF_CAPABILITY_ADMIN` grant/restore/unrestrict uses proposal flow.
+Reasons are collected for each mutation, duplicate pending proposals have a
+stable user-facing error, and backend responses remain authoritative for
+approval, audit, eligibility and errors.
 
-Permission changes during an active session are reflected by the existing
-memory-only StaffAccess projection refresh/invalidation model. A missing,
-stale, empty or failed projection keeps the route unavailable. Browser runtime,
-manual isolated-environment acceptance, cross-repository compatibility and
-non-empty API capability disclosure remain **Unverified/Deferred**.
+Permission changes during an active session are handled through the shared
+`StaffAccessService`. When a protected governance read returns `403`, the page
+immediately clears protected state, invalidates its request epoch, and prevents
+stale or in-flight responses from repopulating the directory, target, history,
+role-default, and pending-action state. It then refreshes
+`GET /staff/access/me/`. If `STAFF_CAPABILITY_ADMIN` is no longer effective, or
+the refresh fails, the CRM redirects to the existing `/access-denied` route.
+The authenticated session and ordinary CRM functionality remain intact.
+
+This read-side access-loss handling is distinct from action-specific business
+denials: mutation errors continue to be presented locally and do not remove
+valid governance access merely because an operation such as self-approval is
+prohibited. Search loading state is reset on success, failure, and cancellation,
+so a failed request can be retried.
+
+Isolated local manual acceptance verified the two-browser suspension scenario:
+an administrator suspended the viewer's `STAFF_CAPABILITY_ADMIN` grant, the
+viewer received `403` from the staff directory request, and the viewer was
+redirected to `http://localhost:4200/access-denied` without signing out. The
+isolated database was `elevate_gdpr_phase1a4c_manual`. Deployment and
+cross-repository compatibility remain **Unverified**.
 
 ## Deferred functionality
 
@@ -223,7 +244,7 @@ The following are approved for later stages but are not implemented here:
 - broader capability-consuming UI, additional route guards, or directives;
 - contact masking and demographic restrictions;
 - Person creation/editing privacy enforcement;
-- search, filtering, marketing, campaign, and export protection;
+- Person search/filtering, marketing, campaign, and export protection;
 - privacy audit history presentation;
 - broader Phase 1A.4C workflows beyond the separate capability-protected
   administration foundation described above.
@@ -254,13 +275,22 @@ deployment, and cross-repository behavior remain **Unverified**.
   and `git diff --check` was clean. No schema or migration files changed or were
   applied.
 - **Verified:** Phase 1A.4B focused Angular validation passed 5 files and 38
-  tests; `npm run build` passed; `npm run test:config` passed 3/3; and
+  tests; the final CRM validation passed 51 files and 454/454 tests;
+  `npm run build` passed; `npm run test:config` passed 3/3; and
   `git diff --check` passed.
-- **Unverified:** CRM runtime behavior, Mobile and Community compatibility,
-  cross-repository runtime behavior, deployment behavior, and browser/manual
-  consumption of the Staff Access contract remain unverified. The route is
-  intentionally inaccessible while the API capability disclosure allowlist is
-  empty.
+- **Verified / isolated local runtime:** `http://localhost:4200` consumed the
+  isolated API projection; a synthetic delegated manager reached
+  `/privacy-administration`, an explicitly restricted synthetic account failed
+  closed at `/access-denied`, and Chromium verified the live Staff directory
+  search against `http://localhost:8000` using the isolated database, returning
+  a synthetic Staff result with the search control re-enabled. The governance
+  page also supported target loading and an ordinary audited mutation. A
+  subsequent two-browser suspension test verified authorization-loss refresh,
+  protected-state clearing, and redirect to `/access-denied` while preserving
+  the viewer's authenticated session. The isolated database was
+  `elevate_gdpr_phase1a4c_manual`; no credentials are stored here.
+- **Unverified:** Mobile and Community compatibility, deployment behavior, and
+  production/staging cross-repository runtime behavior.
 - **Verified elsewhere:** prior isolated local API governance migration, schema
   and focused PostgreSQL test evidence is recorded in the API repository's [GDPR guide](../../elevate-mk-api/docs/GDPR.md).
   The latest authorized API validation passed 69/69 focused tests and 9/9
@@ -269,9 +299,10 @@ deployment, and cross-repository behavior remain **Unverified**.
   Community runtime compatibility.
 - **Planned:** later capability-aware guards/directives, broader UI enforcement,
   and user-facing privacy workflows.
-- **Deferred:** any non-empty CRM capability disclosure allowlist and future
-  capability consumers beyond the Phase 1A.4B memory-only presentation layer.
-- **Unverified:** runtime behavior after future capability-aware UI integration.
+- **Implemented:** the CRM capability disclosure allowlist exposes only
+  `STAFF_CAPABILITY_ADMIN`; other capability consumers remain deferred.
+- **Unverified:** Mobile and Community compatibility, deployment behavior, and
+  runtime behavior after future capability-aware UI integration.
 
 Detailed backend schemas and evaluator rules are maintained in the API
 repository's [GDPR guide](../../elevate-mk-api/docs/GDPR.md),

@@ -6,6 +6,7 @@ import { API_CONFIG } from '../../core/http/api-config';
 import {
   GovernanceProposal,
   GovernanceRoleDefaults,
+  GovernanceStaffDirectory,
   GovernanceTargetDetail,
 } from './privacy-administration.types';
 
@@ -27,6 +28,10 @@ export class PrivacyAdministrationService {
     return this.http.get<GovernanceTargetDetail>(`${this.baseUrl}/targets/${userId}/`);
   }
 
+  directory(query = ''): Observable<GovernanceStaffDirectory> {
+    return this.http.get<GovernanceStaffDirectory>(`${this.baseUrl}/targets/`, { params: query ? { q: query } : {} });
+  }
+
   roleDefaults(): Observable<GovernanceRoleDefaults> {
     return this.http.get<GovernanceRoleDefaults>(`${this.baseUrl}/role-defaults/`);
   }
@@ -45,5 +50,9 @@ export class PrivacyAdministrationService {
     reason = '',
   ): Observable<GovernanceProposal> {
     return this.http.post<GovernanceProposal>(`${this.baseUrl}/proposals/${proposalId}/${action}/`, { reason });
+  }
+
+  history(historyType: 'individual' | 'role-defaults' | 'decisions'): Observable<{ readonly results: readonly GovernanceProposal[] }> {
+    return this.http.get<{ readonly results: readonly GovernanceProposal[] }>(`${this.baseUrl}/history/${historyType}/`);
   }
 }

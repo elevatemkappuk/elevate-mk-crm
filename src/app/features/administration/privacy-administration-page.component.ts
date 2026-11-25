@@ -1,9 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { finalize } from 'rxjs';
+import { Router } from '@angular/router';
 
+import { AuthService } from '../../core/auth/auth.service';
+import { StaffAccessService } from '../../core/auth/staff-access.service';
 import { PrivacyAdministrationService } from './privacy-administration.service';
-import { GovernanceTargetDetail } from './privacy-administration.types';
+import { GovernanceProposal, GovernanceRoleDefaults, GovernanceStaffSummary, GovernanceTargetDetail } from './privacy-administration.types';
 
 @Component({
   selector: 'app-privacy-administration-page',
@@ -14,8 +18,29 @@ import { GovernanceTargetDetail } from './privacy-administration.types';
       <h2 id="privacy-admin-title">Staff capability governance</h2>
       <p class="intro">Review governed staff capability state without exposing Person contact or demographic data.</p>
 
+      <form class="lookup" (ngSubmit)="searchStaff()">
+        <label for="staff-search">Find staff</label>
+        <div class="lookup-row">
+          <input id="staff-search" name="staffSearch" type="search" [(ngModel)]="staffSearch" placeholder="Name" />
+          <button type="submit" [disabled]="loadingDirectory()">{{ loadingDirectory() ? 'Searching...' : 'Search staff' }}</button>
+        </div>
+        @if (loadingDirectory()) { <p class="notice" role="status">Searching...</p> }
+        @if (!loadingDirectory() && directoryStatus() === 'error') {
+          <p class="error" role="alert">{{ directoryError() }}</p>
+          <button type="button" (click)="searchStaff()">Retry staff search</button>
+        }
+        <div class="directory" aria-label="Staff directory">
+          @for (staff of staffDirectory(); track staff.user_id) {
+            <button class="staff-result" type="button" (click)="selectStaff(staff.user_id)" [disabled]="!staff.can_manage_privacy_permissions">
+              <strong>{{ staff.display_name }}</strong>
+              <span>User {{ staff.user_id }} · {{ staff.role_codes.join(', ') || 'No active CRM role' }} · {{ staff.eligible ? 'Eligible' : 'Not eligible' }}</span>
+            </button>
+          } @empty { @if (!loadingDirectory() && directoryStatus() === 'empty') { <span class="notice">No eligible staff matches.</span> } }
+        </div>
+      </form>
+
       <form class="lookup" (ngSubmit)="loadTarget()">
-        <label for="target-user-id">Staff user ID</label>
+        <label for="target-user-id">Staff user ID (direct lookup)</label>
         <div class="lookup-row">
           <input id="target-user-id" name="targetUserId" type="number" min="1" required [(ngModel)]="targetUserId" />
           <button type="submit" [disabled]="loading()">{{ loading() ? 'Loading...' : 'Load access' }}</button>
@@ -36,17 +61,81 @@ import { GovernanceTargetDetail } from './privacy-administration.types';
             @for (entry of capabilityEntries(detail); track entry.code) {
               <article class="capability">
                 <div>
-                  <strong>{{ entry.code }}</strong>
+                  <strong>{{ capabilityName(entry.code) }}</strong>
+                  <small>{{ capabilityDescription(entry.code) }}</small>
                   <span>{{ entry.state.assignment_state || 'No individual assignment' }}</span>
                   @if (entry.state.restriction_active) { <span class="restricted">Restricted</span> }
                 </div>
                 <div class="actions">
                   @for (action of entry.state.permitted_actions; track action) {
-                    <button type="button" (click)="apply(entry.code, action)" [disabled]="saving()">{{ actionLabel(action) }}</button>
+                    <button type="button" (click)="beginApply(entry.code, action)" [disabled]="saving()">{{ actionLabel(action) }}</button>
                   }
                 </div>
               </article>
             }
+          </div>
+        </section>
+      }
+      <section class="card" aria-labelledby="governance-overview-title">
+        <h3 id="governance-overview-title">Governance overview</h3>
+        @if (roleDefaults(); as defaults) {
+          <p>Policy version {{ defaults.policy_version }}</p>
+          <div class="history-list" aria-label="Role defaults">
+            @for (entry of defaults.role_defaults; track entry.id) {
+              <span>{{ entry.role_code }} · {{ capabilityName(entry.capability) }} · {{ entry.is_enabled ? 'Enabled' : 'Disabled' }}</span>
+            } @empty { <span class="notice">No role defaults returned.</span> }
+          </div>
+        }
+        <h4>Pending proposals</h4>
+        <div class="history-list">
+          @for (proposal of pendingProposals(); track proposal.public_id) {
+            <article class="history-row">
+              <span><strong>{{ proposal.operation }}</strong> · {{ capabilityName(proposal.capability) }} · {{ proposal.target_user_id ? 'User ' + proposal.target_user_id : 'Role ' + proposal.role_code }}</span>
+              <span>Expires {{ proposal.expires_at | date:'mediumDate' }}</span>
+              <div class="actions">
+                <button type="button" (click)="beginProposalAction(proposal, 'approve')">Approve</button>
+                <button type="button" (click)="beginProposalAction(proposal, 'reject')">Reject</button>
+                <button type="button" (click)="beginProposalAction(proposal, 'cancel')">Cancel</button>
+              </div>
+            </article>
+          } @empty { <span class="notice">No pending proposals.</span> }
+        </div>
+        <h4>Governance history</h4>
+        <div class="history-list">
+          @for (proposal of individualHistory(); track proposal.public_id) {
+            <span>Individual · {{ proposal.operation }} · {{ proposal.status }} · {{ capabilityName(proposal.capability) }}</span>
+          }
+          @for (proposal of roleDefaultHistory(); track proposal.public_id) {
+            <span>Role default · {{ proposal.operation }} · {{ proposal.status }} · {{ capabilityName(proposal.capability) }}</span>
+          }
+          @for (proposal of decisionHistory(); track proposal.public_id) {
+            <span>Decision · {{ proposal.operation }} · {{ proposal.status }} · {{ proposal.decision?.outcome || 'Recorded' }}</span>
+          }
+        </div>
+      </section>
+      @if (pendingAction(); as action) {
+        <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="change-title">
+          <h3 id="change-title">Confirm {{ actionLabel(action.operation) }}</h3>
+          <p>Target staff user {{ action.targetUserId }} · {{ capabilityName(action.capability) }}</p>
+          <p>{{ actionDescription(action.operation) }}</p>
+          <p class="notice">{{ requiresApproval(action.operation, action.capability) ? 'This request requires approval by another authorized administrator.' : 'This change is applied immediately and is audited.' }}</p>
+          <label for="change-reason">Justification</label>
+          <textarea id="change-reason" name="changeReason" rows="4" required [(ngModel)]="reason"></textarea>
+          <div class="dialog-actions">
+            <button type="button" (click)="cancelApply()" [disabled]="saving()">Cancel</button>
+            <button type="button" (click)="confirmApply()" [disabled]="saving() || !reason.trim()">{{ saving() ? 'Submitting...' : 'Confirm change' }}</button>
+          </div>
+        </section>
+      }
+      @if (pendingProposalAction(); as action) {
+        <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="proposal-action-title">
+          <h3 id="proposal-action-title">{{ action.action | titlecase }} proposal</h3>
+          <p>{{ action.proposal.operation }} · {{ capabilityName(action.proposal.capability) }}</p>
+          <label for="proposal-reason">Justification</label>
+          <textarea id="proposal-reason" name="proposalReason" rows="3" required [(ngModel)]="proposalReason"></textarea>
+          <div class="dialog-actions">
+            <button type="button" (click)="cancelProposalAction()" [disabled]="saving()">Cancel</button>
+            <button type="button" (click)="confirmProposalAction()" [disabled]="saving() || !proposalReason.trim()">{{ saving() ? 'Submitting...' : 'Confirm' }}</button>
           </div>
         </section>
       }
@@ -73,24 +162,101 @@ import { GovernanceTargetDetail } from './privacy-administration.types';
     .capability span { color: #6f5220; font-size: .85rem; }
     .restricted { color: #743f2b !important; background: #f4d9ce; }
     .error { padding: .75rem; color: #743f2b; background: #f4d9ce; border-radius: .5rem; }
+    .dialog { display: grid; gap: .75rem; padding: 1rem; border: 2px solid #8b6519; border-radius: .9rem; background: #fff8e8; }
+    textarea { width: 100%; border: 1px solid #b69a66; border-radius: .5rem; padding: .5rem; font: inherit; box-sizing: border-box; }
+    .dialog-actions { display: flex; gap: .5rem; justify-content: flex-end; }
+    .directory { display: grid; gap: .5rem; }
+    .staff-result { display: grid; gap: .25rem; text-align: left; background: #fffdf9; color: #443117; }
+    .staff-result span, small { color: #6f5220; font-size: .85rem; }
+    .history-list { display: grid; gap: .5rem; }
+    .history-row { display: grid; gap: .35rem; padding: .65rem; border-top: 1px solid rgba(57, 47, 18, .1); }
     @media (max-width: 700px) { .capability { align-items: stretch; flex-direction: column; } }
   `,
 })
 export class PrivacyAdministrationPageComponent {
   private readonly service = inject(PrivacyAdministrationService);
+  private readonly auth = inject(AuthService);
+  private readonly staffAccess = inject(StaffAccessService);
+  private readonly router = inject(Router);
+  private authorizationEpoch = 0;
+  private revalidatingAuthorization = false;
   readonly target = signal<GovernanceTargetDetail | null>(null);
   readonly error = signal<string | null>(null);
   readonly loading = signal(false);
   readonly saving = signal(false);
+  readonly pendingAction = signal<{ capability: string; operation: string; targetUserId: number } | null>(null);
+  readonly pendingProposalAction = signal<{ proposal: GovernanceProposal; action: 'approve' | 'reject' | 'cancel' } | null>(null);
+  readonly staffDirectory = signal<readonly GovernanceStaffSummary[]>([]);
+  readonly roleDefaults = signal<GovernanceRoleDefaults | null>(null);
+  readonly individualHistory = signal<readonly GovernanceProposal[]>([]);
+  readonly roleDefaultHistory = signal<readonly GovernanceProposal[]>([]);
+  readonly decisionHistory = signal<readonly GovernanceProposal[]>([]);
+  readonly loadingDirectory = signal(false);
+  readonly directoryStatus = signal<'idle' | 'loading' | 'success' | 'empty' | 'error'>('idle');
+  readonly directoryError = signal('The staff directory could not be loaded.');
+  reason = '';
+  proposalReason = '';
+  staffSearch = '';
   targetUserId: number | null = null;
+
+  constructor() {
+    this.searchStaff();
+    this.refreshGovernance();
+  }
+
+  refreshGovernance(): void {
+    const requestEpoch = this.authorizationEpoch;
+    this.service.roleDefaults().subscribe({ next: value => { if (requestEpoch === this.authorizationEpoch) this.roleDefaults.set(value); }, error: error => this.handleGovernanceReadError(error) });
+    this.service.history('individual').subscribe({ next: value => { if (requestEpoch === this.authorizationEpoch) this.individualHistory.set(value.results); }, error: error => this.handleGovernanceReadError(error) });
+    this.service.history('role-defaults').subscribe({ next: value => { if (requestEpoch === this.authorizationEpoch) this.roleDefaultHistory.set(value.results); }, error: error => this.handleGovernanceReadError(error) });
+    this.service.history('decisions').subscribe({ next: value => { if (requestEpoch === this.authorizationEpoch) this.decisionHistory.set(value.results); }, error: error => this.handleGovernanceReadError(error) });
+  }
+
+  pendingProposals(): GovernanceProposal[] {
+    const proposals = [...this.individualHistory(), ...this.roleDefaultHistory()];
+    return proposals.filter((proposal, index, all) => proposal.status === 'PENDING' && all.findIndex(item => item.public_id === proposal.public_id) === index);
+  }
+
+  searchStaff(): void {
+    const requestEpoch = this.authorizationEpoch;
+    this.directoryStatus.set('loading');
+    this.directoryError.set('The staff directory could not be loaded.');
+    this.loadingDirectory.set(true);
+    this.service.directory(this.staffSearch.trim()).pipe(finalize(() => this.loadingDirectory.set(false))).subscribe({
+      next: value => {
+        if (requestEpoch !== this.authorizationEpoch) return;
+        this.staffDirectory.set(value.results);
+        this.directoryStatus.set(value.results.length ? 'success' : 'empty');
+      },
+      error: error => {
+        if (requestEpoch !== this.authorizationEpoch) return;
+        this.staffDirectory.set([]);
+        this.directoryStatus.set('error');
+        this.directoryError.set(error.error?.detail ?? 'The staff directory could not be loaded.');
+        if (error.status === 403) this.handleProtectedReadDenied();
+      },
+    });
+  }
+
+  selectStaff(userId: number): void {
+    this.targetUserId = userId;
+    this.loadTarget();
+  }
 
   loadTarget(): void {
     if (!this.targetUserId || this.targetUserId < 1) return;
+    const requestedTargetId = this.targetUserId;
+    const requestEpoch = this.authorizationEpoch;
     this.loading.set(true);
     this.error.set(null);
-    this.service.target(this.targetUserId).subscribe({
-      next: value => this.target.set(value),
-      error: error => this.showError(error),
+    this.target.set(null);
+    this.service.target(requestedTargetId).subscribe({
+      next: value => { if (requestEpoch === this.authorizationEpoch) this.target.set(value); },
+      error: error => {
+        if (requestEpoch !== this.authorizationEpoch) return;
+        if (error.status === 403) this.handleProtectedReadDenied();
+        else this.showError(error);
+      },
       complete: () => this.loading.set(false),
     });
   }
@@ -103,27 +269,144 @@ export class PrivacyAdministrationPageComponent {
     return action.replaceAll('_', ' ').toLowerCase().replace(/^./, value => value.toUpperCase());
   }
 
-  apply(capability: string, operation: string): void {
-    if (!this.targetUserId) return;
-    const reason = window.prompt('Required justification for this governed change:')?.trim() ?? '';
-    if (!reason) return;
+  beginApply(capability: string, operation: string): void {
+    const detail = this.target();
+    if (!detail || this.loading()) return;
+    this.reason = '';
+    this.pendingAction.set({ capability, operation, targetUserId: detail.target_user_id });
+  }
+
+  cancelApply(): void {
+    if (!this.saving()) this.pendingAction.set(null);
+  }
+
+  confirmApply(): void {
+    const action = this.pendingAction();
+    const detail = this.target();
+    const reason = this.reason.trim();
+    if (!action || !detail || detail.target_user_id !== action.targetUserId || !reason) return;
     this.saving.set(true);
     this.error.set(null);
-    const request = { operation, capability, target_user_id: this.targetUserId, reason };
-    const governedByProposal = ['INDIVIDUAL_GRANT', 'INDIVIDUAL_RESTORE', 'INDIVIDUAL_UNRESTRICT'].includes(operation);
+    const request = { operation: action.operation, capability: action.capability, target_user_id: action.targetUserId, reason };
+    const governedByProposal = this.requiresApproval(action.operation, action.capability);
     const mutation = governedByProposal
       ? this.service.createProposal(request)
       : this.service.applyIndividualChange(request);
     mutation.subscribe({
-      next: () => this.loadTarget(),
+      next: () => { this.pendingAction.set(null); this.loadTarget(); this.refreshGovernance(); },
       error: error => this.showError(error),
       complete: () => this.saving.set(false),
     });
   }
 
-  private showError(error: { error?: { detail?: string }; status?: number }): void {
-    this.error.set(error.error?.detail ?? (error.status === 403 ? 'This action is not permitted.' : 'The governance request could not be completed.'));
+  beginProposalAction(proposal: GovernanceProposal, action: 'approve' | 'reject' | 'cancel'): void {
+    this.proposalReason = '';
+    this.pendingProposalAction.set({ proposal, action });
+  }
+
+  cancelProposalAction(): void {
+    if (!this.saving()) this.pendingProposalAction.set(null);
+  }
+
+  confirmProposalAction(): void {
+    const pending = this.pendingProposalAction();
+    const reason = this.proposalReason.trim();
+    if (!pending || !reason) return;
+    this.saving.set(true);
+    this.error.set(null);
+    this.service.resolveProposal(pending.proposal.public_id, pending.action, reason).subscribe({
+      next: () => { this.pendingProposalAction.set(null); this.refreshGovernance(); },
+      error: error => this.showError(error),
+      complete: () => this.saving.set(false),
+    });
+  }
+
+  requiresApproval(operation: string, capability: string): boolean {
+    return capability === 'STAFF_CAPABILITY_ADMIN' && ['INDIVIDUAL_GRANT', 'INDIVIDUAL_RESTORE', 'INDIVIDUAL_UNRESTRICT'].includes(operation);
+  }
+
+  capabilityName(capability: string): string {
+    return capability.replaceAll('_', ' ').toLowerCase().replace(/^./, value => value.toUpperCase());
+  }
+
+  capabilityDescription(capability: string): string {
+    const descriptions: Record<string, string> = {
+      PERSON_CONTACT_READ: 'View approved contact details.',
+      PERSON_DEMOGRAPHIC_READ: 'View approved demographic details.',
+      PERSON_EXPORT: 'Export approved personal-data projections.',
+      PERSON_RESTRICTED_ACCESS: 'Additional gate for explicitly approved exceptional workflows.',
+      STAFF_CAPABILITY_ADMIN: 'Manage governed staff capability state.',
+      PRIVACY_AUDIT_READ: 'Read privacy-audit projections.',
+      LEGAL_HOLD_ADMIN: 'Manage legal-hold administration workflows.',
+    };
+    return descriptions[capability] ?? 'Governed privacy capability.';
+  }
+
+  actionDescription(operation: string): string {
+    const descriptions: Record<string, string> = {
+      INDIVIDUAL_GRANT: 'Grant the capability to this staff member.',
+      INDIVIDUAL_RESTORE: 'Restore a suspended individual capability.',
+      INDIVIDUAL_SUSPEND: 'Suspend the current individual capability assignment.',
+      INDIVIDUAL_REVOKE: 'Revoke the current individual capability assignment.',
+      INDIVIDUAL_RESTRICT: 'Add an explicit restriction that overrides grants and role defaults.',
+      INDIVIDUAL_UNRESTRICT: 'Remove the explicit restriction; suspended or revoked grants remain inactive.',
+    };
+    return descriptions[operation] ?? 'Change governed capability state.';
+  }
+
+  private showError(error: { error?: { code?: string; detail?: string }; status?: number }): void {
+    const message = error.error?.code === 'PENDING_PROPOSAL_EXISTS'
+      ? 'A pending proposal already exists for this target and capability.'
+      : error.error?.detail ?? (error.status === 403 ? 'This action is not permitted.' : 'The governance request could not be completed.');
+    this.error.set(message);
     this.loading.set(false);
+    this.saving.set(false);
+  }
+
+  private handleGovernanceReadError(error: { status?: number; error?: { detail?: string } }): void {
+    if (error.status === 403) {
+      this.handleProtectedReadDenied();
+      return;
+    }
+    this.showError(error);
+  }
+
+  private handleProtectedReadDenied(): void {
+    if (this.revalidatingAuthorization) return;
+    this.revalidatingAuthorization = true;
+    this.clearProtectedState();
+
+    const user = this.auth.currentUser();
+    if (!user) {
+      this.revalidatingAuthorization = false;
+      void this.router.navigateByUrl('/login');
+      return;
+    }
+
+    this.staffAccess.refresh(user).subscribe({
+      next: () => {
+        this.revalidatingAuthorization = false;
+        if (!this.staffAccess.hasCapability('STAFF_CAPABILITY_ADMIN')) {
+          void this.router.navigateByUrl('/access-denied');
+        }
+      },
+      error: () => {
+        this.revalidatingAuthorization = false;
+        void this.router.navigateByUrl('/access-denied');
+      },
+    });
+  }
+
+  private clearProtectedState(): void {
+    this.authorizationEpoch += 1;
+    this.target.set(null);
+    this.staffDirectory.set([]);
+    this.roleDefaults.set(null);
+    this.individualHistory.set([]);
+    this.roleDefaultHistory.set([]);
+    this.decisionHistory.set([]);
+    this.pendingAction.set(null);
+    this.pendingProposalAction.set(null);
     this.saving.set(false);
   }
 }

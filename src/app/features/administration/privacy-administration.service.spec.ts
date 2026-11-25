@@ -46,4 +46,24 @@ describe('PrivacyAdministrationService', () => {
     });
     mutation.flush({ status: 'APPROVED' });
   });
+
+  it('uses the privacy-safe staff directory contract', () => {
+    service.directory('Synthetic').subscribe();
+
+    const request = http.expectOne(`${apiBaseUrl}/staff/governance/targets/?q=Synthetic`);
+    expect(request.request.method).toBe('GET');
+    request.flush({ count: 1, page: 1, page_size: 25, results: [{ user_id: 5, display_name: 'Synthetic Manager', record_type: 'STAFF', is_active: true, role_codes: ['CRM_MANAGER'], eligible: true, can_manage_privacy_permissions: true }] });
+  });
+
+  it('allows a failed directory request to finish and be retried', () => {
+    service.directory().subscribe({ error: () => undefined });
+
+    const failed = http.expectOne(`${apiBaseUrl}/staff/governance/targets/`);
+    failed.flush({ detail: 'Temporary failure' }, { status: 503, statusText: 'Service Unavailable' });
+
+    service.directory().subscribe();
+    const retry = http.expectOne(`${apiBaseUrl}/staff/governance/targets/`);
+    expect(retry.request.method).toBe('GET');
+    retry.flush({ count: 0, page: 1, page_size: 25, results: [] });
+  });
 });

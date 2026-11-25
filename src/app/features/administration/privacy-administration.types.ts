@@ -13,6 +13,23 @@ export interface GovernanceTargetDetail {
   readonly capabilities: Readonly<Record<string, GovernanceCapabilityState>>;
 }
 
+export interface GovernanceStaffSummary {
+  readonly user_id: number;
+  readonly display_name: string;
+  readonly record_type: string;
+  readonly is_active: boolean;
+  readonly role_codes: readonly string[];
+  readonly eligible: boolean;
+  readonly can_manage_privacy_permissions: boolean;
+}
+
+export interface GovernanceStaffDirectory {
+  readonly count: number;
+  readonly page: number;
+  readonly page_size: number;
+  readonly results: readonly GovernanceStaffSummary[];
+}
+
 export interface GovernanceRoleDefaults {
   readonly policy_version: number;
   readonly role_defaults: readonly {
@@ -39,5 +56,11 @@ export interface GovernanceProposal {
   readonly created_at: string;
   readonly resolved_at: string | null;
   readonly resolution_reason: string;
-  readonly decision: unknown;
+  readonly decision: {
+    readonly outcome: string;
+    readonly decided_by_id: number;
+    readonly reason: string;
+    readonly policy_version: number;
+    readonly created_at: string;
+  } | null;
 }

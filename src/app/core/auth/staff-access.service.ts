@@ -7,9 +7,11 @@ import { API_CONFIG } from '../http/api-config';
 import { AuthenticatedUser } from './auth.types';
 import { StaffAccessProjection, StaffAccessState } from './staff-access.types';
 
-// The API owns the disclosure policy. This registry intentionally remains empty
-// until a later approved CRM capability disclosure decision.
-const CRM_DISCLOSED_CAPABILITY_CODES: ReadonlySet<string> = new Set();
+// The API owns the disclosure policy. Keep this client registry aligned with
+// the approved, intentionally narrow CRM projection allowlist.
+const CRM_DISCLOSED_CAPABILITY_CODES: ReadonlySet<string> = new Set([
+  'STAFF_CAPABILITY_ADMIN',
+]);
 const EMPTY_CAPABILITY_CODES: readonly string[] = Object.freeze([]);
 
 const INITIAL_STATE: StaffAccessState = freezeState({
