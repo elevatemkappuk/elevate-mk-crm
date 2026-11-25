@@ -57,6 +57,7 @@ const secondPerson = {
 class MockAuthService {
   readonly authInitialized = signal(true).asReadonly();
   readonly currentUser = signal<AuthenticatedUser | null>(managerUser).asReadonly();
+  readonly hasPrivacyAuditRead = signal(false).asReadonly();
 }
 
 @Component({

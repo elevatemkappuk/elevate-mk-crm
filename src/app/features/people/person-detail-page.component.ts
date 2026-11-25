@@ -36,6 +36,7 @@ import { DetailListComponent, DetailListItem } from '../../shared/ui/detail-list
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 import { PersonAuditHistorySectionComponent } from './person-audit-history-section.component';
+import { PersonPrivacyAuditSectionComponent } from './person-privacy-audit-section.component';
 import { PersonMarketingPreferenceSectionComponent } from './person-marketing-preference-section.component';
 import { PersonBrevoIntegrationSectionComponent } from './person-brevo-integration-section.component';
 import { PersonCommunityAccountSectionComponent } from './person-community-account-section.component';
@@ -70,6 +71,7 @@ interface AssignSkillFormValue {
     StateMessageComponent,
     StatusBadgeComponent,
     PersonAuditHistorySectionComponent,
+    PersonPrivacyAuditSectionComponent,
     PersonMarketingPreferenceSectionComponent,
     PersonBrevoIntegrationSectionComponent,
     PersonCommunityAccountSectionComponent,
@@ -664,6 +666,13 @@ interface AssignSkillFormValue {
             <app-person-audit-history-section [personId]="person()!.id" />
           </section>
         }
+        @if (canAccessPrivacyAudit()) {
+          <section [hidden]="selectedTab() !== 'privacy'" aria-label="Privacy">
+            @if (selectedTab() === 'privacy') {
+              <app-person-privacy-audit-section [personId]="person()!.id" />
+            }
+          </section>
+        }
         @if (editPersonOpen() && canManagePeople() && !person()!.archived_at) {
           <app-crm-drawer #personDrawer title="Edit person" description="Update personal details."
             [busy]="personWriter.submitting()" [dirty]="personWriter.hasUnsavedEdits()"
@@ -761,6 +770,7 @@ export class PersonDetailPageComponent {
     { id: 'overview', label: 'Overview' }, { id: 'membership', label: 'Membership' },
     ...(this.canAccessInternalNotes() ? [{ id: 'notes', label: 'Notes' }] : []),
     ...(this.canAccessAuditHistory() ? [{ id: 'history', label: 'History' }] : []),
+    ...(this.canAccessPrivacyAudit() ? [{ id: 'privacy', label: 'Privacy' }] : []),
   ]);
   readonly selectedTab = computed(() => this.profileTabs().some(tab => tab.id === this.activeTab()) ? this.activeTab() : 'overview');
   readonly initials = computed(() => ((this.person()?.first_name?.[0] ?? '') + (this.person()?.last_name?.[0] ?? '')).toUpperCase());
@@ -930,6 +940,7 @@ export class PersonDetailPageComponent {
     return Boolean(person && !person.archived_at && this.canAccessInternalNotes());
   });
   readonly canAccessAuditHistory = computed(() => hasStaffCrmAccess(this.auth.currentUser()));
+  readonly canAccessPrivacyAudit = computed(() => this.auth.hasPrivacyAuditRead());
   readonly availableSkills = computed<SkillSummary[]>(() => {
     const assignedSkillIds = new Set(this.skills().map((skill) => skill.id));
     return this.skillsCatalog().filter((skill) => !assignedSkillIds.has(skill.id));

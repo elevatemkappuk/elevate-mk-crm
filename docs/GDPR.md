@@ -3,10 +3,11 @@
 Status: Living Documentation. The backend capability foundation and governance
 implementation are source-inspected, with focused isolated PostgreSQL
 migration/test validation recorded by the API repository. The latest targeted
-Phase 1A.4C CRM governance consumer is implemented in source. The repository
-native Angular unit-test runner passed 457/457 tests and the build passed in
-the isolated local environment. Cross-repository deployment behavior remains
-unverified.
+Phase 1A.4D CRM privacy consumer is implemented in source. The repository
+native Angular unit-test runner passed 460/460 tests and the production build
+passed in the isolated local environment. The final API validation passed
+126/126 backend tests, including migration and PostgreSQL concurrency coverage.
+Cross-repository deployment behavior remains unverified.
 
 ## Purpose and boundary
 
@@ -48,18 +49,19 @@ runtime-unverified.
 The approved Django superuser authority change is backend-only. Active
 superusers may use the API's audited direct governance service path, while
 ordinary CRM administrators remain subject to the existing governance rules.
-No CRM capability-aware route guard or directive was added; runtime compatibility
-remains unverified.
+Phase 1A.4D adds capability-aware CRM consumers and the protected legal-hold
+route; Django remains the authorization boundary and runtime deployment
+compatibility remains unverified.
 
 The API's catalogue extension advances policy version atomically and records
 migration provenance without adding a CRM role default. Its historical Person
 subject backfill preserves unresolved references without inventing Persons.
 The operational Person audit-history contract excludes privacy-domain events;
-the dedicated privacy projection remains API-only and requires backend
-capability plus Person-scope authorization. No CRM privacy-audit route or
-projection is exposed.
+the dedicated privacy projection remains API-authoritative and requires
+backend capability plus Person-scope authorization. The Phase 1A.4D CRM
+consumer is documented below; broader record-access auditing remains deferred.
 
-### Phase 1A.4A Staff Access contract
+### Phase 1A.4A Staff Access contract (historical; superseded disclosure)
 
 The API now exposes `GET /api/v1/staff/access/me/`. It is a session-only CRM
 endpoint admitted for authenticated users with an active `CRM_ADMIN`,
@@ -76,9 +78,9 @@ The successful response has exactly two fields:
 }
 ```
 
-The initial CRM capability disclosure allowlist is intentionally empty to avoid
-exposing capability decisions before a later approved CRM consumer and disclosure
-policy exist. `policy_version` is informational only; `2` is the verified
+Historically, the initial CRM capability disclosure allowlist was intentionally
+empty before the later approved CRM consumer and disclosure policy. The current
+coordinated Phase 1A.4D allowlist is documented below. `policy_version` is informational only; `2` is the verified
 current example value, not a fixed contract value, and it is not a grant, token,
 or client precondition. The API reads the locked singleton policy state and
 performs the effective-access evaluation in one transaction; no policy mutation
@@ -192,12 +194,12 @@ The CRM now contains a separate `/privacy-administration` route and navigation
 entry guarded by the backend-projected `STAFF_CAPABILITY_ADMIN` capability. Existing CRM_ADMIN
 Administration and import routes remain unchanged. The separate route is
 available for eligible delegated CRM staff when the API projects
-`STAFF_CAPABILITY_ADMIN`; the API allowlist intentionally excludes the other
-privacy capabilities.
+`STAFF_CAPABILITY_ADMIN`, `PRIVACY_AUDIT_READ`, and `LEGAL_HOLD_ADMIN`; the
+API remains authoritative for the disclosure allowlist.
 
-An earlier local validation covered 51 test files and 454/454 tests; that count
-is historical. The current repository-native Angular run passed 51 files and
-457/457 tests, and `npm run build` passed. The additional lifecycle regression
+Earlier local validations covered 51 files and 457/457 tests; those counts are
+historical. The current repository-native Angular run passed 53 files and
+460/460 tests, and `npm run build` passed. The additional lifecycle regression
 covers a governance read denied after capability suspension.
 
 `PrivacyAdministrationService` consumes the API governance contracts for safe
@@ -278,13 +280,14 @@ The following are approved for later stages but are not implemented here:
 - contact masking and demographic restrictions;
 - Person creation/editing privacy enforcement;
 - Person search/filtering, marketing, campaign, and export protection;
-- privacy audit history presentation;
+- broader privacy-audit and legal-hold workflows beyond the implemented
+  Phase 1A.4D consumers;
 - broader Phase 1A.4C workflows beyond the separate capability-protected
   administration foundation described above.
 
-Capability-consuming UI, backend enforcement, masking, and user-facing privacy
+Broader capability-consuming UI, masking, and Person user-facing privacy
 workflows remain deferred. The Phase 1A.4B memory-only Staff Access integration
-is implemented and validated by the evidence below; runtime/browser, staging,
+and Phase 1A.4D privacy consumers are implemented as documented below; runtime/browser, staging,
 deployment, and cross-repository behavior remain **Unverified**.
 
 ## Evidence status
@@ -292,7 +295,7 @@ deployment, and cross-repository behavior remain **Unverified**.
 - **Approved:** CRM remains a permission-aware client of backend-authoritative
   contracts.
 - **Implemented / Source-inspected:** the existing API capability foundation,
-  the API-only Phase 1A.4A Staff Access contract, the implemented Phase 1A.4B
+  the historical Phase 1A.4A Staff Access contract, the implemented Phase 1A.4B
   `StaffAccessService`, projection types/signals, AuthService lifecycle
   integration, and the Phase 1A.4C.3 privacy-administration route, service,
   guard, page and safe-presentation contracts; backend authorization remains
@@ -309,7 +312,7 @@ deployment, and cross-repository behavior remain **Unverified**.
   applied.
 - **Verified:** Phase 1A.4B focused Angular validation passed 5 files and 38
   tests; the historical CRM validation passed 51 files and 454/454 tests;
-  the current repository-native Angular validation passed 51 files and
+  the historical repository-native Angular validation passed 51 files and
   457/457 tests;
   the role-default UI changes were included in that run; `npm run build` passed;
   `npm run test:config` passed 3/3; and
@@ -335,10 +338,19 @@ deployment, and cross-repository behavior remain **Unverified**.
   Community runtime compatibility.
 - **Planned:** later capability-aware guards/directives, broader UI enforcement,
   and user-facing privacy workflows.
-- **Implemented:** the CRM capability disclosure allowlist exposes only
-  `STAFF_CAPABILITY_ADMIN`; other capability consumers remain deferred.
+- **Implemented:** the CRM capability disclosure allowlist exposes
+  `STAFF_CAPABILITY_ADMIN`, `PRIVACY_AUDIT_READ`, and `LEGAL_HOLD_ADMIN` for
+  the coordinated Phase 1A.4D rollout; other capability consumers remain
+  deferred.
 - **Unverified:** Mobile and Community compatibility, deployment behavior, and
   runtime behavior after future capability-aware UI integration.
+- **Verified (Phase 1A.4D.4 isolated validation):** current Angular validation
+  passed 53 files and 460/460 tests; `npm run build` passed; API validation
+  passed 126/126 backend tests; the audit.0023 migration regression passed;
+  Django system and migration-drift checks passed; and `git diff --check`
+  passed. The API and CRM development servers were started against the
+  persistent isolated UAT environment at `http://localhost:8000` and
+  `http://localhost:4200`; CSRF and CRM root probes returned HTTP 200.
 
 Detailed backend schemas and evaluator rules are maintained in the API
 repository's [GDPR guide](../../elevate-mk-api/docs/GDPR.md),
@@ -381,8 +393,8 @@ recorded above.
 - Security-sensitive authorization-failure logging: **Implemented in the API;
   CRM/browser-runtime verification for this closure batch remains unverified.**
 - Privileged-operation auditing: **Implemented; backend runtime evidence exists.**
-- Functional access-control regression testing: **Verified; 457/457 CRM tests
-  passed, with backend evidence recorded separately.**
+- Functional access-control regression testing: **Verified; 460/460 CRM tests
+  and 126/126 backend tests passed in isolated validation.**
 - OWASP review: **Implemented review gate; independent runtime security evidence
   remains unverified.**
 
@@ -406,7 +418,37 @@ not consume unrestricted AuditEvent metadata and does not calculate authority
 locally.
 
 The API records applicable governance authorization denials with safe opaque
-references and reason codes. The CRM preserves the existing authorization
-error and access-loss handling; independent browser/runtime verification for
-this closure batch remains unverified until the focused frontend validation
-and specialist acceptance are complete.
+references, safe reason codes, and route-specific operation labels. The CRM
+preserves the existing authorization error and access-loss handling. Browser
+workflow and deployment behavior remain unverified.
+
+### Phase 1A.4D frontend implementation
+
+The CRM now has typed `PrivacyAuditService` and `LegalHoldsService` consumers,
+a separate Privacy audit tab on Person profiles, and a capability-guarded
+`/legal-holds` route. The operational History tab remains unchanged.
+
+`PRIVACY_AUDIT_READ` and `LEGAL_HOLD_ADMIN` are independent capabilities. The
+CRM validates both codes strictly, stores the projection in memory only, and
+uses backend-provided permitted actions and execution modes. It does not infer
+authority from roles or superuser state.
+
+Privacy history supports pagination and bounded date, activity, outcome, and
+superuser-operation filters. Legal Holds supports person and opaque event
+targets, active/released holds, pending/approved/rejected requests, ordinary
+release requests, approval, rejection, and direct superuser release.
+
+When either capability is revoked, the corresponding protected state and open
+dialog are cleared and stale responses are ignored. Ordinary CRM access is
+preserved. Sensitive data is not written to browser storage.
+
+Legal-hold list/detail responses include backend-projected release-request
+summaries. An independent authorized administrator can discover pending
+requests after login or refresh and approve or reject them from the relevant
+hold without manually entering an internal request ID. Self-approval controls
+remain backend-calculated; the CRM only renders permitted actions.
+
+Status: **Implemented / isolated validation verified; browser workflow and
+deployment unverified**. Older CRM
+clients must not consume the expanded API capability disclosure until this
+frontend version is deployed in the coordinated rollout.

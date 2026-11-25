@@ -62,7 +62,8 @@ describe('Person profile workspace', () => {
     };
     await TestBed.configureTestingModule({
       providers: [provideRouter([{ path: 'people/:id', component: PersonDetailPageComponent }]),
-        { provide: AuthService, useValue: { currentUser } }, { provide: PeopleService, useValue: service }],
+        { provide: AuthService, useValue: { currentUser, hasPrivacyAuditRead: signal(false) } },
+        { provide: PeopleService, useValue: service }],
     }).compileComponents();
   });
   afterEach(() => {

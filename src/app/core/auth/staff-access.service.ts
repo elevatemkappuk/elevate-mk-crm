@@ -5,12 +5,14 @@ import { catchError, finalize, map, shareReplay, tap } from 'rxjs/operators';
 
 import { API_CONFIG } from '../http/api-config';
 import { AuthenticatedUser } from './auth.types';
-import { StaffAccessProjection, StaffAccessState } from './staff-access.types';
+import { StaffAccessProjection, StaffAccessState, StaffCapabilityCode } from './staff-access.types';
 
 // The API owns the disclosure policy. Keep this client registry aligned with
 // the approved, intentionally narrow CRM projection allowlist.
 const CRM_DISCLOSED_CAPABILITY_CODES: ReadonlySet<string> = new Set([
   'STAFF_CAPABILITY_ADMIN',
+  'PRIVACY_AUDIT_READ',
+  'LEGAL_HOLD_ADMIN',
 ]);
 const EMPTY_CAPABILITY_CODES: readonly string[] = Object.freeze([]);
 
@@ -141,7 +143,7 @@ function validateProjection(value: unknown): StaffAccessProjection {
 
   const codes = value['capability_codes'];
   const policyVersion = value['policy_version'];
-  if (!Array.isArray(codes) || !codes.every((code): code is string => typeof code === 'string' && code.length > 0)) {
+  if (!Array.isArray(codes) || !codes.every((code): code is StaffCapabilityCode => typeof code === 'string' && code.length > 0)) {
     throw new Error('Invalid staff access capability projection.');
   }
   if (new Set(codes).size !== codes.length || codes.some((code) => !CRM_DISCLOSED_CAPABILITY_CODES.has(code))) {

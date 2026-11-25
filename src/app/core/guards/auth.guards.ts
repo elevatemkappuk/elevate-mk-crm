@@ -78,6 +78,14 @@ export const privacyAdministrationGuard: CanActivateFn = () => {
   return staffAccess.hasCapability('STAFF_CAPABILITY_ADMIN') ? true : redirectTo('/access-denied');
 };
 
+export const legalHoldGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  const user = auth.currentUser();
+  if (!auth.authInitialized()) return true;
+  if (!user) return redirectTo('/login');
+  return auth.hasLegalHoldAdministration() ? true : redirectTo('/access-denied');
+};
+
 export const moderationGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const user = auth.currentUser();

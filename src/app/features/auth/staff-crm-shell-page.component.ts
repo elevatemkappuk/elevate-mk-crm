@@ -108,6 +108,9 @@ export class StaffCrmShellPageComponent {
     if (this.auth.hasPrivacyAdministration()) {
       items.push({ label: 'Privacy administration', path: '/privacy-administration', group: 'Management', icon: 'M12 3 4 6v5c0 5 3.4 8.4 8 10 4.6-1.6 8-5 8-10V6Zm0 5v5m0 3h.01' });
     }
+    if (this.auth.hasLegalHoldAdministration()) {
+      items.push({ label: 'Legal holds', path: '/legal-holds', group: 'Management', icon: 'M12 3 5 6v5c0 4.5 2.7 8 7 10 4.3-2 7-5.5 7-10V6Zm0 5v4m0 3h.01' });
+    }
     return items;
   });
 

@@ -1,5 +1,10 @@
+export type StaffCapabilityCode =
+  | 'STAFF_CAPABILITY_ADMIN'
+  | 'PRIVACY_AUDIT_READ'
+  | 'LEGAL_HOLD_ADMIN';
+
 export interface StaffAccessProjection {
-  readonly capability_codes: readonly string[];
+  readonly capability_codes: readonly StaffCapabilityCode[];
   readonly policy_version: number;
 }
 

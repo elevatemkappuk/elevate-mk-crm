@@ -86,6 +86,16 @@ describe('StaffAccessService', () => {
     expect(service.projection()).toBeNull();
   });
 
+  it('accepts the independent privacy capabilities without inferring them from roles', () => {
+    service.refresh(staffUser).subscribe();
+    const request = httpTesting.expectOne(`${apiBaseUrl}/staff/access/me/`);
+    request.flush({ capability_codes: ['LEGAL_HOLD_ADMIN', 'PRIVACY_AUDIT_READ'], policy_version: 3 });
+
+    expect(service.hasCapability('PRIVACY_AUDIT_READ')).toBe(true);
+    expect(service.hasCapability('LEGAL_HOLD_ADMIN')).toBe(true);
+    expect(service.hasCapability('STAFF_CAPABILITY_ADMIN')).toBe(false);
+  });
+
   it('retains unauthenticated state on 401 and forbidden state on ordinary 403', () => {
     let firstError: unknown;
     service.refresh(staffUser).subscribe({ error: (error) => firstError = error });
