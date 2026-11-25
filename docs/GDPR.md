@@ -530,11 +530,17 @@ independent acceptance is claimed.
 
 The CRM consumes the API's authorized Privacy Audit projection and includes the
 `PRIVACY_PERSON_DISCLOSED` activity filter. The API remains authoritative for
-deliberate disclosure auditing: explicit protected Person detail and overview
-disclosures are audited server-side before response, while masked, list and
-ordinary unprotected reads are not treated as raw disclosure events. The
+deliberate disclosure auditing: approved protected Person detail and overview
+disclosures through the existing Django-superuser bypass are audited
+server-side before response, while ordinary authorized, masked, list and
+unprotected reads are not treated as raw disclosure events. The
 projection exposes safe event fields only; it does not expose raw AuditEvent
 metadata or protected Person values. The audit-choice migration is generated
 but not applied, and frontend/runtime verification remains deferred to GDPR
 Phase 1C hardening. Comprehensive Person access auditing remains the deferred
 `GDPR-FUTURE-001` enhancement.
+
+The final UAT and UI-polishing backlog includes manual verification of People
+privacy projections, masked/restricted indicators, protected search and form
+feedback, and the Privacy Audit disclosure activity filter. These follow-ups do
+not expand the approved privacy scope.
