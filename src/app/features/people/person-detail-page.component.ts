@@ -113,6 +113,11 @@ interface AssignSkillFormValue {
           [jobTitle]="professionalProfile()?.job_title || ''" [canManagePeople]="canManagePeople()"
           [submitting]="personLifecycleSubmitting()" [errorMessage]="personLifecycleErrorMessage()"
           (edit)="editPersonOpen.set(true)" (archive)="archivePerson()" (restore)="restorePerson()" />
+        @if (auth.hasLegalHoldAdministration?.()) {
+          <div class="person-privacy-actions">
+            <a class="button-secondary" [routerLink]="['/legal-holds']" [queryParams]="{ personId: person()!.id }">Place legal hold</a>
+          </div>
+        }
         <nav class="profile-nav" aria-label="Person profile">
           @for (tab of profileTabs(); track tab.id) {
             <a [routerLink]="[]" [fragment]="tab.id" queryParamsHandling="preserve"
@@ -770,7 +775,7 @@ export class PersonDetailPageComponent {
     { id: 'overview', label: 'Overview' }, { id: 'membership', label: 'Membership' },
     ...(this.canAccessInternalNotes() ? [{ id: 'notes', label: 'Notes' }] : []),
     ...(this.canAccessAuditHistory() ? [{ id: 'history', label: 'History' }] : []),
-    ...(this.canAccessPrivacyAudit() ? [{ id: 'privacy', label: 'Privacy' }] : []),
+    ...(this.canAccessPrivacyAudit() ? [{ id: 'privacy', label: 'Privacy Audit' }] : []),
   ]);
   readonly selectedTab = computed(() => this.profileTabs().some(tab => tab.id === this.activeTab()) ? this.activeTab() : 'overview');
   readonly initials = computed(() => ((this.person()?.first_name?.[0] ?? '') + (this.person()?.last_name?.[0] ?? '')).toUpperCase());
@@ -790,7 +795,7 @@ export class PersonDetailPageComponent {
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly auth = inject(AuthService);
+  readonly auth = inject(AuthService);
   private readonly peopleService = inject(PeopleService);
   private readonly destroyRef = inject(DestroyRef);
 

@@ -66,6 +66,13 @@ export class PeopleService {
     });
   }
 
+  searchPeople(query: string): Observable<PaginatedResponse<PersonDirectoryItem>> {
+    return this.http.get<PaginatedResponse<PersonDirectoryItem>>(
+      this.buildUrl('/privacy/legal-holds/person-targets/'),
+      { params: new HttpParams().set('q', query.trim()).set('page_size', '25') },
+    );
+  }
+
   getPerson(personId: number): Observable<PersonListItem> {
     return this.http.get<PersonListItem>(this.buildUrl(`/people/${personId}/`));
   }

@@ -1,14 +1,23 @@
 export type LegalHoldExecutionMode = 'GOVERNED' | 'DIRECT_SUPERUSER';
 
+export interface LegalHoldActor {
+  readonly id: number | null;
+  readonly display_name: string;
+  readonly contact_restricted: boolean;
+}
+
 export interface LegalHold {
   readonly public_id: string;
   readonly scope: 'PERSON' | 'EVENT';
   readonly status: 'ACTIVE' | 'RELEASED';
   readonly person_id: number | null;
+  readonly person_display_name: string | null;
   readonly audit_event_reference: string | null;
   readonly placed_by_id: number;
+  readonly placed_by: LegalHoldActor;
   readonly placed_at: string;
   readonly released_by_id: number | null;
+  readonly released_by: LegalHoldActor | null;
   readonly released_at: string | null;
   readonly justification: string | null;
   readonly permitted_actions: readonly string[];
@@ -21,10 +30,14 @@ export interface LegalHoldReleaseRequest {
   readonly status: 'PENDING' | 'APPROVED' | 'REJECTED';
   readonly justification: string;
   readonly requested_by_id: number;
+  readonly requested_by: LegalHoldActor;
   readonly requested_at: string;
   readonly approved_by_id: number | null;
+  readonly approved_by: LegalHoldActor | null;
   readonly approved_at: string | null;
+  readonly approval_justification: string | null;
   readonly rejected_by_id: number | null;
+  readonly rejected_by: LegalHoldActor | null;
   readonly rejected_at: string | null;
   readonly rejection_reason: string | null;
   readonly permitted_actions: readonly ('approve' | 'reject')[];

@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 
 import { formatForbiddenError } from '../../core/http/forbidden-error';
 import { StaffAccessService } from '../../core/auth/staff-access.service';
@@ -11,6 +12,24 @@ import { PrivacyAuditService } from '../../core/privacy/privacy-audit.service';
 import { PaginatedPrivacyAuditHistoryResponse, PrivacyAuditHistoryEvent } from '../../core/privacy/privacy-audit.types';
 import { CrmSectionCardComponent } from '../../shared/ui/crm-section-card.component';
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
+
+const ACTIVITY_OPTIONS = [
+  ['PERSON_CREATED', 'Person created'],
+  ['PERSON_UPDATED', 'Person updated'],
+  ['PERSON_ARCHIVED', 'Person archived'],
+  ['PERSON_RESTORED', 'Person restored'],
+  ['MEMBERSHIP_CREATED', 'Membership created'],
+  ['MEMBERSHIP_ENDED', 'Membership ended'],
+  ['PROFESSIONAL_PROFILE_CREATED', 'Professional profile created'],
+  ['PROFESSIONAL_PROFILE_UPDATED', 'Professional profile updated'],
+  ['MARKETING_PREFERENCE_OPTED_IN', 'Marketing preference opted in'],
+  ['MARKETING_PREFERENCE_OPTED_OUT', 'Marketing preference opted out'],
+] as const;
+const OUTCOME_OPTIONS = [
+  ['SUCCESS', 'Success'],
+  ['DENIED', 'Denied'],
+  ['REJECTED', 'Rejected'],
+] as const;
 
 @Component({
   selector: 'app-person-privacy-audit-section',
@@ -28,9 +47,9 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
           <form class="privacy-filters" (ngSubmit)="applyFilters()">
             <label>From <input type="date" name="from" [(ngModel)]="occurredFrom" /></label>
             <label>To <input type="date" name="to" [(ngModel)]="occurredTo" /></label>
-            <label>Activity <input type="text" name="activity" [(ngModel)]="activityType" /></label>
-            <label>Outcome <input type="text" name="outcome" [(ngModel)]="outcome" /></label>
-            <label><input type="checkbox" name="superuser" [(ngModel)]="superuserOnly" /> Superuser operations</label>
+            <label>Activity <select name="activity" [(ngModel)]="activityType"><option value="">All activities</option>@for (option of activityOptions; track option[0]) { <option [value]="option[0]">{{ option[1] }}</option> }</select></label>
+            <label>Outcome <select name="outcome" [(ngModel)]="outcome"><option value="">All outcomes</option>@for (option of outcomeOptions; track option[0]) { <option [value]="option[0]">{{ option[1] }}</option> }</select></label>
+            <label class="checkbox-filter"><input type="checkbox" name="superuser" [(ngModel)]="superuserOnly" /> Superuser operations</label>
             <button type="submit" class="button-secondary" [disabled]="loading()">Filter</button>
           </form>
           <p class="supporting-copy">{{ countLabel() }}</p>
@@ -49,6 +68,7 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
                       <span>{{ event.outcome }}</span>
                       @if (event.capability) { <span>Capability: {{ event.capability }}</span> }
                       @if (event.superuser_operation) { <span>Audited superuser operation</span> }
+                      @if (event.permitted_actions.includes('place_event_hold')) { <button type="button" class="button-secondary" (click)="placeEventHold(event.legal_hold_event_reference!)">Place event hold</button> }
                     </div>
                   </article>
                 </li>
@@ -73,7 +93,9 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
     .privacy-results, .privacy-list, .privacy-event { display: grid; gap: .85rem; }
     .privacy-filters { display: flex; gap: .65rem; flex-wrap: wrap; align-items: end; }
     .privacy-filters label { display: grid; gap: .25rem; color: var(--crm-text-secondary); font-size: .88rem; }
-    .privacy-filters input { min-height: 2.2rem; }
+    .privacy-filters input, .privacy-filters select { min-height: 2.2rem; }
+    .privacy-filters input[type='checkbox'] { width: 1rem; min-height: 1rem; accent-color: var(--crm-accent); }
+    .privacy-filters .checkbox-filter { display: flex; align-items: center; gap: .4rem; }
     .privacy-list { list-style: none; padding: 0; margin: 0; }
     .privacy-event { padding: .25rem 0 1rem 1.25rem; border-left: 2px solid var(--crm-border); background: var(--crm-surface); }
     .event-summary { display: grid; gap: .3rem; }
@@ -91,6 +113,7 @@ export class PersonPrivacyAuditSectionComponent {
   readonly personId = input.required<number>();
 
   private readonly service = inject(PrivacyAuditService);
+  private readonly router = inject(Router);
   private readonly staffAccess = inject(StaffAccessService);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
@@ -110,6 +133,8 @@ export class PersonPrivacyAuditSectionComponent {
   activityType = '';
   outcome = '';
   superuserOnly = false;
+  readonly activityOptions = ACTIVITY_OPTIONS;
+  readonly outcomeOptions = OUTCOME_OPTIONS;
   private requestEpoch = 0;
   private revalidatingAuthorization = false;
 
@@ -142,6 +167,10 @@ export class PersonPrivacyAuditSectionComponent {
 
   goToPreviousPage(): void {
     if (this.hasPreviousPage() && !this.loading()) this.loadPage(this.personId(), this.currentPage() - 1);
+  }
+
+  placeEventHold(reference: string): void {
+    if (reference) void this.router.navigate(['/legal-holds'], { queryParams: { eventReference: reference } });
   }
 
   actorLabel(event: PrivacyAuditHistoryEvent): string {

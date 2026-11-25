@@ -16,6 +16,8 @@ export interface PrivacyAuditHistoryEvent {
   readonly outcome: string;
   readonly superuser_operation: boolean;
   readonly capability: string | null;
+  readonly legal_hold_event_reference: string | null;
+  readonly permitted_actions: readonly string[];
 }
 
 export interface PaginatedPrivacyAuditHistoryResponse {

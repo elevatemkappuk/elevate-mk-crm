@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { Observable } from 'rxjs';
+import { Observable, finalize } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { formatForbiddenError } from '../../core/http/forbidden-error';
@@ -11,6 +11,8 @@ import { StaffAccessService } from '../../core/auth/staff-access.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { LegalHoldsService } from '../../core/privacy/legal-holds.service';
 import { LegalHold, LegalHoldReleaseRequest, LegalHoldReleaseRequestResult } from '../../core/privacy/legal-hold.types';
+import { PeopleService } from '../../core/people/people.service';
+import { PersonDirectoryItem } from '../../core/people/people.types';
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
 
 @Component({
@@ -30,12 +32,28 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
 
       <section class="card" aria-labelledby="create-hold-title">
         <h3 id="create-hold-title">Place a legal hold</h3>
-        <p class="notice">Provide exactly one target: a Person ID or an audit-event reference from privacy history.</p>
+        <p class="notice">Choose a Person or use an opaque audit-event reference from an authorized privacy-audit context.</p>
         <form (ngSubmit)="createHold()">
+          <div class="person-picker">
+            <label for="hold-person-search">Person</label>
+            <div class="picker-search">
+              <input id="hold-person-search" name="personSearch" type="search" [(ngModel)]="personSearch" (ngModelChange)="onPersonSearchChange($event)" placeholder="Search by name" />
+              <button type="button" class="button-secondary" (click)="searchPeople()" [disabled]="personSearchLoading()">{{ personSearchLoading() ? 'Searching...' : 'Find Person' }}</button>
+            </div>
+            @if (personSearchError()) { <p class="error" role="alert">{{ personSearchError() }}</p> }
+            @if (personOptions().length) {
+              <div class="person-options" role="listbox" aria-label="Person results">
+                @for (person of personOptions(); track person.id) {
+                  <button type="button" class="person-option" [class.selected]="personId === person.id" (click)="selectPerson(person)">
+                    <strong>{{ person.first_name }} {{ person.last_name }}</strong><span>{{ person.record_type }} · {{ person.id }}</span>
+                  </button>
+                }
+              </div>
+            }
+            @if (selectedPersonLabel()) { <p class="selected-target">Selected: <strong>{{ selectedPersonLabel() }}</strong></p> }
+          </div>
           <div class="form-grid">
-            <label for="hold-person-id">Person ID</label>
-            <input id="hold-person-id" name="personId" type="number" min="1" [(ngModel)]="personId" />
-            <label for="hold-event-reference">Audit-event reference</label>
+            <label for="hold-event-reference">Opaque audit-event reference</label>
             <input id="hold-event-reference" name="eventReference" type="text" [(ngModel)]="auditEventReference" />
           </div>
           <label for="hold-reason">Justification</label>
@@ -55,8 +73,8 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
               <article class="hold-row">
                 <div>
                   <strong>{{ hold.scope }} hold · {{ hold.status }}</strong>
-                  <p>Placed {{ formatDateTime(hold.placed_at) }} · User {{ hold.placed_by_id }}</p>
-                  @if (hold.person_id) { <p>Person {{ hold.person_id }}</p> }
+                  <p>Placed {{ formatDateTime(hold.placed_at) }} · {{ actorLabel(hold.placed_by) }}</p>
+                  @if (hold.person_id) { <p>Person: {{ hold.person_display_name || 'Restricted Person' }}</p> }
                   @if (hold.audit_event_reference) { <p>Audit-event reference available</p> }
                   @if (hold.justification) { <p>Justification: {{ hold.justification }}</p> }
                 </div>
@@ -79,8 +97,10 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
                @for (releaseRequest of hold.release_requests; track releaseRequest.public_id) {
                  <div class="release-request" [attr.aria-label]="'Release request ' + releaseRequest.status">
                    <strong>Release request · {{ releaseRequest.status }}</strong>
-                   <p>Requested by User {{ releaseRequest.requested_by_id }} · {{ formatDateTime(releaseRequest.requested_at) }}</p>
+                   <p>Requested by {{ actorLabel(releaseRequest.requested_by) }} · {{ formatDateTime(releaseRequest.requested_at) }}</p>
                    <p>Justification: {{ releaseRequest.justification }}</p>
+                   @if (releaseRequest.approved_by) { <p>Approved by {{ actorLabel(releaseRequest.approved_by) }} · {{ formatDateTime(releaseRequest.approved_at!) }}<br />Reason: {{ releaseRequest.approval_justification }}</p> }
+                   @if (releaseRequest.rejected_by) { <p>Rejected by {{ actorLabel(releaseRequest.rejected_by) }} · {{ formatDateTime(releaseRequest.rejected_at!) }}<br />Reason: {{ releaseRequest.rejection_reason }}</p> }
                    @if (releaseRequest.rejection_reason) { <p>Rejection reason: {{ releaseRequest.rejection_reason }}</p> }
                    @if (releaseRequest.permitted_actions.includes('approve') || releaseRequest.permitted_actions.includes('reject')) {
                      <div class="actions">
@@ -121,7 +141,12 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
     h2, h3 { color: #443117; }
     .intro, .notice, .hold-row p, .release-request p { color: #6f5220; line-height: 1.6; }
     .card { display: grid; gap: .75rem; padding: 1rem; border: 1px solid rgba(57, 47, 18, .12); border-radius: .9rem; background: #fffdf9; }
-    form, .form-grid { display: grid; gap: .6rem; }
+    form, .form-grid, .person-picker { display: grid; gap: .6rem; }
+    .picker-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem; }
+    .person-options { display: grid; gap: .35rem; max-height: 14rem; overflow: auto; }
+    .person-option { display: flex; justify-content: space-between; align-items: center; gap: .75rem; text-align: left; background: #fffdf9; color: #443117; }
+    .person-option span, .selected-target { color: #6f5220; font-size: .9rem; }
+    .person-option.selected { outline: 2px solid #b69a66; }
     .form-grid { grid-template-columns: minmax(8rem, 12rem) minmax(10rem, 1fr); align-items: center; }
     input, textarea, button { min-height: 2.5rem; border-radius: .5rem; border: 1px solid #b69a66; padding: .5rem .75rem; font: inherit; }
     textarea { resize: vertical; }
@@ -143,6 +168,7 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
 })
 export class LegalHoldsPageComponent {
   private readonly service = inject(LegalHoldsService);
+  private readonly peopleService = inject(PeopleService);
   private readonly staffAccess = inject(StaffAccessService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
@@ -155,8 +181,13 @@ export class LegalHoldsPageComponent {
   readonly errorMessage = signal<string | null>(null);
   readonly feedback = signal<string | null>(null);
   readonly createValidationMessage = signal<string | null>(null);
+  readonly personOptions = signal<readonly PersonDirectoryItem[]>([]);
+  readonly personSearchLoading = signal(false);
+  readonly personSearchError = signal<string | null>(null);
   readonly releaseHoldId = signal<string | null>(null);
   personId: number | null = null;
+  personSearch = '';
+  private selectedPersonName = '';
   auditEventReference = '';
   createReason = '';
   releaseReason = '';
@@ -179,7 +210,64 @@ export class LegalHoldsPageComponent {
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
       const value = Number(params.get('personId'));
       this.personId = Number.isSafeInteger(value) && value > 0 ? value : null;
+      this.auditEventReference = params.get('eventReference') ?? '';
+      if (this.personId !== null) this.loadSelectedPerson(this.personId);
       this.loadHolds();
+    });
+  }
+
+  searchPeople(): void {
+    if (!this.personSearch.trim()) {
+      this.personSearchError.set('Enter a name to search.');
+      this.personOptions.set([]);
+      return;
+    }
+    this.personSearchLoading.set(true);
+    this.personSearchError.set(null);
+    this.peopleService.searchPeople(this.personSearch.trim()).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => this.personSearchLoading.set(false)),
+    ).subscribe({
+      next: response => this.personOptions.set(response.results),
+      error: () => this.personSearchError.set('Person search could not be completed.'),
+    });
+  }
+
+  selectPerson(person: PersonDirectoryItem): void {
+    this.personId = person.id;
+    this.auditEventReference = '';
+    this.personOptions.set([]);
+    this.personSearch = `${person.first_name} ${person.last_name}`;
+    this.selectedPersonName = this.personSearch;
+  }
+
+  onPersonSearchChange(value: string): void {
+    this.personSearch = value;
+    if (this.personId !== null && value.trim() !== this.selectedPersonName) {
+      this.personId = null;
+      this.selectedPersonName = '';
+    }
+  }
+
+  selectedPersonLabel(): string {
+    return this.personId === null ? '' : this.personSearch.trim();
+  }
+
+  actorLabel(actor: { display_name: string; contact_restricted: boolean }): string {
+    return actor.contact_restricted ? 'Restricted user' : actor.display_name;
+  }
+
+  private loadSelectedPerson(personId: number): void {
+    this.peopleService.getPerson(personId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: person => {
+        this.personSearch = `${person.first_name} ${person.last_name}`;
+        this.selectedPersonName = this.personSearch;
+      },
+      error: () => {
+        this.personSearch = '';
+        this.selectedPersonName = '';
+        this.personId = null;
+      },
     });
   }
 

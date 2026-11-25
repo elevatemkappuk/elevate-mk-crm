@@ -3,11 +3,11 @@
 Status: Living Documentation. The backend capability foundation and governance
 implementation are source-inspected, with focused isolated PostgreSQL
 migration/test validation recorded by the API repository. The latest targeted
-Phase 1A.4D CRM privacy consumer is implemented in source. The repository
-native Angular unit-test runner passed 460/460 tests and the production build
-passed in the isolated local environment. The final API validation passed
-126/126 backend tests, including migration and PostgreSQL concurrency coverage.
-Cross-repository deployment behavior remains unverified.
+Phase 1A.4D CRM privacy consumer is implemented in source. The available
+evidence is a successful Angular development build and 12/12
+focused API legal-hold tests. Broader Angular/backend suites,
+migration/concurrency validation, browser UAT for this remediation, and
+cross-repository deployment behavior remain historical or unverified.
 
 ## Purpose and boundary
 
@@ -198,9 +198,9 @@ available for eligible delegated CRM staff when the API projects
 API remains authoritative for the disclosure allowlist.
 
 Earlier local validations covered 51 files and 457/457 tests; those counts are
-historical. The current repository-native Angular run passed 53 files and
-460/460 tests, and `npm run build` passed. The additional lifecycle regression
-covers a governance read denied after capability suspension.
+historical. For this remediation, the Angular development build passed; the
+full repository-native test count and additional lifecycle regression are not
+claimed as current evidence.
 
 `PrivacyAdministrationService` consumes the API governance contracts for safe
 Staff directory search, target detail, role-default state, proposal creation,
@@ -344,13 +344,13 @@ deployment, and cross-repository behavior remain **Unverified**.
   deferred.
 - **Unverified:** Mobile and Community compatibility, deployment behavior, and
   runtime behavior after future capability-aware UI integration.
-- **Verified (Phase 1A.4D.4 isolated validation):** current Angular validation
-  passed 53 files and 460/460 tests; `npm run build` passed; API validation
-  passed 126/126 backend tests; the audit.0023 migration regression passed;
-  Django system and migration-drift checks passed; and `git diff --check`
-  passed. The API and CRM development servers were started against the
-  persistent isolated UAT environment at `http://localhost:8000` and
-  `http://localhost:4200`; CSRF and CRM root probes returned HTTP 200.
+- **Verified (Phase 1A.4D.4 targeted evidence):** the affected Angular
+  component specifications passed 120/120, the production build passed, the
+  focused API legal-hold suite passed 12/12, the focused PostgreSQL concurrency
+  suite passed 4/4, the Django system check and migration-drift check passed,
+  and live API/CRM probes returned expected UAT responses. The complete
+  repository-wide suites, operational migration application, and browser
+  workflow retest remain unverified for this remediation.
 
 Detailed backend schemas and evaluator rules are maintained in the API
 repository's [GDPR guide](../../elevate-mk-api/docs/GDPR.md),
@@ -393,8 +393,11 @@ recorded above.
 - Security-sensitive authorization-failure logging: **Implemented in the API;
   CRM/browser-runtime verification for this closure batch remains unverified.**
 - Privileged-operation auditing: **Implemented; backend runtime evidence exists.**
-- Functional access-control regression testing: **Verified; 460/460 CRM tests
-  and 126/126 backend tests passed in isolated validation.**
+- Functional access-control regression testing: **Partially verified; 12/12
+  focused API tests, 4/4 focused PostgreSQL concurrency tests, and 120/120
+  affected Angular component tests passed. Legal-holds-specific component
+  coverage, repository-wide suites, and adversarial negative projections remain
+  unverified.**
 - OWASP review: **Implemented review gate; independent runtime security evidence
   remains unverified.**
 
@@ -448,7 +451,21 @@ requests after login or refresh and approve or reject them from the relevant
 hold without manually entering an internal request ID. Self-approval controls
 remain backend-calculated; the CRM only renders permitted actions.
 
-Status: **Implemented / isolated validation verified; browser workflow and
+Status: **Implemented / isolated validation and manual UAT verified; operational
 deployment unverified**. Older CRM
 clients must not consume the expanded API capability disclosure until this
 frontend version is deployed in the coordinated rollout.
+
+Phase 1A.4D.4 remediation adds a permission-aware searchable Person selector
+for Person-wide holds, contextual navigation from an authorized Person profile,
+and contextual event-hold navigation from privacy-audit rows only when the
+backend supplies an opaque reference and `place_event_hold` action. The
+dedicated page retains the opaque-reference workflow without exposing event
+discovery to users who lack `PRIVACY_AUDIT_READ`. Hold and release history now
+uses safe actor and Person names, timestamps, reasons, decision state, and
+decision actors. Pending release requests no longer show the duplicate request
+action. Privacy filters use controlled activity and outcome values supported by
+the current API projection. The complete Phase 1A.4D isolated manual UAT is
+accepted for the API/CRM workflow. Minor UX polish remains deferred as
+non-blocking backlog work; operational migrations, deployment, cross-repository
+release compatibility, and final-hardening evidence remain outstanding.
