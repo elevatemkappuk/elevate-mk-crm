@@ -23,9 +23,13 @@ let nextDialogId = 0;
         >
           <h2 [id]="titleId">{{ title() }}</h2>
           <p [id]="messageId">{{ message() }}</p>
+          @if (requireReason()) {
+            <label [for]="reasonId">Justification</label>
+            <textarea [id]="reasonId" rows="4" [value]="reason()" (input)="reasonChanged.emit($any($event.target).value)" required></textarea>
+          }
           <div class="crm-actions crm-actions--end">
             <button type="button" class="button-secondary crm-button crm-button--secondary" [disabled]="busy()" (click)="cancel()">Cancel</button>
-            <button type="button" class="button-primary crm-button crm-button--primary" [attr.aria-busy]="busy()" [disabled]="busy()" (click)="confirmed.emit()">
+            <button type="button" class="button-primary crm-button crm-button--primary" [attr.aria-busy]="busy()" [disabled]="busy() || (requireReason() && !reason().trim())" (click)="confirmed.emit()">
               {{ confirmLabel() }}
             </button>
           </div>
@@ -40,6 +44,8 @@ let nextDialogId = 0;
     h2, p { margin: 0; overflow-wrap: anywhere; }
     h2 { color: var(--crm-text-strong); font-size: var(--crm-font-lg); line-height: var(--crm-leading-heading); }
     p { color: var(--crm-text-secondary); line-height: var(--crm-leading); }
+    label { color: var(--crm-text-strong); font-weight: 600; }
+    textarea { width: 100%; min-height: 6rem; box-sizing: border-box; resize: vertical; }
   `,
 })
 export class ConfirmationDialogComponent implements OnDestroy {
@@ -49,13 +55,17 @@ export class ConfirmationDialogComponent implements OnDestroy {
   private activeDialog: HTMLElement | null = null;
   readonly titleId = `confirmation-dialog-title-${nextDialogId++}`;
   readonly messageId = `${this.titleId}-message`;
+  readonly reasonId = `${this.titleId}-reason`;
   readonly open = input(false);
   readonly title = input.required<string>();
   readonly message = input.required<string>();
   readonly confirmLabel = input('Confirm');
   readonly busy = input(false);
+  readonly requireReason = input(false);
+  readonly reason = input('');
   readonly confirmed = output<void>();
   readonly cancelled = output<void>();
+  readonly reasonChanged = output<string>();
 
   constructor() {
     afterRenderEffect(() => {

@@ -88,6 +88,7 @@ describe('PrivacyAdministrationPageComponent', () => {
       capability: 'PERSON_CONTACT_READ',
       is_enabled: false,
       permitted_actions: ['ROLE_DEFAULT_ENABLE'],
+      execution_mode: 'PROPOSAL',
     } as const;
     http.expectOne(`${apiBaseUrl}/staff/governance/role-defaults/`).flush({ policy_version: 2, role_defaults: [entry] });
     http.expectOne(`${apiBaseUrl}/staff/governance/history/individual/`).flush({ results: [] });
@@ -120,19 +121,13 @@ describe('PrivacyAdministrationPageComponent', () => {
       capability: 'PERSON_CONTACT_READ',
       is_enabled: false,
       permitted_actions: ['ROLE_DEFAULT_ENABLE'],
+      execution_mode: 'DIRECT_SUPERUSER',
     } as const;
     http.expectOne(`${apiBaseUrl}/staff/governance/role-defaults/`).flush({ policy_version: 2, role_defaults: [entry] });
     http.expectOne(`${apiBaseUrl}/staff/governance/history/individual/`).flush({ results: [] });
     http.expectOne(`${apiBaseUrl}/staff/governance/history/role-defaults/`).flush({ results: [] });
     http.expectOne(`${apiBaseUrl}/staff/governance/history/decisions/`).flush({ results: [] });
 
-    TestBed.inject(AuthService).setCurrentUserForTest({
-      id: 1,
-      email: 'superuser@example.invalid',
-      person: { id: 1, first_name: 'Synthetic', last_name: 'Superuser', primary_email: null },
-      staff_roles: ['CRM_ADMIN'],
-      is_superuser: true,
-    });
     component.beginRoleDefaultAction(entry, 'ROLE_DEFAULT_ENABLE');
     component.reason = 'Direct audited superuser role-default change';
     component.confirmRoleDefaultAction();

@@ -3,9 +3,10 @@
 Status: Living Documentation. The backend capability foundation and governance
 implementation are source-inspected, with focused isolated PostgreSQL
 migration/test validation recorded by the API repository. The latest targeted
-Phase 1A.4B CRM consumer is implemented in source, while test execution, build
-and configuration validation are verified below; runtime behavior and
-cross-repository integration remain unverified in this documentation update.
+Phase 1A.4C CRM governance consumer is implemented in source. The repository
+native Angular unit-test runner passed 456/456 tests and the build passed in
+the isolated local environment. Cross-repository deployment behavior remains
+unverified.
 
 ## Purpose and boundary
 
@@ -194,11 +195,10 @@ available for eligible delegated CRM staff when the API projects
 `STAFF_CAPABILITY_ADMIN`; the API allowlist intentionally excludes the other
 privacy capabilities.
 
-The final local validation covered 51 test files and 454/454 tests, and
-`npm run build` passed. The initial sandbox test attempt was blocked by the
-Windows `spawn EPERM` executor restriction; the elevated local rerun completed
-successfully. The additional lifecycle regression covers a governance read
-denied after capability suspension.
+An earlier local validation covered 51 test files and 454/454 tests; that count
+is historical. The current repository-native Angular run passed 51 files and
+456/456 tests, and `npm run build` passed. The additional lifecycle regression
+covers a governance read denied after capability suspension.
 
 `PrivacyAdministrationService` consumes the API governance contracts for safe
 Staff directory search, target detail, role-default state, proposal creation,
@@ -206,8 +206,8 @@ direct individual mutations and proposal resolution. `PrivacyAdministrationPageC
 renders only identifiers, staff-role state, capability assignment/restriction
 state and backend-permitted actions. It does not display contact or demographic
 fields, store capability data in browser storage, or authorize requests
-client-side. Human-readable capability labels/descriptions and an inline
-confirmation dialog are used; ordinary individual changes apply immediately,
+client-side. Human-readable capability labels/descriptions and the shared
+accessible confirmation dialog are used; ordinary individual changes apply immediately,
 while `STAFF_CAPABILITY_ADMIN` grant/restore/unrestrict uses proposal flow.
 Reasons are collected for each mutation, duplicate pending proposals have a
 stable user-facing error, and backend responses remain authoritative for
@@ -216,17 +216,17 @@ approval, audit, eligibility and errors.
 Role-default management uses the backend's `permitted_actions` projection.
 The CRM displays every active canonical CRM role and capability, including
 disabled defaults, and offers only the server-provided enable or disable
-operation. A submitted role-default change is sent through the existing
-proposal endpoint with a mandatory justification and is clearly shown as
-awaiting independent approval. Matching pending proposals suppress further
+operation. For ordinary administrators, a submitted role-default change is sent
+through the existing proposal endpoint with a mandatory justification and is
+clearly shown as awaiting independent approval. An admitted superuser uses the
+dedicated direct endpoint instead. Matching pending proposals suppress further
 role-default actions; duplicate, stale, rejected, cancelled, expired and
 invalidated outcomes remain backend-authoritative and are reported as
 operation feedback rather than success.
 
-When the authenticated user is an admitted Django superuser, the CRM uses the
-backend-provided `is_superuser` identity flag and routes permitted individual
-and role-default actions to the dedicated `/staff/governance/superuser-actions/`
-endpoint. The backend remains authoritative for CRM admission, mandatory
+When the backend marks a permitted action with `DIRECT_SUPERUSER`, the CRM
+routes it to the dedicated `/staff/governance/superuser-actions/` endpoint.
+The backend remains authoritative for CRM admission, mandatory
 justification, transactional auditing and the direct operation result. The
 ordinary proposal workflow is not used for these direct actions. A superuser
 without an active operational CRM role remains denied.
@@ -255,8 +255,10 @@ so a failed request can be retried.
 
 The role-default workflow is implemented against the additive API projection:
 disabled defaults are visible, only backend-permitted enable/disable actions
-are shown, pending proposals suppress duplicate actions, and proposal actions
-are limited by the backend-provided actor-specific `permitted_actions` list.
+are shown, `execution_mode` distinguishes proposals from direct superuser
+operations, and target action modes are supplied by the backend. Proposal
+actions are limited by the backend-provided actor-specific `permitted_actions`
+list.
 
 Isolated local manual acceptance verified the two-browser suspension scenario:
 an administrator suspended the viewer's `STAFF_CAPABILITY_ADMIN` grant, the
@@ -269,7 +271,8 @@ cross-repository compatibility remain **Unverified**.
 
 The following are approved for later stages but are not implemented here:
 
-- broader staff capability management screens and role-default workflows;
+- broader staff capability management screens and workflows beyond the
+  implemented Privacy Administration feature;
 - contact masking, demographic restriction and other Person privacy workflows;
 - broader capability-consuming UI, additional route guards, or directives;
 - contact masking and demographic restrictions;
@@ -305,7 +308,9 @@ deployment, and cross-repository behavior remain **Unverified**.
   and `git diff --check` was clean. No schema or migration files changed or were
   applied.
 - **Verified:** Phase 1A.4B focused Angular validation passed 5 files and 38
-  tests; the final CRM validation passed 51 files and 454/454 tests;
+  tests; the historical CRM validation passed 51 files and 454/454 tests;
+  the current repository-native Angular validation passed 51 files and
+  456/456 tests;
   the role-default UI changes were included in that run; `npm run build` passed;
   `npm run test:config` passed 3/3; and
   `git diff --check` passed.
@@ -358,4 +363,24 @@ Person/search/campaign/export enforcement remain **Planned/Deferred**. The
 provisional 24-month retention period is subject to formal legal/privacy
 approval; no disposal is enabled. Earlier 19/19, 41/41, and 102/102 results
 remain historical evidence in the API guide. API evidence is not CRM or
-cross-repository runtime evidence; no CRM test or build was run.
+cross-repository runtime evidence; the current CRM test and build evidence is
+recorded above.
+
+### Mandatory access-control acceptance checklist
+
+- Least privilege: **Implemented; runtime verified through backend action modes.**
+- Deny by default: **Implemented; runtime verified through protected routes.**
+- Backend-authoritative authorization: **Implemented; runtime verified by API/UI
+  contract tests.**
+- Resource scope and safe projections: **Implemented; runtime verified in API
+  projections, with cross-repository deployment still unverified.**
+- Horizontal escalation prevention: **Implemented; partially runtime verified.**
+- Vertical escalation prevention: **Implemented; partially runtime verified.**
+- Authorization revocation: **Implemented; runtime verified in focused CRM
+  lifecycle coverage.**
+- Security-sensitive authorization-failure logging: **Unverified.**
+- Privileged-operation auditing: **Implemented; backend runtime evidence exists.**
+- Functional access-control regression testing: **Verified; 456/456 CRM tests
+  passed, with backend evidence recorded separately.**
+- OWASP review: **Implemented review gate; independent runtime security evidence
+  remains unverified.**

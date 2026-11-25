@@ -8,10 +8,11 @@ import { AuthService } from '../../core/auth/auth.service';
 import { StaffAccessService } from '../../core/auth/staff-access.service';
 import { PrivacyAdministrationService } from './privacy-administration.service';
 import { GovernanceProposal, GovernanceRoleDefaults, GovernanceStaffSummary, GovernanceTargetDetail } from './privacy-administration.types';
+import { ConfirmationDialogComponent } from '../../shared/ui/confirmation-dialog.component';
 
 @Component({
   selector: 'app-privacy-administration-page',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ConfirmationDialogComponent],
   template: `
     <section class="workspace" aria-labelledby="privacy-admin-title">
       <p class="eyebrow">Privacy administration</p>
@@ -123,43 +124,46 @@ import { GovernanceProposal, GovernanceRoleDefaults, GovernanceStaffSummary, Gov
         </div>
       </section>
       @if (pendingAction(); as action) {
-        <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="change-title">
-          <h3 id="change-title">Confirm {{ actionLabel(action.operation) }}</h3>
-          <p>Target staff user {{ action.targetUserId }} · {{ capabilityName(action.capability) }}</p>
-          <p>{{ actionDescription(action.operation) }}</p>
-          <p class="notice">{{ requiresApproval(action.operation, action.capability) ? 'This request requires approval by another authorized administrator.' : 'This change is applied immediately and is audited.' }}</p>
-          <label for="change-reason">Justification</label>
-          <textarea id="change-reason" name="changeReason" rows="4" required [(ngModel)]="reason"></textarea>
-          <div class="dialog-actions">
-            <button type="button" (click)="cancelApply()" [disabled]="saving()">Cancel</button>
-            <button type="button" (click)="confirmApply()" [disabled]="saving() || !reason.trim()">{{ saving() ? 'Submitting...' : 'Confirm change' }}</button>
-          </div>
-        </section>
+        <app-confirmation-dialog
+          [open]="true"
+          [title]="'Confirm ' + actionLabel(action.operation)"
+          [message]="'Target staff user ' + action.targetUserId + ' · ' + capabilityName(action.capability) + '. ' + actionDescription(action.operation) + ' ' + (action.executionMode === 'PROPOSAL' ? 'This request requires approval by another authorized administrator.' : 'This change is applied immediately and is audited.')"
+          [confirmLabel]="action.executionMode === 'PROPOSAL' ? 'Submit proposal' : 'Apply change'"
+          [busy]="saving()"
+          [requireReason]="true"
+          [reason]="reason"
+          (reasonChanged)="reason = $event"
+          (confirmed)="confirmApply()"
+          (cancelled)="cancelApply()"
+        />
       }
       @if (pendingRoleAction(); as action) {
-        <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="role-default-action-title">
-          <h3 id="role-default-action-title">Confirm {{ actionLabel(action.operation) }}</h3>
-          <p>Role {{ action.roleCode }} · {{ capabilityName(action.capability) }}</p>
-        <p>{{ isSuperuser() ? 'This change is applied immediately through the audited superuser path.' : 'This role-default change requires independent approval and is recorded in governance history.' }}</p>
-          <label for="role-default-reason">Justification</label>
-          <textarea id="role-default-reason" name="roleDefaultReason" rows="4" required [(ngModel)]="reason"></textarea>
-          <div class="dialog-actions">
-            <button type="button" (click)="pendingRoleAction.set(null)" [disabled]="saving()">Cancel</button>
-            <button type="button" (click)="confirmRoleDefaultAction()" [disabled]="saving() || !reason.trim()">{{ saving() ? 'Submitting...' : (isSuperuser() ? 'Apply change' : 'Submit proposal') }}</button>
-          </div>
-        </section>
+        <app-confirmation-dialog
+          [open]="true"
+          [title]="'Confirm ' + actionLabel(action.operation)"
+          [message]="'Role ' + action.roleCode + ' · ' + capabilityName(action.capability) + '. ' + (action.executionMode === 'DIRECT_SUPERUSER' ? 'This change is applied immediately through the audited superuser path.' : 'This role-default change requires independent approval and is recorded in governance history.')"
+          [confirmLabel]="action.executionMode === 'DIRECT_SUPERUSER' ? 'Apply change' : 'Submit proposal'"
+          [busy]="saving()"
+          [requireReason]="true"
+          [reason]="reason"
+          (reasonChanged)="reason = $event"
+          (confirmed)="confirmRoleDefaultAction()"
+          (cancelled)="pendingRoleAction.set(null)"
+        />
       }
       @if (pendingProposalAction(); as action) {
-        <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="proposal-action-title">
-          <h3 id="proposal-action-title">{{ action.action | titlecase }} proposal</h3>
-          <p>{{ action.proposal.operation }} · {{ capabilityName(action.proposal.capability) }}</p>
-          <label for="proposal-reason">Justification</label>
-          <textarea id="proposal-reason" name="proposalReason" rows="3" required [(ngModel)]="proposalReason"></textarea>
-          <div class="dialog-actions">
-            <button type="button" (click)="cancelProposalAction()" [disabled]="saving()">Cancel</button>
-            <button type="button" (click)="confirmProposalAction()" [disabled]="saving() || !proposalReason.trim()">{{ saving() ? 'Submitting...' : 'Confirm' }}</button>
-          </div>
-        </section>
+        <app-confirmation-dialog
+          [open]="true"
+          [title]="(action.action | titlecase) + ' proposal'"
+          [message]="action.proposal.operation + ' · ' + capabilityName(action.proposal.capability)"
+          confirmLabel="Confirm"
+          [busy]="saving()"
+          [requireReason]="true"
+          [reason]="proposalReason"
+          (reasonChanged)="proposalReason = $event"
+          (confirmed)="confirmProposalAction()"
+          (cancelled)="cancelProposalAction()"
+        />
       }
       <p class="notice">The API remains authoritative. Changes are audited and may require a second administrator.</p>
     </section>
@@ -185,9 +189,6 @@ import { GovernanceProposal, GovernanceRoleDefaults, GovernanceStaffSummary, Gov
     .restricted { color: #743f2b !important; background: #f4d9ce; }
     .error { padding: .75rem; color: #743f2b; background: #f4d9ce; border-radius: .5rem; }
     .success { padding: .75rem; color: #245b36; background: #e1f2e5; border-radius: .5rem; }
-    .dialog { display: grid; gap: .75rem; padding: 1rem; border: 2px solid #8b6519; border-radius: .9rem; background: #fff8e8; }
-    textarea { width: 100%; border: 1px solid #b69a66; border-radius: .5rem; padding: .5rem; font: inherit; box-sizing: border-box; }
-    .dialog-actions { display: flex; gap: .5rem; justify-content: flex-end; }
     .directory { display: grid; gap: .5rem; }
     .staff-result { display: grid; gap: .25rem; text-align: left; background: #fffdf9; color: #443117; }
     .staff-result span, small { color: #6f5220; font-size: .85rem; }
@@ -208,9 +209,9 @@ export class PrivacyAdministrationPageComponent {
   readonly feedback = signal<string | null>(null);
   readonly loading = signal(false);
   readonly saving = signal(false);
-  readonly pendingAction = signal<{ capability: string; operation: string; targetUserId: number } | null>(null);
+  readonly pendingAction = signal<{ capability: string; operation: string; targetUserId: number; executionMode: 'DIRECT' | 'PROPOSAL' | 'DIRECT_SUPERUSER' } | null>(null);
   readonly pendingProposalAction = signal<{ proposal: GovernanceProposal; action: 'approve' | 'reject' | 'cancel' } | null>(null);
-  readonly pendingRoleAction = signal<{ roleId: number; roleCode: string; capability: string; operation: string } | null>(null);
+  readonly pendingRoleAction = signal<{ roleId: number; roleCode: string; capability: string; operation: string; executionMode: 'PROPOSAL' | 'DIRECT_SUPERUSER' } | null>(null);
   readonly staffDirectory = signal<readonly GovernanceStaffSummary[]>([]);
   readonly roleDefaults = signal<GovernanceRoleDefaults | null>(null);
   readonly individualHistory = signal<readonly GovernanceProposal[]>([]);
@@ -307,8 +308,11 @@ export class PrivacyAdministrationPageComponent {
   beginApply(capability: string, operation: string): void {
     const detail = this.target();
     if (!detail || this.loading()) return;
+    const state = detail.capabilities[capability];
+    const executionMode = state?.permitted_action_modes[operation];
+    if (!executionMode) return;
     this.reason = '';
-    this.pendingAction.set({ capability, operation, targetUserId: detail.target_user_id });
+    this.pendingAction.set({ capability, operation, targetUserId: detail.target_user_id, executionMode });
   }
 
   cancelApply(): void {
@@ -324,14 +328,13 @@ export class PrivacyAdministrationPageComponent {
     this.error.set(null);
     this.feedback.set(null);
     const request = { operation: action.operation, capability: action.capability, target_user_id: action.targetUserId, reason };
-    const governedByProposal = this.requiresApproval(action.operation, action.capability);
-    const mutation: Observable<unknown> = this.isSuperuser()
+    const mutation: Observable<unknown> = action.executionMode === 'DIRECT_SUPERUSER'
       ? this.service.applySuperuserAction(request)
-      : governedByProposal
+      : action.executionMode === 'PROPOSAL'
         ? this.service.createProposal(request)
         : this.service.applyIndividualChange(request);
     mutation.subscribe({
-      next: () => { this.pendingAction.set(null); this.feedback.set('The capability change was applied and audited.'); this.loadTarget(); this.refreshGovernance(); },
+      next: () => { this.pendingAction.set(null); this.feedback.set(action.executionMode === 'PROPOSAL' ? 'The proposal is awaiting independent approval.' : 'The capability change was applied and audited.'); this.loadTarget(); this.refreshGovernance(); },
       error: (error: { error?: { code?: string; detail?: string }; status?: number }) => this.showError(error),
       complete: () => this.saving.set(false),
     });
@@ -343,9 +346,9 @@ export class PrivacyAdministrationPageComponent {
   }
 
   beginRoleDefaultAction(entry: GovernanceRoleDefaults['role_defaults'][number], operation: string): void {
-    if (!entry.permitted_actions.includes(operation) || this.saving()) return;
+    if (!entry.execution_mode || !entry.permitted_actions.includes(operation) || this.saving()) return;
     this.reason = '';
-    this.pendingRoleAction.set({ roleId: entry.role_id, roleCode: entry.role_code, capability: entry.capability, operation });
+    this.pendingRoleAction.set({ roleId: entry.role_id, roleCode: entry.role_code, capability: entry.capability, operation, executionMode: entry.execution_mode });
   }
 
   cancelProposalAction(): void {
@@ -373,27 +376,18 @@ export class PrivacyAdministrationPageComponent {
     this.saving.set(true);
     this.error.set(null);
     this.feedback.set(null);
-    const mutation: Observable<unknown> = this.isSuperuser()
+    const mutation: Observable<unknown> = action.executionMode === 'DIRECT_SUPERUSER'
       ? this.service.applySuperuserAction({ operation: action.operation, capability: action.capability, role_id: action.roleId, reason })
       : this.service.createProposal({ operation: action.operation, capability: action.capability, role_id: action.roleId, reason });
     mutation.subscribe({
       next: () => {
         this.pendingRoleAction.set(null);
-        this.feedback.set(this.isSuperuser() ? 'The role-default change was applied and audited.' : 'The role-default proposal is awaiting independent approval.');
+        this.feedback.set(action.executionMode === 'DIRECT_SUPERUSER' ? 'The role-default change was applied and audited.' : 'The role-default proposal is awaiting independent approval.');
         this.refreshGovernance();
       },
       error: (error: { error?: { code?: string; detail?: string }; status?: number }) => this.showError(error),
       complete: () => this.saving.set(false),
     });
-  }
-
-  requiresApproval(operation: string, capability: string): boolean {
-    if (this.isSuperuser()) return false;
-    return capability === 'STAFF_CAPABILITY_ADMIN' && ['INDIVIDUAL_GRANT', 'INDIVIDUAL_RESTORE', 'INDIVIDUAL_UNRESTRICT'].includes(operation);
-  }
-
-  isSuperuser(): boolean {
-    return this.auth.currentUser()?.is_superuser === true;
   }
 
   capabilityName(capability: string): string {

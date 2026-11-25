@@ -2,6 +2,7 @@ export interface GovernanceCapabilityState {
   readonly assignment_state: string | null;
   readonly restriction_active: boolean;
   readonly permitted_actions: readonly string[];
+  readonly permitted_action_modes: Readonly<Record<string, 'DIRECT' | 'PROPOSAL' | 'DIRECT_SUPERUSER'>>;
 }
 
 export interface GovernanceTargetDetail {
@@ -39,6 +40,7 @@ export interface GovernanceRoleDefaults {
     capability: string;
     is_enabled: boolean;
     permitted_actions: readonly string[];
+    execution_mode: 'PROPOSAL' | 'DIRECT_SUPERUSER';
   }[];
 }
 
