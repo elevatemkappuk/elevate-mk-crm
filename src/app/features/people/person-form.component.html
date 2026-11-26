@@ -2,6 +2,12 @@
       <fieldset [disabled]="pending()">
       <section class="field-group">
         <h3>Personal details</h3>
+        @if (!contactFieldsEditable() || !demographicFieldsEditable()) {
+          <p class="privacy-form-note" role="status">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
+            Some personal details are restricted by your current access.
+          </p>
+        }
         <div class="fields">
           <label>First name <input formControlName="first_name" autocomplete="given-name" /><span class="validation-slot">@if (invalid('first_name')) { <small>First name is required.</small> }</span></label>
           <label>Last name <input formControlName="last_name" autocomplete="family-name" /><span class="validation-slot">@if (invalid('last_name')) { <small>Last name is required.</small> }</span></label>
@@ -9,16 +15,24 @@
           <label>Mobile <input type="tel" formControlName="mobile" autocomplete="tel" [disabled]="!contactFieldsEditable()" /><span class="validation-slot">@if (invalid('mobile')) { <small>Enter a valid mobile number.</small> } @if (mobileError()) { <small>{{ mobileError() }}</small> }</span></label>
           <label>Location <input formControlName="location" autocomplete="address-level2" /></label>
           <label>Age range
-            <select formControlName="age_range" [disabled]="!demographicFieldsEditable()">
-              <option value="">Not specified</option>
-              @for (option of ageRangeOptions; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
-            </select>
+            @if (demographicFieldsEditable()) {
+              <select formControlName="age_range">
+                <option value="">Not specified</option>
+                @for (option of ageRangeOptions; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
+              </select>
+            } @else {
+              <output class="privacy-restricted-field"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg><span>Restricted</span></output>
+            }
           </label>
           <label>Gender
-            <select formControlName="gender" [disabled]="!demographicFieldsEditable()">
-              <option value="">Not specified</option>
-              @for (option of genderOptions; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
-            </select>
+            @if (demographicFieldsEditable()) {
+              <select formControlName="gender">
+                <option value="">Not specified</option>
+                @for (option of genderOptions; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
+              </select>
+            } @else {
+              <output class="privacy-restricted-field"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg><span>Restricted</span></output>
+            }
           </label>
         </div>
       </section>

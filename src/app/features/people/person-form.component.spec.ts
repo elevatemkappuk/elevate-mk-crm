@@ -94,4 +94,30 @@ describe('PersonFormComponent', () => {
       joined_at: '2026-08-31',
     }]);
   });
+
+  it('shows restricted demographics and preserves authorized contact fields in the Manager capability combination', () => {
+    const component = fixture.componentInstance;
+    fixture.componentRef.setInput('contactFieldsEditable', true);
+    fixture.componentRef.setInput('demographicFieldsEditable', false);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('select[formControlName="age_range"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('select[formControlName="gender"]')).toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('.privacy-restricted-field').length).toBe(2);
+    expect(fixture.nativeElement.querySelector('.privacy-form-note')?.textContent).toContain('Some personal details are restricted');
+
+    component.form.setValue({
+      first_name: 'Ama', last_name: 'Amoah', primary_email: 'ama@example.com',
+      mobile: '07911 123 456', location: 'Lilongwe', age_range: '25_29',
+      gender: 'NON_BINARY', joined_at: '2026-08-31',
+    });
+    const submissions: PersonFormSubmission[] = [];
+    component.submitted.subscribe(value => submissions.push(value));
+    component.submit();
+
+    expect(submissions[0]?.person).toEqual({
+      first_name: 'Ama', last_name: 'Amoah', primary_email: 'ama@example.com',
+      mobile: '07911 123 456', location: 'Lilongwe',
+    });
+  });
 });

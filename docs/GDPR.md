@@ -540,6 +540,41 @@ but not applied, and frontend/runtime verification remains deferred to GDPR
 Phase 1C hardening. Comprehensive Person access auditing remains the deferred
 `GDPR-FUTURE-001` enhancement.
 
+### Stable privacy state management
+
+Capability-loss protection uses one shared, pure privacy projection helper for
+People list records and Person overviews. It supports all contact/demographic
+capability combinations, preserves backend-provided restrictions, and returns
+the existing object when the required redaction is already stable. Consumers
+only write a redacted signal value when the projected object identity changes.
+This prevents capability-dependent Angular effects from repeatedly reading and
+writing their own state while preserving late-response redaction after access
+loss. The community-account projection also retains its existing object once
+contact fields are restricted; repeatedly allocating that nested object caused
+Person Detail to remain on its loading screen for staff lacking contact read.
+The focused projection spec passed **9/9** with the installed Vitest runner.
+An isolated browser check verified that the restricted synthetic staff account
+could navigate from People Directory to Person 10, receive an HTTP 200 overview,
+render the profile, and see restricted fields. The Angular test builder was
+attempted but did not complete; the full Angular suite remains unverified.
+
+The shared projection preserves backend-authorized partial contact masks such
+as `u***@e***.invalid` and `******02`, preserves missing contact values for
+the established empty state, and fails closed for malformed or insufficient
+masked values. Raw values from a previously authorized response are replaced
+when access is revoked. Focused privacy projection validation now passes
+**12/12**, and the Restricted-account browser check verified masked contact,
+restricted demographics, responsive Directory navigation, and a completed
+Person Detail load.
+
+The shared Person write form applies existing Person-write authorization and
+effective privacy capabilities before enabling protected fields. Without
+`PERSON_DEMOGRAPHIC_READ`, age range and gender are presented as `Restricted`,
+omitted from submission payloads, and cannot be edited; authorized contact
+fields and unrelated editable fields remain available. The same shared form
+is used by the edit drawer, contextual edit, add-person drawer, and write
+routes. This correction is **Implemented / focused verification pending**.
+
 ## Phase 1B.2 Marketing privacy
 
 Status: **Implemented / source-inspected; Angular tests and runtime/provider

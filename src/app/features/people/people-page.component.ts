@@ -82,7 +82,7 @@ export class PeoplePageComponent {
   };
   readonly queryState = signal<PeopleDirectoryQuery>(DEFAULT_PEOPLE_DIRECTORY_QUERY);
   readonly canManagePeople = computed(() => canManagePeople(this.auth.currentUser()));
-  readonly contactSearchAllowed = computed(() => !this.staffAccess || this.staffAccess.hasCapability('PERSON_CONTACT_READ'));
+  readonly contactSearchAllowed = computed(() => !!this.staffAccess?.hasCapability('PERSON_CONTACT_READ'));
   readonly exportAllowed = computed(() => !!this.staffAccess?.hasCapability('PERSON_EXPORT'));
   readonly exportFormat = signal<'csv' | 'xlsx'>('csv');
   readonly exporting = signal(false);
@@ -121,10 +121,13 @@ export class PeoplePageComponent {
       if (!contactLost && !demographicLost) return;
       const response = this.peopleResponse();
       if (response) {
-        untracked(() => this.peopleResponse.set({
-          ...response,
-          results: response.results.map(person => redactPersonAfterAccessLoss(person, contactLost, demographicLost)),
-        }));
+        const results = response.results.map(person => redactPersonAfterAccessLoss(person, contactLost, demographicLost));
+        // Redaction is an access-loss safeguard, not a state refresh. Avoid
+        // writing an equivalent response back into the signal on every effect
+        // pass, which would otherwise keep this effect alive indefinitely.
+        if (results.some((person, index) => person !== response.results[index])) {
+          untracked(() => this.peopleResponse.set({ ...response, results }));
+        }
       }
     });
     this.route.queryParamMap

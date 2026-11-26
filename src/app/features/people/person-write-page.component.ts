@@ -48,8 +48,8 @@ export class PersonWritePageComponent {
   readonly pendingSubmission = signal<PersonFormSubmission | null>(null);
   readonly identityOverrideConfirmationOpen = signal(false);
   readonly canManagePeople = computed(() => canManagePeople(this.auth.currentUser()));
-  readonly contactFieldsEditable = computed(() => !this.staffAccess || this.staffAccess.hasCapability('PERSON_CONTACT_READ'));
-  readonly demographicFieldsEditable = computed(() => !this.staffAccess || this.staffAccess.hasCapability('PERSON_DEMOGRAPHIC_READ'));
+  readonly contactFieldsEditable = computed(() => this.canManagePeople() && !!this.staffAccess?.hasCapability('PERSON_CONTACT_READ'));
+  readonly demographicFieldsEditable = computed(() => this.canManagePeople() && !!this.staffAccess?.hasCapability('PERSON_DEMOGRAPHIC_READ'));
   readonly submitLabel = computed(() => this.mode() === 'edit' ? 'Save changes' : this.drawer() ? 'Add person' : this.mode() === 'contact' ? 'Create Contact' : 'Create Member');
   readonly intro = computed(() => this.mode() === 'member' ? 'Create a new Person and active Membership in one step.' : this.mode() === 'contact' ? 'Create a new CRM Person without a Membership.' : 'Update the Person-owned details for this CRM record.');
   readonly duplicateMessage = computed(() => {
@@ -73,7 +73,10 @@ export class PersonWritePageComponent {
       const demographicLost = !staffAccess.hasCapability('PERSON_DEMOGRAPHIC_READ');
       if (!contactLost && !demographicLost) return;
       const person = this.person();
-      if (person) untracked(() => this.person.set(redactPersonAfterAccessLoss(person, contactLost, demographicLost)));
+      if (person) {
+        const redacted = redactPersonAfterAccessLoss(person, contactLost, demographicLost);
+        if (redacted !== person) untracked(() => this.person.set(redacted));
+      }
     });
     effect(() => {
       const person = this.existingPerson();

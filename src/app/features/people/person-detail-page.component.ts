@@ -415,7 +415,10 @@ export class PersonDetailPageComponent {
       const demographicLost = !staffAccess.hasCapability('PERSON_DEMOGRAPHIC_READ');
       if (!contactLost && !demographicLost) return;
       const overview = this.overview();
-      if (overview) untracked(() => this.overview.set(redactOverviewAfterAccessLoss(overview, contactLost, demographicLost)));
+      if (overview) {
+        const redacted = redactOverviewAfterAccessLoss(overview, contactLost, demographicLost);
+        if (redacted !== overview) untracked(() => this.overview.set(redacted));
+      }
     });
     this.route.fragment.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(fragment => this.activeTab.set(fragment || 'overview'));
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
