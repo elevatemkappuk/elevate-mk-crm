@@ -66,6 +66,23 @@ export class PeopleService {
     });
   }
 
+  exportPeople(query: PeopleListQueryState, format: 'csv' | 'xlsx'): Observable<Blob> {
+    let params = new HttpParams()
+      .set('format', format)
+      .set('record_state', query.record_state)
+      .set('ordering', query.ordering);
+    if (query.q.trim()) params = params.set('q', query.q.trim());
+    for (const value of query.relationship) params = params.append('relationship', value);
+    for (const value of query.location) params = params.append('location', value);
+    for (const value of query.industry) params = params.append('industry', String(value));
+    for (const value of query.career_stage) params = params.append('career_stage', value);
+    for (const value of query.interest) params = params.append('interest', String(value));
+    for (const value of query.skill) params = params.append('skill', String(value));
+    for (const value of query.tag) params = params.append('tag', String(value));
+    for (const value of query.record_type ?? []) params = params.append('record_type', value);
+    return this.http.get(this.buildUrl('/people/export/'), { params, responseType: 'blob' });
+  }
+
   searchPeople(query: string): Observable<PaginatedResponse<PersonDirectoryItem>> {
     return this.http.get<PaginatedResponse<PersonDirectoryItem>>(
       this.buildUrl('/privacy/legal-holds/person-targets/'),

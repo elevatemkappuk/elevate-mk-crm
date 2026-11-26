@@ -8,6 +8,9 @@
     }
 
     .page-actions { display:flex; margin-left:auto; gap:.7rem; flex-wrap:wrap; }
+    .export-actions { align-items:end; }
+    .export-format { width: 7rem; }
+    .state-error { flex-basis:100%; margin:0; color:var(--crm-error); }
     .add-person { background:var(--crm-shell-accent); color:var(--crm-text-strong); }
     .add-person:hover { background:#f3c64c; }
 

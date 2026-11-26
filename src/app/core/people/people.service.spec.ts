@@ -72,6 +72,17 @@ describe('PeopleService', () => {
     request.flush({ count: 0, next: null, previous: null, results: [] });
   });
 
+  it('requests an authorized People export using the current directory scope', () => {
+    service.exportPeople({ q: 'Ama', record_state: 'active', ordering: 'name', page: 1, page_size: 25, relationship: ['CONTACT'], location: [], industry: [], career_stage: [], interest: [], skill: [], tag: [] }, 'xlsx').subscribe();
+    const request = httpTesting.expectOne((candidate) => candidate.url.endsWith('/people/export/'));
+    expect(request.request.method).toBe('GET');
+    expect(request.request.responseType).toBe('blob');
+    expect(request.request.params.get('format')).toBe('xlsx');
+    expect(request.request.params.get('q')).toBe('Ama');
+    expect(request.request.params.getAll('relationship')).toEqual(['CONTACT']);
+    request.flush(new Blob(['xlsx']));
+  });
+
   it('sends the backend person detail request contract', () => {
     service.getPerson(44).subscribe();
 

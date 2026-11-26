@@ -37,6 +37,13 @@
         <div class="page-actions">
           <button type="button" class="crm-button crm-button--secondary" (click)="previewMarketingAudience()">Preview marketing audience</button>
         </div>
+        @if (exportAllowed()) {
+          <div class="page-actions export-actions" aria-label="People export">
+            <label class="export-format"><span>Export format</span><select [value]="exportFormat()" (change)="exportFormat.set($any($event.target).value)"><option value="csv">CSV</option><option value="xlsx">XLSX</option></select></label>
+            <button type="button" class="crm-button crm-button--secondary" [disabled]="exporting()" (click)="exportPeople()">{{ exporting() ? 'Preparing export...' : 'Export People' }}</button>
+          </div>
+        }
+        @if (exportError()) { <p class="state-error" role="alert">{{ exportError() }}</p> }
       </div>
 
       @if (loading()) {

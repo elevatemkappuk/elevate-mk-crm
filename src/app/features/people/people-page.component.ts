@@ -83,6 +83,10 @@ export class PeoplePageComponent {
   readonly queryState = signal<PeopleDirectoryQuery>(DEFAULT_PEOPLE_DIRECTORY_QUERY);
   readonly canManagePeople = computed(() => canManagePeople(this.auth.currentUser()));
   readonly contactSearchAllowed = computed(() => !this.staffAccess || this.staffAccess.hasCapability('PERSON_CONTACT_READ'));
+  readonly exportAllowed = computed(() => !!this.staffAccess?.hasCapability('PERSON_EXPORT'));
+  readonly exportFormat = signal<'csv' | 'xlsx'>('csv');
+  readonly exporting = signal(false);
+  readonly exportError = signal<string | null>(null);
   recordTypeLabel(value: string | undefined): string { return value === 'STAFF' ? 'Staff' : value === 'TECHNICAL' ? 'Technical' : value === 'COMMUNITY' ? 'Community' : 'Unknown'; }
 
   readonly currentPage = computed(() => this.queryState().page);
@@ -192,6 +196,27 @@ export class PeoplePageComponent {
     const audienceQuery = audienceQueryFromPeopleDirectory(this.queryState());
     void this.router.navigate(['/marketing/audience-preview'], {
       queryParams: serializeAudiencePreviewQuery(audienceQuery),
+    });
+  }
+
+  exportPeople(): void {
+    if (!this.exportAllowed() || this.exporting()) return;
+    this.exporting.set(true);
+    this.exportError.set(null);
+    this.peopleService.exportPeople(this.queryState(), this.exportFormat()).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `people-export.${this.exportFormat()}`;
+        link.click();
+        URL.revokeObjectURL(url);
+        this.exporting.set(false);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.exporting.set(false);
+        this.exportError.set(error.status === 403 ? 'You do not have permission to export these People.' : 'The People export could not be generated right now.');
+      },
     });
   }
 

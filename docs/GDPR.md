@@ -565,7 +565,35 @@ search note. New Angular/backend regression tests are **Implemented /
 Unexecuted** under the deferred-test policy. Build, runtime compatibility,
 and manual marketing UAT remain pending final GDPR hardening.
 
+## Phase 1B.3 Exports and bulk operations
+
+Status: **Implemented / source-inspected; Angular tests, runtime downloads,
+and final-hardening verification deferred**.
+
+The People directory exposes CSV/XLSX export controls only when the backend
+staff-access projection includes `PERSON_EXPORT`. The CRM sends the current
+directory filters to `GET /api/v1/people/export/` and downloads the authorized
+backend response; it does not assemble files or store protected values in
+browser state. Contact and demographic columns remain independently controlled
+by their privacy capabilities. Authorization failures provide safe feedback.
+No existing bulk Person operation was found and no new bulk mutation path was
+added.
+
+The modified People screen retains separate TypeScript, HTML, CSS, and spec
+files. Added frontend tests are **Implemented / Unexecuted**. Final UAT must
+verify format selection, safe downloads, restricted columns, capability loss,
+record scope, and formula-injection protection. Affected export controls and
+revocation feedback remain in the UI-polishing backlog.
+
 The final UAT and UI-polishing backlog includes manual verification of People
 privacy projections, masked/restricted indicators, protected search and form
 feedback, and the Privacy Audit disclosure activity filter. These follow-ups do
-not expand the approved privacy scope.
+not expand the approved privacy scope. Export-specific UAT remains pending for
+CSV/XLSX downloads, Microsoft Excel compatibility, formula-injection safety,
+record scope, capability revocation, export audit visibility and mandatory
+audit-failure behavior. Angular tests remain **Implemented / Unexecuted** and
+the existing stylesheet-budget and template warnings remain recorded in the
+UI-polishing backlog. Migration application, runtime verification and
+independent specialist acceptance remain outstanding and are carried into
+GDPR Phase 1C, including Marketing capability-revocation and privileged-
+disclosure verification.

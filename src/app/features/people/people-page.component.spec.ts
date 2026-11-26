@@ -6,6 +6,7 @@ import { provideRouter, Router, RouterOutlet } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { StaffAccessService } from '../../core/auth/staff-access.service';
 import { AuthenticatedUser } from '../../core/auth/auth.types';
 import { apiCredentialsInterceptor, csrfHeaderInterceptor } from '../../core/http/auth-http.interceptors';
 import { API_CONFIG } from '../../core/http/api-config';
@@ -60,6 +61,10 @@ class MockAuthService {
   readonly hasPrivacyAuditRead = signal(false).asReadonly();
 }
 
+class MockStaffAccessService {
+  hasCapability(code: string): boolean { return code === 'PERSON_EXPORT' || code === 'PERSON_CONTACT_READ'; }
+}
+
 @Component({
   imports: [RouterOutlet],
   template: `<router-outlet />`,
@@ -87,6 +92,7 @@ describe('PeoplePageComponent', () => {
         provideHttpClientTesting(),
         { provide: API_CONFIG, useValue: { apiBaseUrl } },
         { provide: AuthService, useClass: MockAuthService },
+        { provide: StaffAccessService, useClass: MockStaffAccessService },
       ],
     }).compileComponents();
 
@@ -171,6 +177,16 @@ describe('PeoplePageComponent', () => {
     expect(text).toContain('amina@example.com');
     expect(text).toContain('991000001');
     expect(text).toContain('Lilongwe');
+  });
+
+  it('shows export controls only for the effective export capability', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people');
+    expectPeopleRequest({
+      q: '', record_state: 'active', ordering: 'last_name', page: '1', page_size: '25',
+    }).flush({ count: 0, next: null, previous: null, results: [] });
+    harness.detectChanges();
+    expect(harness.routeNativeElement?.querySelector('.export-actions')).not.toBeNull();
   });
 
   it('search sends q to the backend and resets page to 1', async () => {
