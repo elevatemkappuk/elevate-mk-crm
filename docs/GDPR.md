@@ -506,6 +506,12 @@ contact search is not offered when `PERSON_CONTACT_READ` is absent, and
 protected form controls and payload fields are disabled/omitted when the
 corresponding capability is absent. The backend remains the security boundary.
 
+The same projection now includes the existing `PERSON_EXPORT` capability, so
+the People export controls appear only when the backend has granted that
+capability. The CRM visibility check is presentation-only; the API continues
+to enforce export authorization, privacy field projection, record scope,
+mandatory auditing, and the audited Django superuser exception.
+
 The API returns masked or `Restricted` values plus explicit privacy indicators.
 When effective access is revoked during an active CRM session, loaded People
 and Person overview state is redacted in memory and protected edits are no
@@ -610,15 +616,20 @@ staff-access projection includes `PERSON_EXPORT`. The CRM sends the current
 directory filters to `GET /api/v1/people/export/` and downloads the authorized
 backend response; it does not assemble files or store protected values in
 browser state. Contact and demographic columns remain independently controlled
-by their privacy capabilities. Authorization failures provide safe feedback.
+by their privacy capabilities. A `403` export denial triggers a fresh
+`StaffAccessService` projection; the export controls are removed when
+`PERSON_EXPORT` is no longer effective, and a failed refresh remains
+fail-closed. Authorization failures provide safe feedback.
 No existing bulk Person operation was found and no new bulk mutation path was
 added.
 
 The modified People screen retains separate TypeScript, HTML, CSS, and spec
-files. Added frontend tests are **Implemented / Unexecuted**. Final UAT must
+files. Focused People page regression coverage is **Verified**: 11/11 tests
+passed, including capability refresh after an export denial. Broader Angular
+suites remain unexecuted. Final UAT must
 verify format selection, safe downloads, restricted columns, capability loss,
-record scope, and formula-injection protection. Affected export controls and
-revocation feedback remain in the UI-polishing backlog.
+record scope, and formula-injection protection. Revocation feedback is
+implemented in source and remains subject to final browser verification.
 
 The final UAT and UI-polishing backlog includes manual verification of People
 privacy projections, masked/restricted indicators, protected search and form
@@ -626,12 +637,19 @@ feedback, and the Privacy Audit disclosure activity filter. These follow-ups do
 not expand the approved privacy scope. Export-specific UAT remains pending for
 CSV/XLSX downloads, Microsoft Excel compatibility, formula-injection safety,
 record scope, capability revocation, export audit visibility and mandatory
-audit-failure behavior. Angular tests remain **Implemented / Unexecuted** and
+audit-failure behavior. Broader Angular tests remain **Implemented / Unexecuted** and
 the existing stylesheet-budget and template warnings remain recorded in the
 UI-polishing backlog. Migration application, runtime verification and
 independent specialist acceptance remain outstanding and are carried into
 GDPR Phase 1C, including Marketing capability-revocation and privileged-
 disclosure verification.
+
+The consolidated GDPR Phase 1 manual UAT is **Verified** for 15 passed
+scenarios. One historical-campaign scenario was explicitly waived for manual
+verification and remains pending automated regression testing. This result does
+not claim completion of the outstanding Phase 1C automated hardening,
+cross-repository/runtime verification, specialist acceptance, or
+production-activation gates.
 
 ## Consolidated Phase 1 UI polishing
 

@@ -3,7 +3,8 @@ export type StaffCapabilityCode =
   | 'PRIVACY_AUDIT_READ'
   | 'LEGAL_HOLD_ADMIN'
   | 'PERSON_CONTACT_READ'
-  | 'PERSON_DEMOGRAPHIC_READ';
+  | 'PERSON_DEMOGRAPHIC_READ'
+  | 'PERSON_EXPORT';
 
 export interface StaffAccessProjection {
   readonly capability_codes: readonly StaffCapabilityCode[];

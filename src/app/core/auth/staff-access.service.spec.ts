@@ -105,6 +105,14 @@ describe('StaffAccessService', () => {
     expect(service.hasCapability('PERSON_DEMOGRAPHIC_READ')).toBe(true);
   });
 
+  it('accepts the export capability from the backend projection', () => {
+    service.refresh(staffUser).subscribe();
+    const request = httpTesting.expectOne(`${apiBaseUrl}/staff/access/me/`);
+    request.flush({ capability_codes: ['PERSON_EXPORT'], policy_version: 5 });
+
+    expect(service.hasCapability('PERSON_EXPORT')).toBe(true);
+  });
+
   it('retains unauthenticated state on 401 and forbidden state on ordinary 403', () => {
     let firstError: unknown;
     service.refresh(staffUser).subscribe({ error: (error) => firstError = error });

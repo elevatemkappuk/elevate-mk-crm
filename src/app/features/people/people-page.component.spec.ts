@@ -4,6 +4,7 @@ import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router, RouterOutlet } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { Observable, of } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
 import { StaffAccessService } from '../../core/auth/staff-access.service';
@@ -62,7 +63,15 @@ class MockAuthService {
 }
 
 class MockStaffAccessService {
-  hasCapability(code: string): boolean { return code === 'PERSON_EXPORT' || code === 'PERSON_CONTACT_READ'; }
+  readonly exportEnabled = signal(true);
+  refreshCalls = 0;
+  isReady(): boolean { return true; }
+  hasCapability(code: string): boolean { return code === 'PERSON_CONTACT_READ' || (code === 'PERSON_EXPORT' && this.exportEnabled()); }
+  refresh(): Observable<null> {
+    this.refreshCalls += 1;
+    this.exportEnabled.set(false);
+    return of(null);
+  }
 }
 
 @Component({
@@ -187,6 +196,37 @@ describe('PeoplePageComponent', () => {
     }).flush({ count: 0, next: null, previous: null, results: [] });
     harness.detectChanges();
     expect(harness.routeNativeElement?.querySelector('.export-actions')).not.toBeNull();
+  });
+
+  it('does not show export controls when the effective export capability is absent', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people');
+    expectPeopleRequest({
+      q: '', record_state: 'active', ordering: 'last_name', page: '1', page_size: '25',
+    }).flush({ count: 0, next: null, previous: null, results: [] });
+    (TestBed.inject(StaffAccessService) as unknown as MockStaffAccessService).exportEnabled.set(false);
+    harness.detectChanges();
+    expect(harness.routeNativeElement?.querySelector('.export-actions')).toBeNull();
+  });
+
+  it('refreshes effective access and hides exports after a backend authorization denial', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/people');
+    expectPeopleRequest({
+      q: '', record_state: 'active', ordering: 'last_name', page: '1', page_size: '25',
+    }).flush({ count: 0, next: null, previous: null, results: [] });
+    harness.detectChanges();
+
+    (harness.routeNativeElement?.querySelector('.export-actions button') as HTMLButtonElement).click();
+    const exportRequest = httpTesting.expectOne((request) => request.url === `${apiBaseUrl}/people/export/`);
+    exportRequest.flush(new Blob([JSON.stringify({ detail: 'PERSON_EXPORT is required.' })], { type: 'application/json' }), { status: 403, statusText: 'Forbidden' });
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+
+    const access = TestBed.inject(StaffAccessService) as unknown as MockStaffAccessService;
+    expect(access.refreshCalls).toBe(1);
+    expect(harness.routeNativeElement?.querySelector('.export-actions')).toBeNull();
+    expect(harness.routeNativeElement?.textContent).toContain('You do not have permission to export these People.');
   });
 
   it('search sends q to the backend and resets page to 1', async () => {

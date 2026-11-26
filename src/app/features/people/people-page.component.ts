@@ -218,7 +218,15 @@ export class PeoplePageComponent {
       },
       error: (error: HttpErrorResponse) => {
         this.exporting.set(false);
-        this.exportError.set(error.status === 403 ? 'You do not have permission to export these People.' : 'The People export could not be generated right now.');
+        if (error.status === 403) {
+          this.exportError.set('You do not have permission to export these People.');
+          const user = this.auth.currentUser();
+          if (user && this.staffAccess) {
+            this.staffAccess.refresh(user).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ error: () => undefined });
+          }
+          return;
+        }
+        this.exportError.set('The People export could not be generated right now.');
       },
     });
   }

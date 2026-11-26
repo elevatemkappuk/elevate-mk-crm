@@ -15,6 +15,7 @@ const CRM_DISCLOSED_CAPABILITY_CODES: ReadonlySet<string> = new Set([
   'LEGAL_HOLD_ADMIN',
   'PERSON_CONTACT_READ',
   'PERSON_DEMOGRAPHIC_READ',
+  'PERSON_EXPORT',
 ]);
 const EMPTY_CAPABILITY_CODES: readonly string[] = Object.freeze([]);
 
