@@ -1,30 +1,31 @@
-    .workspace { display: grid; gap: 1rem; padding: 1.5rem; border-radius: 1.25rem; border: 1px solid rgba(57, 47, 18, .08); background: rgba(255, 250, 244, .9); }
-    .eyebrow { margin: 0; text-transform: uppercase; letter-spacing: .14em; font-size: .75rem; color: #8b6519; }
+    .workspace { display: grid; gap: var(--crm-space-4); padding: var(--crm-space-5); border-radius: var(--crm-radius-lg); border: 1px solid var(--crm-border); background: var(--crm-workspace); }
+    .eyebrow { margin: 0; text-transform: uppercase; letter-spacing: .14em; font-size: var(--crm-font-sm); color: var(--crm-text-muted); }
     h2, h3, p { margin: 0; }
-    h2, h3 { color: #443117; }
-    .intro, .notice, .hold-row p, .release-request p { color: #6f5220; line-height: 1.6; }
-    .card { display: grid; gap: .75rem; padding: 1rem; border: 1px solid rgba(57, 47, 18, .12); border-radius: .9rem; background: #fffdf9; }
+    h2, h3 { color: var(--crm-text-strong); }
+    .intro, .notice, .hold-row p, .release-request p { color: var(--crm-text-secondary); line-height: 1.6; }
+    .card { display: grid; gap: var(--crm-space-3); padding: var(--crm-space-4); border: 1px solid var(--crm-border); border-radius: var(--crm-radius-md); background: var(--crm-surface); }
     form, .form-grid, .person-picker { display: grid; gap: .6rem; }
     .picker-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem; }
     .person-options { display: grid; gap: .35rem; max-height: 14rem; overflow: auto; }
-    .person-option { display: flex; justify-content: space-between; align-items: center; gap: .75rem; text-align: left; background: #fffdf9; color: #443117; }
-    .person-option span, .selected-target { color: #6f5220; font-size: .9rem; }
-    .person-option.selected { outline: 2px solid #b69a66; }
+    .person-option { display: flex; justify-content: space-between; align-items: center; gap: .75rem; text-align: left; background: var(--crm-surface); color: var(--crm-text-strong); }
+    .person-option span, .selected-target { color: var(--crm-text-secondary); font-size: var(--crm-font-sm); }
+    .person-option.selected { outline: 2px solid var(--crm-focus-ring); }
     .form-grid { grid-template-columns: minmax(8rem, 12rem) minmax(10rem, 1fr); align-items: center; }
-    input, textarea, button { min-height: 2.5rem; border-radius: .5rem; border: 1px solid #b69a66; padding: .5rem .75rem; font: inherit; }
+    input, textarea, button { min-height: var(--crm-control-height); border-radius: var(--crm-radius-sm); border: 1px solid var(--crm-control-border); padding: .5rem .75rem; font: inherit; }
     textarea { resize: vertical; }
-    button { cursor: pointer; background: #443117; color: white; }
+    button { cursor: pointer; background: var(--crm-action); color: var(--crm-on-action); }
     button:disabled { cursor: wait; opacity: .6; }
-    .button-secondary { background: #fffdf9; color: #443117; }
+    .button-secondary { background: var(--crm-surface); color: var(--crm-text-strong); }
     .hold-list { display: grid; gap: .7rem; }
-    .hold-row { display: flex; justify-content: space-between; gap: 1rem; align-items: start; padding: .75rem; border-top: 1px solid rgba(57, 47, 18, .1); }
+    .hold-row { display: flex; justify-content: space-between; gap: var(--crm-space-4); align-items: start; padding: var(--crm-space-3); border-top: 1px solid var(--crm-border); }
     .hold-row > div { display: grid; gap: .25rem; }
     .hold-row p { font-size: .9rem; }
-    .inline-form { padding: .75rem; border: 1px solid rgba(57, 47, 18, .12); border-radius: .6rem; }
-    .release-request { display: grid; gap: .35rem; margin-top: .5rem; padding: .65rem; border-left: 3px solid #b69a66; }
+    .inline-form { padding: var(--crm-space-3); border: 1px solid var(--crm-border); border-radius: var(--crm-radius-sm); }
+    .release-request { display: grid; gap: .35rem; margin-top: .5rem; padding: var(--crm-space-3); border-left: 3px solid var(--crm-shell-accent); }
     .actions { display: flex; gap: .5rem; flex-wrap: wrap; }
     .error, .success { padding: .75rem; border-radius: .5rem; }
-    .error { color: #743f2b; background: #f4d9ce; }
-    .success { color: #245b36; background: #e1f2e5; }
+    .error { color: var(--crm-error); background: var(--crm-error-surface); }
+    .success { color: var(--crm-success); background: var(--crm-success-surface); }
+    input:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid var(--crm-focus-ring); outline-offset: 3px; }
     @media (max-width: 700px) { .form-grid { grid-template-columns: 1fr; } .hold-row { flex-direction: column; } }
 

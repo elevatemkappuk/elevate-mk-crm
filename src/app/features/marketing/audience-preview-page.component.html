@@ -57,8 +57,7 @@
     }
   }
 
-  <section class="results-panel" aria-label="Audience results">
-    <h2>Recipients</h2>
+  <app-crm-section-card title="Recipients">
     <div class="result-tabs" role="tablist" aria-label="Audience result views">
       @for (view of resultViews; track view) {
         <button type="button" role="tab" [attr.aria-selected]="queryState().result === view" [class.active]="queryState().result === view" (click)="changeResult(view)">{{ resultLabel(view, response()) }}</button>
@@ -97,7 +96,7 @@
         </div>
       }
     }
-  </section>
+  </app-crm-section-card>
 </section>
 <app-campaign-create-dialog
   [open]="createDialogOpen()"

@@ -597,3 +597,32 @@ UI-polishing backlog. Migration application, runtime verification and
 independent specialist acceptance remain outstanding and are carried into
 GDPR Phase 1C, including Marketing capability-revocation and privileged-
 disclosure verification.
+
+## Consolidated Phase 1 UI polishing
+
+Status: **Implemented / source-inspected; automated tests and browser visual
+verification remain Unverified.** The CRM feature surfaces now reuse the
+canonical token foundation in `src/styles.scss`, `_tokens.scss`,
+`_patterns.scss`, and `_breakpoints.scss`. Privacy Administration, Legal Holds,
+People, Person privacy audit, and Audience Preview replace duplicated feature
+palette values with the existing CRM tokens and preserve the established
+responsive, focus-visible, loading, empty, error, and disabled-state patterns.
+Audience results now use `CrmSectionCardComponent`; no new UI framework,
+permission, API contract, or backend behavior was introduced.
+
+The workspace policy now requires future frontend work, including Events V1, to
+inspect established pages and reuse shared components, classes, tokens,
+branding, responsive conventions, and the separate TypeScript/HTML/CSS-or-SCSS
+and component-test file convention. The policy does not replace backend
+authorization or accessibility and security gates.
+
+No automated tests were executed under the deferred-test policy. Existing
+component tests remain **Implemented / Unexecuted**; the Angular production
+build, template/type validation, stylesheet-budget result, and `git diff
+--check` must be recorded from the authorized lightweight validation run.
+Browser visual verification across representative CRM pages remains pending.
+The audience results-panel duplication was removed. The authorized lightweight
+build completed successfully, with the pre-existing People stylesheet budget
+warning reduced to 17 bytes over its 4.00 kB limit; this remains a non-blocking
+UI-polishing backlog item. Remaining minor UX polish is backlog work, not a new
+privacy capability or authorization change.

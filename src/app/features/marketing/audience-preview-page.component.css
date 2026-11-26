@@ -18,7 +18,6 @@ select { min-height: 2.75rem; padding: .55rem .7rem; border: 1px solid var(--crm
 .breakdown { display: grid; gap: .6rem; margin: 0; max-width: 28rem; }
 .breakdown div { display: flex; justify-content: space-between; gap: 1rem; padding-bottom: .5rem; border-bottom: 1px solid var(--crm-border); }
 .breakdown dt { color: var(--crm-text-secondary); } .breakdown dd { margin: 0; color: var(--crm-text-strong); font-weight: 700; }
-.results-panel { display: grid; gap: var(--crm-space-4); padding: 1.2rem 1.25rem; border: 1px solid var(--crm-border); border-radius: var(--crm-radius-lg); background: var(--crm-surface); box-shadow: var(--crm-shadow-sm); }
 .result-tabs { display: flex; flex-wrap: wrap; gap: .45rem; border-bottom: 1px solid var(--crm-border); }
 .result-tabs button { min-height: 2.65rem; padding: .55rem .9rem; border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--crm-text-secondary); font: inherit; font-weight: 700; cursor: pointer; }
 .result-tabs button.active { border-bottom-color: var(--crm-shell-accent); color: var(--crm-text-strong); }
@@ -27,7 +26,7 @@ select { min-height: 2.75rem; padding: .55rem .7rem; border: 1px solid var(--crm
 th, td { padding: .85rem .7rem; border-bottom: 1px solid var(--crm-border); text-align: left; vertical-align: top; }
 th { color: var(--crm-text-muted); font-size: var(--crm-font-sm); font-weight: 700; } td { color: var(--crm-text-secondary); } td a { color: var(--crm-text-strong); font-weight: 700; }
 .excluded-status { display: grid; gap: .35rem; } .excluded-status span { color: var(--crm-text-muted); font-size: var(--crm-font-sm); line-height: 1.4; }
-.state-card { display: grid; gap: .8rem; justify-items: start; padding: 1.25rem; border: 1px dashed var(--crm-border); border-radius: var(--crm-radius-md); color: var(--crm-text-secondary); }
+.state-card { display: grid; gap: .8rem; justify-items: start; padding: var(--crm-space-5); border: 1px dashed var(--crm-border); border-radius: var(--crm-radius-md); color: var(--crm-text-secondary); }
 .state-card-error { border-style: solid; color: var(--crm-error); } .pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; color: var(--crm-text-secondary); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @media (max-width: 700px) { .page-heading { align-items: start; flex-direction: column; } .display-controls label { width: 100%; } }
