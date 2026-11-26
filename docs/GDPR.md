@@ -540,6 +540,31 @@ but not applied, and frontend/runtime verification remains deferred to GDPR
 Phase 1C hardening. Comprehensive Person access auditing remains the deferred
 `GDPR-FUTURE-001` enhancement.
 
+## Phase 1B.2 Marketing privacy
+
+Status: **Implemented / source-inspected; Angular tests and runtime/provider
+verification deferred**.
+
+Marketing audience preview and Campaign V1 continue to use the API's
+backend-authoritative CRM-role, consent, and privacy projections. The CRM
+offers contact search only when effective `PERSON_CONTACT_READ` is present;
+the API remains authoritative and rejects or filters manipulated requests.
+Preview and historical recipient email values are rendered from the masked or
+authorized response projection. The CRM does not calculate capability state,
+persist protected values in browser storage, or expose provider payloads.
+
+Provider preparation errors are displayed only through the API's bounded safe
+message. Campaign workflow, consent, and provider identity behavior remain
+unchanged. No new marketing capability, blanket campaign/recipient audit,
+export enforcement, or external-provider call was introduced. Comprehensive
+Person access auditing remains `GDPR-FUTURE-001`.
+
+The modified audience-preview component follows the repository's external
+template and stylesheet convention and displays a permission-aware contact
+search note. New Angular/backend regression tests are **Implemented /
+Unexecuted** under the deferred-test policy. Build, runtime compatibility,
+and manual marketing UAT remain pending final GDPR hardening.
+
 The final UAT and UI-polishing backlog includes manual verification of People
 privacy projections, masked/restricted indicators, protected search and form
 feedback, and the Privacy Audit disclosure activity filter. These follow-ups do

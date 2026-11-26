@@ -26,6 +26,7 @@ import {
 import { PeopleDirectoryQuery, PeopleOrdering, PeoplePageSize } from '../../core/people/people.types';
 import { PeopleDirectoryFiltersComponent } from '../people/people-directory-filters.component';
 import { AuthService } from '../../core/auth/auth.service';
+import { StaffAccessService } from '../../core/auth/staff-access.service';
 import { canManagePeople } from '../../core/auth/auth-access';
 import { CampaignCreateDialogComponent } from './campaign-create-dialog.component';
 import { CrmSectionCardComponent } from '../../shared/ui/crm-section-card.component';
@@ -60,178 +61,8 @@ const EXCLUSION_EXPLANATIONS: Record<AudienceExclusionReason, string> = {
 @Component({
   selector: 'app-audience-preview-page',
   imports: [CommonModule, RouterLink, PeopleDirectoryFiltersComponent, CrmSectionCardComponent, StatusBadgeComponent, CampaignCreateDialogComponent],
-  template: `
-    <section class="audience-page">
-      <a routerLink="/people" class="back-link">Back to People</a>
-
-      <header class="page-heading">
-        <div>
-          <p class="eyebrow">Marketing</p>
-          <h1>Audience Preview</h1>
-          <p class="intro">Check who can currently receive marketing email from the People matching your criteria.</p>
-        </div>
-      </header>
-
-      <app-crm-section-card title="Audience criteria">
-        <app-people-directory-filters [query]="directoryQuery()" [compact]="true" (changed)="selectionChanged($event)" (cleared)="clearFilters()" />
-        @if (response(); as preview) {
-          <div class="selection-summary"><strong>Selection</strong><span>{{ selectionSummary(preview) }}</span></div>
-        }
-        <div class="display-controls" aria-label="Audience preview display controls">
-          <label>
-            <span>Order by</span>
-            <select [value]="queryState().ordering" (change)="changeOrdering($any($event.target).value)">
-              @for (option of orderingOptions; track option.value) {
-                <option [value]="option.value">{{ option.label }}</option>
-              }
-            </select>
-          </label>
-          <label>
-            <span>Page size</span>
-            <select [value]="queryState().page_size" (change)="changePageSize($any($event.target).value)">
-              @for (size of pageSizes; track size) {
-                <option [value]="size">{{ size }}</option>
-              }
-            </select>
-          </label>
-        </div>
-      </app-crm-section-card>
-
-      @if (response(); as preview) {
-        @if (canCreateCampaign()) {
-          <div class="campaign-action">
-            <div><strong>{{ preview.eligible_count }} {{ preview.eligible_count === 1 ? 'person can' : 'people can' }} receive this campaign</strong><span>Eligibility will be checked again when the Campaign is prepared.</span></div>
-            <button type="button" class="crm-button crm-button--primary" (click)="createDialogOpen.set(true)">Continue to Campaign</button>
-          </div>
-        }
-
-        @if (preview.excluded_count > 0) {
-          <app-crm-section-card [title]="'Exclusions (' + preview.excluded_count + ')'">
-            <dl class="breakdown">
-              @for (reason of activeExclusionReasons(preview); track reason) {
-                <div>
-                  <dt>{{ exclusionLabel(reason) }}</dt>
-                  <dd>{{ preview.exclusion_counts[reason] }}</dd>
-                </div>
-              }
-            </dl>
-          </app-crm-section-card>
-        }
-      }
-
-      <section class="results-panel" aria-label="Audience results">
-        <h2>Recipients</h2>
-
-        <div class="result-tabs" role="tablist" aria-label="Audience result views">
-          @for (view of resultViews; track view) {
-            <button
-              type="button"
-              role="tab"
-              [attr.aria-selected]="queryState().result === view"
-              [class.active]="queryState().result === view"
-              (click)="changeResult(view)"
-            >{{ resultLabel(view, response()) }}</button>
-          }
-        </div>
-
-        @if (loading()) {
-          <div class="state-card" aria-live="polite"><p>Loading audience preview...</p></div>
-        } @else if (errorMessage()) {
-          <div class="state-card state-card-error" role="alert">
-            <p>{{ errorMessage() }}</p>
-            <button type="button" class="crm-button crm-button--secondary" (click)="retry()">Retry</button>
-          </div>
-        } @else if (response(); as preview) {
-          @if (preview.results.results.length === 0) {
-            <div class="state-card" aria-live="polite"><p>{{ emptyMessage(preview) }}</p></div>
-          } @else {
-            <div class="table-wrap">
-              <table>
-                <caption class="sr-only">{{ activeResultLabel() }} audience People</caption>
-                <thead>
-                  <tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Marketing eligibility</th></tr>
-                </thead>
-                <tbody>
-                  @for (person of preview.results.results; track person.id) {
-                    <tr>
-                      <td data-label="Name"><a [routerLink]="['/people', person.id]">{{ fullName(person) }}</a></td>
-                      <td data-label="Email">{{ person.primary_email || '-' }}</td>
-                      <td data-label="Marketing eligibility">
-                        @if (person.classification === 'ELIGIBLE') {
-                          <app-status-badge label="Eligible" tone="success" />
-                        } @else {
-                          <div class="excluded-status">
-                            <app-status-badge [label]="exclusionLabel(person.exclusion_reasons[0])" tone="warning" />
-                            @if (queryState().result === 'excluded') { <span>{{ exclusionExplanation(person.exclusion_reasons[0]) }}</span> }
-                          </div>
-                        }
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-            <div class="pagination" aria-label="Audience results pagination">
-              <button type="button" class="crm-button crm-button--secondary" [disabled]="preview.results.previous_page === null" (click)="goToPage(preview.results.previous_page)">Previous</button>
-              <span>Page {{ preview.results.page }}</span>
-              <button type="button" class="crm-button crm-button--secondary" [disabled]="preview.results.next_page === null" (click)="goToPage(preview.results.next_page)">Next</button>
-            </div>
-          }
-        }
-      </section>
-    </section>
-    <app-campaign-create-dialog
-      [open]="createDialogOpen()"
-      [selection]="currentSelection()"
-      [selectedCount]="response()?.selected_count || 0"
-      [eligibleCount]="response()?.eligible_count || 0"
-      [excludedCount]="response()?.excluded_count || 0"
-      [busy]="campaignSubmitting()"
-      [errorMessage]="campaignError()"
-      (cancelled)="createDialogOpen.set(false)"
-      (submitted)="createCampaign($event)"
-    />
-  `,
-  styles: `
-    :host { display: block; }
-    .audience-page { display: grid; gap: var(--crm-space-4); }
-    .back-link { color: var(--crm-text-secondary); font-size: var(--crm-font-sm); font-weight: 600; }
-    .page-heading { display: flex; justify-content: space-between; gap: 1rem; align-items: end; }
-    h1, h2, p { margin: 0; }
-    h1 { color: var(--crm-text-strong); font-size: clamp(1.45rem, 2.5vw, 2rem); }
-    h2 { color: var(--crm-text-strong); font-size: var(--crm-font-lg); }
-    .intro { max-width: 48rem; margin-top: .45rem; color: var(--crm-text-secondary); line-height: 1.55; }
-    .eyebrow { margin-bottom: .25rem; color: var(--crm-text-muted); font-size: var(--crm-font-sm); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-    .display-controls { display: flex; flex-wrap: wrap; gap: .8rem; margin-top: 1rem; }
-    .display-controls label { display: grid; gap: .3rem; min-width: 12rem; color: var(--crm-text-secondary); font-size: var(--crm-font-sm); font-weight: 600; }
-    select { min-height: 2.75rem; padding: .55rem .7rem; border: 1px solid var(--crm-border); border-radius: var(--crm-radius-sm); background: var(--crm-surface); color: var(--crm-text-strong); font: inherit; }
-    .selection-summary { display: grid; gap: .25rem; margin-top: var(--crm-space-4); color: var(--crm-text-secondary); }
-    .selection-summary strong { color: var(--crm-text-strong); }
-    .campaign-action { display:flex; justify-content:space-between; align-items:center; gap:1rem; padding:1rem 1.1rem; border:1px solid var(--crm-shell-accent); border-radius:var(--crm-radius-lg); background:color-mix(in srgb, var(--crm-shell-accent) 12%, var(--crm-surface)); } .campaign-action div { display:grid; gap:.25rem; } .campaign-action strong { color:var(--crm-text-strong); } .campaign-action span { color:var(--crm-text-secondary); font-size:var(--crm-font-sm); }
-    .breakdown { display: grid; gap: .6rem; margin: 0; max-width: 28rem; }
-    .breakdown div { display: flex; justify-content: space-between; gap: 1rem; padding-bottom: .5rem; border-bottom: 1px solid var(--crm-border); }
-    .breakdown dt { color: var(--crm-text-secondary); }
-    .breakdown dd { margin: 0; color: var(--crm-text-strong); font-weight: 700; }
-    .results-panel { display: grid; gap: var(--crm-space-4); padding: 1.2rem 1.25rem; border: 1px solid var(--crm-border); border-radius: var(--crm-radius-lg); background: var(--crm-surface); box-shadow: var(--crm-shadow-sm); }
-    .result-tabs { display: flex; flex-wrap: wrap; gap: .45rem; border-bottom: 1px solid var(--crm-border); }
-    .result-tabs button { min-height: 2.65rem; padding: .55rem .9rem; border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--crm-text-secondary); font: inherit; font-weight: 700; cursor: pointer; }
-    .result-tabs button.active { border-bottom-color: var(--crm-shell-accent); color: var(--crm-text-strong); }
-    .result-tabs button:focus-visible, a:focus-visible, button:focus-visible, select:focus-visible { outline: 2px solid var(--crm-focus-ring); outline-offset: 3px; }
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: .85rem .7rem; border-bottom: 1px solid var(--crm-border); text-align: left; vertical-align: top; }
-    th { color: var(--crm-text-muted); font-size: var(--crm-font-sm); font-weight: 700; }
-    td { color: var(--crm-text-secondary); }
-    td a { color: var(--crm-text-strong); font-weight: 700; }
-    .excluded-status { display: grid; gap: .35rem; }
-    .excluded-status span { color: var(--crm-text-muted); font-size: var(--crm-font-sm); line-height: 1.4; }
-    .state-card { display: grid; gap: .8rem; justify-items: start; padding: 1.25rem; border: 1px dashed var(--crm-border); border-radius: var(--crm-radius-md); color: var(--crm-text-secondary); }
-    .state-card-error { border-style: solid; color: var(--crm-error); }
-    .pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; color: var(--crm-text-secondary); }
-    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-    @media (max-width: 700px) { .page-heading { align-items: start; flex-direction: column; } .display-controls label { width: 100%; } }
-    @media (max-width: 600px) { th { display: none; } td { display: grid; grid-template-columns: 8rem minmax(0, 1fr); gap: .6rem; } td::before { content: attr(data-label); color: var(--crm-text-muted); font-size: var(--crm-font-sm); font-weight: 700; } }
-  `,
+  templateUrl: './audience-preview-page.component.html',
+  styleUrl: './audience-preview-page.component.css',
 })
 export class AudiencePreviewPageComponent {
   private readonly route = inject(ActivatedRoute);
@@ -239,6 +70,7 @@ export class AudiencePreviewPageComponent {
   private readonly service = inject(AudiencePreviewService);
   private readonly campaignService = inject(CampaignService);
   private readonly auth = inject(AuthService);
+  private readonly staffAccess = inject(StaffAccessService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly pageSizes = PAGE_SIZES;
@@ -254,6 +86,7 @@ export class AudiencePreviewPageComponent {
   readonly campaignSubmitting = signal(false);
   readonly campaignError = signal<string | null>(null);
   readonly currentSelection = computed(() => audienceSelection(this.queryState()));
+  readonly contactSearchAllowed = computed(() => this.staffAccess.hasCapability('PERSON_CONTACT_READ'));
 
   constructor() {
     this.route.queryParamMap.pipe(
