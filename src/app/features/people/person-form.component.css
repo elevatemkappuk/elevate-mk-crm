@@ -1,10 +1,10 @@
-    form,.field-group,.fields { display:grid; gap:1rem; } .field-group { padding:1.15rem; border:1px solid rgba(22,39,53,.09); border-radius:1rem; background:#fff; }
-    h3 { margin:0; color:#173248; font-size:1.05rem; } .fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
-    label { display:grid; gap:.38rem; font-weight:650; color:#294456; } input,select { min-width:0; padding:.68rem .78rem; border:1px solid #b7c7d4; border-radius:.7rem; font:inherit; color:#173248; background:#fff; }
-    input:focus-visible,select:focus-visible { outline:0; border-color:#5d88a0; box-shadow:0 0 0 3px rgba(108,154,180,.2); } small { color:#a12929; font-weight:600; }
+    form,.field-group,.fields { display:grid; gap:var(--crm-space-4); } .field-group { padding:var(--crm-space-4); border:1px solid var(--crm-border); border-radius:var(--crm-radius-lg); background:var(--crm-surface); }
+    h3 { margin:0; color:var(--crm-text-strong); font-size:1.05rem; } .fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    label { display:grid; gap:.38rem; font-weight:var(--crm-weight-medium); color:var(--crm-text-secondary); } input,select { min-width:0; padding:.68rem .78rem; border:1px solid var(--crm-control-border); border-radius:var(--crm-radius-sm); font:inherit; color:var(--crm-text-strong); background:var(--crm-surface); }
+    input:focus-visible,select:focus-visible { outline:2px solid var(--crm-focus-ring); outline-offset:3px; } small { color:var(--crm-error); font-weight:var(--crm-weight-medium); }
     .drawer-layout .validation-slot { min-height:1.1em; }
     .membership { max-width:22rem; } .actions { display:flex; gap:.7rem; flex-wrap:wrap; } button { border:0; border-radius:999px; padding:.72rem 1.1rem; font:inherit; font-weight:700; cursor:pointer; }
-    .button-primary { color:#fff; background:#1d6077; } .button-secondary { color:#244359; background:#edf3f6; } button:disabled { opacity:.6; cursor:not-allowed; }
+    .button-primary { color:var(--crm-on-action); background:var(--crm-action); } .button-secondary { color:var(--crm-text-strong); background:var(--crm-surface-subtle); } button:disabled { opacity:.6; cursor:not-allowed; }
     fieldset { display:grid; gap:1rem; border:0; margin:0; padding:0; min-width:0; }
     .drawer-layout .field-group { padding:0; border:0; border-radius:0; }
     .drawer-layout h3 { font-size:.75rem; text-transform:uppercase; letter-spacing:.08em; }
