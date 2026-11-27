@@ -65,7 +65,7 @@ describe('Person profile workspace', () => {
     await TestBed.configureTestingModule({
       providers: [provideRouter([{ path: 'people/:id', component: PersonDetailPageComponent }]),
         { provide: API_CONFIG, useValue: { apiBaseUrl: 'http://localhost:8000/api/v1' } },
-        { provide: AuthService, useValue: { currentUser, hasPrivacyAuditRead: signal(false) } },
+        { provide: AuthService, useValue: { currentUser, hasPrivacyAuditRead: signal(false), hasLegalHoldAdministration: () => false } },
         { provide: StaffAccessService, useValue: { isReady: () => true, hasCapability: () => true, selectAccount: vi.fn(), refresh: vi.fn() } },
         { provide: PeopleService, useValue: service }],
     }).compileComponents();

@@ -224,6 +224,7 @@ class MockAuthService {
   private readonly currentUserState = signal<AuthenticatedUser | null>(viewerUser);
   readonly currentUser = this.currentUserState.asReadonly();
   readonly hasPrivacyAuditRead = signal(false).asReadonly();
+  readonly hasLegalHoldAdministration = () => false;
 
   setCurrentUser(user: AuthenticatedUser | null): void {
     this.currentUserState.set(user);
