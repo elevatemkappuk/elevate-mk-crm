@@ -135,6 +135,14 @@ approval submissions. Other screens that still use page-local feedback, includin
 Legal Holds and unrelated save flows, remain documented migration exceptions and
 were not changed in this UI-polish stage.
 
+Its four-tab presentation is componentized by ownership: the parent retains tab
+navigation, shared governance state, API coordination, authorization refresh and
+confirmation dialogs, while Staff Permissions, Role Defaults, and Governance
+Requests/History own their templates and feature-specific styles. A small shared
+Privacy Administration stylesheet contains common status, notice, and accessibility
+patterns. This keeps each component within the existing stylesheet budget without
+moving feature styles into global styles.
+
 The filter drawer uses an optional `[drawerFooter]` projection for actions outside
 the scrolling body. Existing drawers without projected footer content retain
 their form-owned actions. `dialogId` optionally supplies an ID for an opener's

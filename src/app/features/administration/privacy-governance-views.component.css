@@ -1,0 +1,38 @@
+:host { display: block; }
+.approval-table td strong { display: block; font-weight: var(--crm-weight-medium); }
+.approval-table td small { display: block; margin-top: .2rem; color: var(--crm-text-muted); font-size: var(--crm-font-sm); }
+.staff-table-wrap { overflow-x: auto; }
+.staff-table { min-width: 42rem; }
+.staff-table th:last-child, .staff-table td:last-child { width: 3rem; padding-inline: var(--crm-space-2); text-align: center; }
+.staff-row--interactive { cursor: pointer; }
+.staff-row--interactive:hover, .staff-row--interactive:focus-visible { background: var(--crm-info-surface); }
+.history-list { display: grid; gap: .5rem; }
+.approval-request-detail { display: grid; gap: var(--crm-space-4); }
+.approval-request-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--crm-space-4); }
+.approval-request-header p { margin: .25rem 0 0; color: var(--crm-text-secondary); }
+.approval-request-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--crm-space-3) var(--crm-space-6); padding: var(--crm-space-4) 0; border-top: 1px solid var(--crm-border); border-bottom: 1px solid var(--crm-border); }
+.approval-request-meta dt { color: var(--crm-text-muted); font-size: var(--crm-font-sm); }
+.approval-request-meta dd { margin: .25rem 0 0; color: var(--crm-text-strong); }
+.approval-state-flow { display: grid; gap: var(--crm-space-3); }
+.approval-state-flow h3, .request-reason h3 { margin: 0; font-size: var(--crm-font-md); }
+.state-flow { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: var(--crm-space-3); }
+.state-flow__item { display: grid; gap: .3rem; min-height: 4rem; padding: var(--crm-space-3); border: 1px solid var(--crm-border); border-radius: var(--crm-radius-md); background: var(--crm-surface-subtle); }
+.state-flow__label { color: var(--crm-text-muted); font-size: var(--crm-font-sm); }
+.state-flow__arrow { color: var(--crm-action); font-size: 1.5rem; }
+.request-reason { display: grid; gap: var(--crm-space-2); padding: var(--crm-space-3); border-radius: var(--crm-radius-md); background: var(--crm-surface-subtle); }
+.request-reason p { margin: 0; color: var(--crm-text-secondary); line-height: 1.6; }
+.approval-request-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--crm-space-2); flex-wrap: wrap; }
+.approval-request-actions .crm-button svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.approval-request-action--reject, .approval-request-action--cancel { order: 1; border-color: var(--crm-destructive); background: transparent; color: var(--crm-destructive); }
+.approval-request-action--reject:hover, .approval-request-action--cancel:hover { background: var(--crm-error-surface); }
+.approval-request-action--approve { order: 2; }
+.approval-request-action--cancel { order: 3; }
+.approval-empty-state { justify-items: center; padding: var(--crm-space-8) var(--crm-space-4); text-align: center; }
+.approval-empty-state__icon { display: inline-flex; align-items: center; justify-content: center; width: 3.5rem; height: 3.5rem; border-radius: 50%; background: var(--crm-info-surface); color: var(--crm-action); }
+.approval-empty-state__icon svg { width: 1.75rem; height: 1.75rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.row-chevron { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; color: var(--crm-action); }
+.row-chevron svg, .back-link svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.row-chevron svg { width: 1.1rem; height: 1.1rem; }
+.back-link { justify-self: start; gap: var(--crm-space-2); padding-inline: 0; border: 0; background: transparent; }
+.back-link svg { width: 1rem; height: 1rem; }
+@media (max-width: 700px) { .approval-request-header { flex-direction: column; } .approval-request-meta { grid-template-columns: 1fr; } .state-flow { grid-template-columns: 1fr; } .state-flow__arrow { justify-self: center; transform: rotate(90deg); } }

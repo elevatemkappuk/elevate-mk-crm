@@ -10,14 +10,17 @@ import { PrivacyAdministrationService } from './privacy-administration.service';
 import { GovernanceProposal, GovernanceRoleDefaults, GovernanceStaffSummary, GovernanceTargetDetail } from './privacy-administration.types';
 import { ConfirmationDialogComponent } from '../../shared/ui/confirmation-dialog.component';
 import { ToastService } from '../../shared/ui/toast.service';
+import { PrivacyStaffPermissionsComponent } from './privacy-staff-permissions.component';
+import { PrivacyRoleDefaultsComponent } from './privacy-role-defaults.component';
+import { PrivacyGovernanceViewsComponent } from './privacy-governance-views.component';
 
 type PrivacyAdministrationTab = 'staff-permissions' | 'role-defaults' | 'approval-requests' | 'governance-history';
 
 @Component({
   selector: 'app-privacy-administration-page',
-  imports: [CommonModule, FormsModule, ConfirmationDialogComponent],
+  imports: [CommonModule, FormsModule, ConfirmationDialogComponent, PrivacyStaffPermissionsComponent, PrivacyRoleDefaultsComponent, PrivacyGovernanceViewsComponent],
   templateUrl: './privacy-administration-page.component.html',
-  styleUrl: './privacy-administration-page.component.css',
+  styleUrls: ['./privacy-administration-shared.css', './privacy-administration-page.component.css'],
 })
 export class PrivacyAdministrationPageComponent {
   private readonly service = inject(PrivacyAdministrationService);
