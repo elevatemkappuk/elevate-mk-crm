@@ -134,6 +134,15 @@ export class PrivacyAdministrationPageComponent {
   }
 
   proposalCurrentState(proposal: GovernanceProposal): string {
+    if (proposal.role_id != null || proposal.role_code) {
+      const currentRoleDefault = this.roleDefaults()?.role_defaults.find(entry =>
+        (proposal.role_id == null || entry.role_id === proposal.role_id)
+        && (proposal.role_code == null || entry.role_code === proposal.role_code)
+        && entry.capability === proposal.capability,
+      );
+      if (currentRoleDefault) return currentRoleDefault.is_enabled ? 'Enabled by default' : 'Disabled by default';
+      return 'Current role default unavailable';
+    }
     const state = proposal.proposed_state;
     if (!state) return 'Current state unavailable';
     if (state['target_kind'] === 'role_default' && typeof state['enabled'] === 'boolean') {
@@ -343,6 +352,12 @@ export class PrivacyAdministrationPageComponent {
     return `${this.actionLabel(action)} · ${this.proposalTargetLabel(proposal)} · ${this.capabilityName(proposal.capability)}`;
   }
 
+  proposalActionMessage(action: 'approve' | 'reject' | 'cancel'): string {
+    return action === 'cancel'
+      ? 'Cancelling this request will leave existing permissions unchanged. The cancellation will be recorded in governance history.'
+      : `${this.actionLabel(action)} this governed request. The result will be recorded in governance history.`;
+  }
+
   capabilityName(capability: string): string {
     const names: Record<string, string> = {
       PERSON_CONTACT_READ: 'View contact information',
@@ -494,7 +509,10 @@ export class PrivacyAdministrationPageComponent {
         this.selectTab('approval-requests');
         this.replaceResolvedProposal(value);
         const title = pending.action === 'approve' ? 'Request approved' : pending.action === 'reject' ? 'Request rejected' : 'Request cancelled';
-        this.notifySuccess(title, `The request was ${value.status.toLowerCase()} and governance history was refreshed.`);
+        const description = pending.action === 'cancel'
+          ? 'The approval request was cancelled. Existing permissions remain unchanged.'
+          : `The request was ${value.status.toLowerCase()} and governance history was refreshed.`;
+        this.notifySuccess(title, description);
         if (this.targetUserId) this.loadTarget();
         this.refreshGovernance();
       },

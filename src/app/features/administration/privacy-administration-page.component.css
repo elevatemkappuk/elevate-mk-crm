@@ -70,8 +70,8 @@
     .approval-request-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--crm-space-2); flex-wrap: wrap; }
     .approval-request-actions .crm-button { min-height: var(--crm-control-height); }
     .approval-request-actions .crm-button svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .approval-request-action--reject { order: 1; border-color: var(--crm-destructive); background: transparent; color: var(--crm-destructive); }
-    .approval-request-action--reject:hover { background: var(--crm-error-surface); }
+    .approval-request-action--reject, .approval-request-action--cancel { order: 1; border-color: var(--crm-destructive); background: transparent; color: var(--crm-destructive); }
+    .approval-request-action--reject:hover, .approval-request-action--cancel:hover { background: var(--crm-error-surface); }
     .approval-request-action--approve { order: 2; }
     .approval-request-action--cancel { order: 3; }
     .approval-empty-state { justify-items: center; padding: var(--crm-space-8) var(--crm-space-4); text-align: center; }

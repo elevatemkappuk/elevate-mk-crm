@@ -28,8 +28,8 @@ let nextDialogId = 0;
             <div class="reason-field"><label class="crm-label" [for]="reasonId">{{ reasonLabel() }} <span aria-hidden="true">*</span><span class="visually-hidden">required</span></label><textarea class="crm-control" [id]="reasonId" rows="4" [placeholder]="reasonPlaceholder()" [value]="reason()" (input)="reasonChanged.emit($any($event.target).value)" required></textarea></div>
           }
           <div class="crm-actions crm-actions--end">
-            <button type="button" class="button-secondary crm-button crm-button--secondary" [disabled]="busy()" (click)="cancel()">Cancel</button>
-            <button type="button" class="button-primary crm-button" [class.crm-button--primary]="actionVariant() === 'primary'" [class.confirm-button--destructive]="actionVariant() === 'destructive'" [class.confirm-button--caution]="actionVariant() === 'caution'" [class.confirm-button--neutral]="actionVariant() === 'neutral'" [attr.aria-busy]="busy()" [disabled]="busy() || (requireReason() && !reason().trim())" (click)="confirmed.emit()">
+            <button type="button" class="button-secondary crm-button crm-button--secondary" [disabled]="busy()" (click)="cancel()">{{ cancelLabel() }}</button>
+            <button type="button" class="button-primary crm-button" [class.crm-button--primary]="actionVariant() === 'primary'" [class.crm-button--destructive]="actionVariant() === 'destructive'" [class.confirm-button--destructive]="actionVariant() === 'destructive'" [class.confirm-button--caution]="actionVariant() === 'caution'" [class.confirm-button--neutral]="actionVariant() === 'neutral'" [attr.aria-busy]="busy()" [disabled]="busy() || (requireReason() && !reason().trim())" (click)="confirmed.emit()">
               @if (actionVariant() !== 'neutral') { <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path [attr.d]="confirmIconPath()" /></svg> }<span>{{ confirmLabel() }}</span>
             </button>
           </div>
@@ -68,6 +68,7 @@ export class ConfirmationDialogComponent implements OnDestroy {
   readonly message = input.required<string>();
   readonly context = input<string | null>(null);
   readonly confirmLabel = input('Confirm');
+  readonly cancelLabel = input('Cancel');
   readonly reasonLabel = input('Reason');
   readonly reasonPlaceholder = input('Enter a reason');
   readonly actionVariant = input<'primary' | 'destructive' | 'caution' | 'neutral'>('primary');

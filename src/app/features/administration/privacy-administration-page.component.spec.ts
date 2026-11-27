@@ -291,19 +291,27 @@ describe('PrivacyAdministrationPageComponent', () => {
     expect(rows[1].querySelector('.row-chevron')).toBeNull();
   });
 
-  it('derives approval request current state from the target snapshot and requested operation', () => {
+  it('derives role-default approval state from the authoritative current role-default record', () => {
     const removal = {
       operation: 'INDIVIDUAL_UNRESTRICT',
       proposed_state: { target_kind: 'individual', restriction_active: true, assignment_state: 'ACTIVE' },
     } as any;
     const roleDefault = {
       operation: 'ROLE_DEFAULT_ENABLE',
+      role_id: 2,
+      role_code: 'CRM_MANAGER',
+      capability: 'PERSON_CONTACT_READ',
       proposed_state: { target_kind: 'role_default', enabled: false },
     } as any;
 
+    component.roleDefaults.set({
+      policy_version: 4,
+      role_defaults: [{ id: 2, role_id: 2, role_code: 'CRM_MANAGER', capability: 'PERSON_CONTACT_READ', is_enabled: true, permitted_actions: [], execution_mode: 'PROPOSAL' }],
+    });
+
     expect(component.proposalCurrentState(removal)).toBe('Restriction active');
     expect(component.proposalProposedChange(removal)).toBe('Remove restriction');
-    expect(component.proposalCurrentState(roleDefault)).toBe('Disabled by default');
+    expect(component.proposalCurrentState(roleDefault)).toBe('Enabled by default');
     expect(component.proposalProposedChange(roleDefault)).toBe('Enable by default');
   });
 });
