@@ -15,8 +15,6 @@
     .choice { display:flex; align-items:center; gap:.65rem; min-height:2.5rem; cursor:pointer; }
     .drawer-actions { justify-content:space-between; }
     .footer-end { margin-left:auto; }
-    .apply { background:var(--crm-shell-accent); color:var(--crm-text-strong); }
-    .apply:hover { background:#f3c64c; }
     .catalog-error { margin:0; color:var(--crm-error); }
     :is(button,input):focus-visible { outline:2px solid var(--crm-focus-ring); outline-offset:2px; }
     @media(max-width:580px) { .topline { grid-template-columns:minmax(0,1fr); } .toggle { width:fit-content; } .location-entry { grid-template-columns:minmax(0,1fr); } .compact-summary { align-items:stretch; flex-direction:column; } }

@@ -13,8 +13,7 @@
     .drawer-layout h3 { font-size:.75rem; text-transform:uppercase; letter-spacing:.08em; }
     .drawer-layout input,.drawer-layout select { min-height:2.75rem; border-radius:var(--crm-radius-sm); }
     .drawer-layout .actions { position:sticky; bottom:0; z-index:1; margin-top:var(--crm-space-2); padding:var(--crm-space-3) 0 var(--crm-space-2); background:var(--crm-surface); border-top:1px solid var(--crm-border); justify-content:space-between; }
-    .drawer-layout .button-primary { order:1; background:var(--crm-shell-accent); color:var(--crm-text-strong); }
-    .drawer-layout .button-primary:hover:not(:disabled) { background:#f3c64c; }
+    .drawer-layout .button-primary { order:1; }
     .drawer-layout button { border-radius:var(--crm-radius-sm); min-height:2.75rem; }
     button:focus-visible { outline:2px solid var(--crm-focus-ring); outline-offset:3px; }
     @media (max-width:650px) { .fields { grid-template-columns:1fr; } }

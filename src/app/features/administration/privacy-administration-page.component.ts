@@ -333,8 +333,8 @@ export class PrivacyAdministrationPageComponent {
     return 'neutral';
   }
 
-  confirmationVariant(action: string): 'primary' | 'destructive' | 'caution' | 'neutral' {
-    if (action === 'approve' || action.includes('GRANT') || action.includes('RESTORE') || action.includes('UNRESTRICT') || action.includes('ENABLE')) return 'primary';
+  confirmationVariant(action: string): 'primary' | 'positive' | 'destructive' | 'caution' | 'neutral' {
+    if (action === 'approve' || action.includes('GRANT') || action.includes('RESTORE') || action.includes('UNRESTRICT') || action.includes('ENABLE')) return 'positive';
     if (action === 'reject' || action.includes('REVOKE')) return 'destructive';
     if (action.includes('SUSPEND') || action.includes('RESTRICT') || action.includes('DISABLE')) return 'caution';
     return 'neutral';

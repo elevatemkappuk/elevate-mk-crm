@@ -13,6 +13,7 @@ import { LegalHoldsService } from '../../core/privacy/legal-holds.service';
 import { LegalHold, LegalHoldActor, LegalHoldReleaseRequest, LegalHoldReleaseRequestResult } from '../../core/privacy/legal-hold.types';
 import { PeopleService } from '../../core/people/people.service';
 import { PersonDirectoryItem } from '../../core/people/people.types';
+import { ConfirmationDialogComponent } from '../../shared/ui/confirmation-dialog.component';
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
 import { ToastService } from '../../shared/ui/toast.service';
 
@@ -23,9 +24,20 @@ interface ReleaseRequestRow {
   readonly request: LegalHoldReleaseRequest;
 }
 
+interface HistoryRow {
+  readonly hold: LegalHold;
+  readonly request: LegalHoldReleaseRequest | null;
+  readonly outcome: string;
+  readonly timestamp: string;
+}
+
+type LegalHoldConfirmation =
+  | { readonly kind: 'release'; readonly hold: LegalHold }
+  | { readonly kind: 'approve' | 'reject'; readonly request: LegalHoldReleaseRequest };
+
 @Component({
   selector: 'app-legal-holds-page',
-  imports: [CommonModule, FormsModule, StateMessageComponent],
+  imports: [CommonModule, FormsModule, ConfirmationDialogComponent, StateMessageComponent],
   templateUrl: './legal-holds-page.component.html',
   styleUrl: './legal-holds-page.component.css',
 })
@@ -63,6 +75,8 @@ export class LegalHoldsPageComponent {
   readonly selectedHold = signal<LegalHold | null>(null);
   readonly selectedReleaseRequest = signal<ReleaseRequestRow | null>(null);
   readonly createDialogOpen = signal(false);
+  readonly pendingConfirmation = signal<LegalHoldConfirmation | null>(null);
+  confirmationReason = '';
   private authorizationEpoch = 0;
   private revalidatingAuthorization = false;
 
@@ -118,13 +132,31 @@ export class LegalHoldsPageComponent {
   }
 
   historyHolds(): readonly LegalHold[] {
-    return this.holds().filter(hold => hold.status === 'RELEASED' || hold.release_requests.some(request => request.status !== 'PENDING'));
+    return this.historyRows().map(row => row.hold);
   }
 
   historyReleaseRequests(): readonly ReleaseRequestRow[] {
     return this.holds().flatMap(hold => hold.release_requests
       .filter(request => request.status !== 'PENDING')
       .map(request => ({ hold, request })));
+  }
+
+  historyRows(): readonly HistoryRow[] {
+    return this.holds().flatMap(hold => {
+      const completed = hold.release_requests
+        .filter(request => request.status !== 'PENDING')
+        .map(request => ({
+          hold,
+          request,
+          outcome: this.releaseStatusLabel(request.status),
+          timestamp: request.approved_at || request.rejected_at || request.requested_at,
+        }));
+      if (completed.some(row => row.request?.status === 'APPROVED')) return completed;
+      if (hold.status === 'RELEASED') {
+        return [...completed, { hold, request: null, outcome: hold.execution_mode === 'DIRECT_SUPERUSER' ? 'Applied by superuser' : 'Applied', timestamp: hold.released_at || hold.placed_at }];
+      }
+      return completed;
+    }).sort((left, right) => Date.parse(right.timestamp) - Date.parse(left.timestamp));
   }
 
   selectHold(hold: LegalHold): void {
@@ -138,6 +170,92 @@ export class LegalHoldsPageComponent {
   backToLegalHoldList(): void {
     this.selectedHold.set(null);
     this.selectedReleaseRequest.set(null);
+  }
+
+  openReleaseConfirmation(hold: LegalHold): void {
+    this.confirmationReason = '';
+    this.pendingConfirmation.set({ kind: 'release', hold });
+  }
+
+  openDecisionConfirmation(request: LegalHoldReleaseRequest, action: 'approve' | 'reject'): void {
+    this.confirmationReason = '';
+    this.pendingConfirmation.set({ kind: action, request });
+  }
+
+  closeConfirmation(): void {
+    if (!this.saving()) {
+      this.confirmationReason = '';
+      this.pendingConfirmation.set(null);
+    }
+  }
+
+  confirmationTitle(action: LegalHoldConfirmation): string {
+    if (action.kind === 'release') return action.hold.execution_mode === 'DIRECT_SUPERUSER' ? 'Release legal hold' : 'Request legal-hold release';
+    return action.kind === 'approve' ? 'Approve release request' : 'Reject release request';
+  }
+
+  confirmationContext(action: LegalHoldConfirmation): string {
+    const hold = action.kind === 'release' ? action.hold : this.requestHold;
+    return `${this.holdTypeLabel(hold.scope)} · ${this.holdTargetLabel(hold)}`;
+  }
+
+  confirmationMessage(action: LegalHoldConfirmation): string {
+    if (action.kind === 'release') return action.hold.execution_mode === 'DIRECT_SUPERUSER'
+      ? 'This will end retention protection immediately. The audited release will be recorded in legal-hold history.'
+      : 'Submitting a release request does not end retention protection. It remains active until an authorized administrator approves the request.';
+    return action.kind === 'approve'
+      ? 'Approval will release the legal hold and end retention protection. This decision will be recorded in legal-hold history.'
+      : 'Rejecting this request leaves the legal hold active. The decision will be recorded in legal-hold history.';
+  }
+
+  confirmationVariant(action: LegalHoldConfirmation): 'positive' | 'destructive' | 'caution' {
+    return action.kind === 'reject' ? 'destructive' : action.kind === 'approve' ? 'positive' : 'caution';
+  }
+
+  confirmationLabel(action: LegalHoldConfirmation): string {
+    if (action.kind === 'release') return action.hold.execution_mode === 'DIRECT_SUPERUSER' ? 'Release hold' : 'Request release';
+    return action.kind === 'approve' ? 'Approve request' : 'Reject request';
+  }
+
+  confirmationReasonLabel(action: LegalHoldConfirmation): string {
+    return action.kind === 'approve' ? 'Reason for approval' : action.kind === 'reject' ? 'Reason for rejection' : 'Reason for release';
+  }
+
+  confirmPendingAction(): void {
+    const action = this.pendingConfirmation();
+    if (!action || !this.confirmationReason.trim()) return;
+    this.saving.set(true);
+    const request$ = (action.kind === 'release'
+      ? (action.hold.execution_mode === 'DIRECT_SUPERUSER'
+        ? this.service.directRelease(action.hold.public_id, this.confirmationReason.trim())
+        : this.service.requestRelease(action.hold.public_id, this.confirmationReason.trim()))
+      : action.kind === 'approve'
+        ? this.service.approveRelease(action.request.public_id, this.confirmationReason.trim())
+        : this.service.rejectRelease(action.request.public_id, this.confirmationReason.trim())) as Observable<LegalHold | LegalHoldReleaseRequestResult>;
+    request$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: response => {
+        const pending = action.kind === 'release' && 'status' in response && response.status === 'PENDING';
+        this.confirmationReason = '';
+        this.pendingConfirmation.set(null);
+        this.selectedHold.set(null);
+        this.selectedReleaseRequest.set(null);
+        this.toast.success(
+          pending ? 'Release request submitted' : action.kind === 'approve' ? 'Release request approved' : action.kind === 'reject' ? 'Release request rejected' : 'Legal hold released',
+          pending ? 'The hold remains active until an authorized administrator approves release.' : 'The legal-hold history was updated.',
+        );
+        this.loadHolds();
+      },
+      error: (error: HttpErrorResponse) => error.status === 403
+        ? this.handleProtectedReadDenied()
+        : this.showError(error, 'The legal-hold operation was not accepted.'),
+      complete: () => this.saving.set(false),
+    });
+  }
+
+  private get requestHold(): LegalHold {
+    const action = this.pendingConfirmation();
+    if (!action || action.kind === 'release') throw new Error('A release request is required.');
+    return this.holds().find(hold => hold.release_requests.some(request => request.public_id === action.request.public_id))!;
   }
 
   openCreateDialog(): void {
@@ -178,7 +296,8 @@ export class LegalHoldsPageComponent {
   }
 
   canRequestRelease(hold: LegalHold): boolean {
-    return hold.status === 'ACTIVE' && (hold.permitted_actions.includes('request_release') || hold.permitted_actions.includes('direct_release'));
+    const pendingRequestExists = hold.release_requests.some(request => request.status === 'PENDING');
+    return hold.status === 'ACTIVE' && !pendingRequestExists && (hold.permitted_actions.includes('request_release') || hold.permitted_actions.includes('direct_release'));
   }
 
   requestActionLabel(hold: LegalHold): string {

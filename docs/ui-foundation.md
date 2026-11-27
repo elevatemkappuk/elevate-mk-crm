@@ -1,6 +1,6 @@
 # CRM visual foundation
 
-Phase 1 establishes shared presentation only. Routes, API models, permission checks,
+This foundation establishes shared presentation only. Routes, API models, permission checks,
 feature state, and workflows remain owned by their existing implementations.
 
 ## Files and tokens
@@ -24,10 +24,33 @@ are 400 (`normal`), 500 (`emphasis`), 600 (`medium`, labels/controls/buttons), a
 file. These are a vocabulary for deliberate future migration; existing feature
 breakpoints have not been replaced. The shared detail list retains its 680px threshold.
 
+## Central theme maintenance
+
+The authoritative design tokens live in `src/styles/_tokens.scss`, loaded once
+through `src/styles.scss`. Shared component variants live in
+`src/styles/_patterns.scss`; confirmation-dialog-specific states remain owned by
+`src/app/shared/ui/confirmation-dialog.component.ts`. Feature styles may define
+layout, responsive structure and genuinely unique presentation, but they must
+consume the `--crm-` tokens for colours, typography, spacing, radii and shadows.
+
+To change the CRM colour scheme, update the semantic token in
+`src/styles/_tokens.scss` and review all consumers of that token. Do not replace
+the token with per-feature hex values, add a parallel theme file, or change a
+button's colour locally to obtain a particular visual result. The brand accent,
+teal workflow action, success, warning, destructive/error, informational,
+surface, text, border, focus, overlay and state-surface tokens are the supported
+semantic palette.
+
+The authentication shell intentionally retains its own constrained visual
+variables while it is isolated from the authenticated CRM shell. Dark-shell
+foreground and navigation contrast values are also a documented shell-specific
+exception. These exceptions must not be copied into ordinary feature screens.
+
 ## Opt-in patterns
 
-- Buttons: `crm-button` plus `crm-button--primary`, `--secondary`, `--quiet`, or
-  `--destructive`. Use actual buttons for actions and links for navigation.
+- Buttons: `crm-button` plus `crm-button--brand`, `--primary`, `--positive`,
+  `--secondary`, `--quiet`, or `--destructive`. Use actual buttons for actions
+  and links for navigation.
 - Fields: `crm-field`, `crm-label`, `crm-control` on native input/select/textarea,
   `crm-choice` and `crm-check` for labelled native checkboxes and radios.
 - Support: `crm-help`, `crm-error`, `crm-actions` (optional `crm-actions--end`).
@@ -44,6 +67,54 @@ breakpoints have not been replaced. The shared detail list retains its 680px thr
   asynchronous status. Banner classes do not create announcement behavior.
 - `crm-focusable` gives links, interactive chips, or scroll regions the shared
   focus ring; it does not make static elements interactive or focusable.
+
+## Semantic action hierarchy
+
+Use the shared button classes and tokens according to the business meaning of the
+action. Do not add feature-local colours or duplicate button rules.
+
+| Meaning | Standard treatment | Examples |
+| --- | --- | --- |
+| Create a new record or protection | Yellow `crm-button--brand` | Add person, Place legal hold |
+| Continue an existing-record workflow or save/update | Teal `crm-button--primary` | Search, Request release, Save changes |
+| Secondary, search, filter, close or dialog cancellation | Neutral `crm-button--secondary` or `crm-button--quiet` | Retry, Cancel, Back |
+| Positive governance decision | Green `crm-button--positive` | Approve, Grant access, Restore access |
+| Sensitive action requiring caution | Amber `crm-button` with the caution confirmation variant | Direct superuser release, Suspend, Restrict |
+| Negative, restrictive or destructive operation | Red `crm-button--destructive` or destructive confirmation variant | Reject, Revoke, Cancel an existing request |
+| Navigation | Text link or chevron | Back navigation, selectable table rows |
+
+Cancellation of a dialog is a neutral close action; cancellation of an existing
+governance request is a red, audited operation. A successful rejection,
+revocation, restriction or cancellation is still a successful operation for
+notification purposes.
+
+## Workflow interaction standard
+
+Selectable directories use semantic tables with keyboard-operable rows, visible
+focus, a clear accessible row label and a single chevron navigation affordance.
+Selecting a row opens a read-only or editable detail view appropriate to the
+resource. Detail views retain human-readable status badges, target summaries,
+required reasons, server-authorized actions and historical state presentation.
+
+Governed actions use the shared confirmation dialog. The dialog must identify the
+target and requested change, explain the consequence accurately, label required
+reasons specifically, use the semantic action variant, prevent duplicate
+submissions, and expose busy/error states accessibly. Successful operations wait
+for the authoritative response, close the dialog, refresh affected state and
+show exactly one toast. Pending proposals must be described as awaiting approval;
+they must not be described as applied.
+
+Status must be communicated by text and accessible semantics as well as colour.
+Use the existing status badge component or shared badge classes for allowed,
+pending, restricted, suspended, revoked, rejected, cancelled and unavailable
+states. Historical views are read-only and must use recorded actors, timestamps,
+reasons and outcomes rather than current live state.
+
+The same standard applies to People, Marketing, Campaigns, Moderation, Privacy
+Administration and Legal Holds. A business-specific exception is permitted only
+when the action meaning requires it and the exception is documented near the
+feature. Larger inconsistencies or redesign needs should be recorded for
+stakeholder review rather than addressed through local styling shortcuts.
 
 ## Page headings
 
@@ -72,14 +143,14 @@ the container holds focus while busy. Closing or destroying the dialog restores
 the connected opener. IDs are unique per instance. This is the current single-modal
 pattern, not a framework for stacked dialogs or arbitrary projected controls.
 
-Later phases migrate shell/navigation, then feature screens. Remove superseded
+Migration boundaries cover shell/navigation and feature screens. Remove superseded
 local styling as each pattern is adopted; do not apply broad global overrides or
 import the emitted patterns into every component. Authentication surfaces, shell
 gradients/blur, feature-specific inline confirmations, and mobile navigation focus
 management are intentionally deferred. Shared surface changes and the neutral
 workspace background are the only immediate visual effects outside the dialog.
 
-Focused dialog behavior specs accompany Phase 1. Do not run tests unless requested.
+Focused dialog behavior specs accompany the shared component. Do not run tests unless requested.
 Validate implementation with `npm run build` and `git diff --check`.
 
 ## Shared editing drawer
@@ -132,8 +203,9 @@ shared by the container and must not be reimplemented per feature.
 Privacy Administration now uses this standard for confirmed permission changes,
 role-default changes, proposal approvals, rejections, cancellations, and pending
 approval submissions. Other screens that still use page-local feedback, including
-Legal Holds and unrelated save flows, remain documented migration exceptions and
-were not changed in this UI-polish stage.
+unrelated save flows, remain documented migration exceptions and were not changed
+in this UI-polish stage. Legal Holds now uses the shared confirmation and toast
+infrastructure.
 
 Its four-tab presentation is componentized by ownership: the parent retains tab
 navigation, shared governance state, API coordination, authorization refresh and

@@ -7,8 +7,6 @@
 h1 { margin:0; font-size:clamp(1.4rem,2.5vw,1.9rem); line-height:1.25; }
 .identity-meta { color:var(--crm-text-secondary); font-size:var(--crm-font-sm); overflow-wrap:anywhere; }
 .profile-actions { margin-left:auto; }
-.edit-person { background:var(--crm-shell-accent); color:var(--crm-text-strong); }
-.edit-person:hover { background:#f3c64c; }
 button { min-height:2.75rem; width:fit-content; padding:.65rem 1rem; border:1px solid transparent; border-radius:var(--crm-radius-sm); font:inherit; font-weight:600; cursor:pointer; }
 button:focus-visible { outline:2px solid var(--crm-focus-ring); outline-offset:3px; }
 @media(max-width:bp.$medium) { .identity-card { padding:1.25rem; } }

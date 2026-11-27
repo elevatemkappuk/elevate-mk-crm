@@ -40,7 +40,7 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
           <p>{{ batchMessage(currentBatch) }}</p>
           @if (importError()) { <p class="import-error" role="alert">{{ importError() }}</p> }
           @if (canAnalyze()) {
-            <div class="batch-actions"><button type="button" class="crm-button import-primary" [disabled]="analyzing()" (click)="analyzeBuyers()">{{ analyzing() ? 'Analyzing buyers...' : 'Analyze buyers' }}</button>@if (analyzing()) { <span class="importing" aria-live="polite">Analyzing buyers...</span> }</div>
+            <div class="batch-actions"><button type="button" class="crm-button crm-button--brand import-primary" [disabled]="analyzing()" (click)="analyzeBuyers()">{{ analyzing() ? 'Analyzing buyers...' : 'Analyze buyers' }}</button>@if (analyzing()) { <span class="importing" aria-live="polite">Analyzing buyers...</span> }</div>
           }
           @if (isReviewable(currentBatch.status) && currentBatch.review_required_count > 0 && auth.isCrmAdmin()) {
             <div class="batch-actions">
@@ -51,7 +51,7 @@ import { StateMessageComponent } from '../../shared/ui/state-message.component';
           }
           @if (canImport()) {
             <div class="batch-actions">
-              <button type="button" class="crm-button import-primary" [disabled]="importing()" (click)="openImportConfirmation()">
+              <button type="button" class="crm-button crm-button--brand import-primary" [disabled]="importing()" (click)="openImportConfirmation()">
                 {{ importing() ? 'Adding to CRM...' : 'Add to CRM' }}
               </button>
               @if (importing()) { <span class="importing" aria-live="polite">Adding to CRM...</span> }
