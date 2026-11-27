@@ -72,6 +72,13 @@ protectively. Reactivation will not restore them automatically. An authorized
 Privacy Administrator must explicitly restore a suspended grant through the
 existing governed process.
 
+The backend foundation now keeps staff-access deactivation separate from
+global account disablement. Deactivation preserves global authentication
+eligibility while removing CRM access; global disablement invalidates account
+credentials and does not restore staff roles or privacy grants when enabled.
+These are backend contracts only; no CRM screen or public lifecycle workflow
+is available yet.
+
 Passwords, invitation tokens, reset tokens, invitation URLs and provider
 payloads must never be displayed or recorded in ordinary staff workflows.
 

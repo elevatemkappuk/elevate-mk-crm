@@ -3,8 +3,8 @@
 Status: Living Documentation. The backend capability foundation and governance
 implementation are source-inspected, with focused isolated PostgreSQL
 migration/test validation recorded by the API repository. The earlier targeted
-Phase 1A.4D CRM privacy-consumer evidence is explicitly historical/subset-
-specific; current Phase 1C evidence and limitations are recorded at the end of
+CRM privacy-consumer evidence is explicitly historical/subset-
+specific; current final-hardening evidence and limitations are recorded at the end of
 this guide. Broader Angular/backend suites, migration/concurrency validation,
 browser UAT for this remediation, and cross-repository deployment behavior
 remain unverified.
@@ -15,7 +15,7 @@ The Angular Staff CRM presents CRM workflows, but Django remains authoritative
 for authentication, authorization, privacy protection, and data projections.
 Existing CRM roles remain `CRM_ADMIN`, `CRM_MANAGER`, and `CRM_VIEWER`.
 
-The API-owned Phase 1A.4A contract remains authoritative. Phase 1A.4B adds a
+The API-owned effective-access contract remains authoritative. The CRM Staff Access integration adds a
 CRM-side consumer in `StaffAccessService` and AuthService lifecycle integration;
 this guide records source inspection and the supplied focused test/build
 evidence, but does not claim runtime or cross-repository verification.
@@ -26,8 +26,8 @@ functional map below for current CRM privacy behavior.
 
 The foundation adds no capability response to `/auth/me/`, no Angular capability
 guard, no masking behavior, no Person projection changes, and no new sensitive
-data access path. Phase 1A.4A adds the API Staff Access contract, which the
-Phase 1A.4B CRM consumer now reads into memory-only presentation state.
+data access path. The API Staff Access contract is read by the CRM consumer into
+memory-only presentation state.
 
 The staff-facing summary is now consolidated in the
 [Privacy and Permissions Business Guide](privacy-and-permissions-business-guide.md).
@@ -36,7 +36,7 @@ validation; the API remains authoritative for backend contracts.
 
 ## Current functional and technical map
 
-The guide is organized for current subjects first. Detailed phase material is
+The guide is organized for current subjects first. Detailed historical material is
 retained below as historical implementation evidence, including superseded
 disclosures, named test results, UAT records, and unresolved prerequisites.
 
@@ -59,12 +59,12 @@ this documentation stage did not rerun them.
 
 Status: API foundation and governance implementation are source-inspected;
 governance migration/test execution is verified in the API's isolated
-PostgreSQL validation, while the Phase 1A.4B CRM capability consumer is
+PostgreSQL validation, while the CRM capability consumer is
 source-inspected with focused tests, build, and configuration checks verified;
 runtime remains unverified.
 
 The API repository is authoritative for the current seven-capability catalog;
-the original six-capability Phase 1A.2 baseline and separately audited
+the original six-capability capability-foundation baseline and separately audited
 `LEGAL_HOLD_ADMIN` catalogue extension remain distinct. It is authoritative
 for role defaults,
 evaluator precedence, governance boundary, schema, and indexes. CRM maintains
@@ -79,7 +79,7 @@ runtime-unverified.
 The approved Django superuser authority change is backend-only. Active
 superusers may use the API's audited direct governance service path, while
 ordinary CRM administrators remain subject to the existing governance rules.
-Phase 1A.4D adds capability-aware CRM consumers and the protected legal-hold
+Capability-aware CRM consumers and the protected legal-hold
 route; Django remains the authorization boundary and runtime deployment
 compatibility remains unverified.
 
@@ -88,7 +88,7 @@ migration provenance without adding a CRM role default. Its historical Person
 subject backfill preserves unresolved references without inventing Persons.
 The operational Person audit-history contract excludes privacy-domain events;
 the dedicated privacy projection remains API-authoritative and requires
-backend capability plus Person-scope authorization. The Phase 1A.4D CRM
+  backend capability plus Person-scope authorization. The CRM privacy
 consumer is documented below; broader record-access auditing remains deferred.
 
 ### Historical evidence — Staff Access contract
@@ -130,7 +130,7 @@ behavior were inspected in the API repository. The API focused suite passed
 `makemigrations --check --dry-run` reported `No changes detected`;
 `migrate --plan` reported no planned migration operations; and `git diff --check`
 was clean. No schema or migration files changed or were applied. CRM tests,
-builds, and configuration evidence are verified below for Phase 1A.4B; browser
+builds, and configuration evidence are verified below for the CRM integration; browser
 runtime, staging/deployment, and cross-repository behavior remain unverified.
 
 The revised superuser authority was runtime-verified in the API's final
@@ -165,7 +165,7 @@ is cleared, the service enters `error`, and `hasCapability()` returns `false`.
 
 `hasCapability(code)` is a presentation helper only. It does not authorize API
 requests, replace backend permission checks, or establish a capability grant.
-No capability-aware route guard or directive is implemented by this phase;
+No capability-aware route guard or directive is implemented by this feature;
 future guards/directives and broader UI enforcement remain deferred.
 
 AuthService integration is source-inspected as follows:
@@ -191,7 +191,7 @@ No session identifiers, capability projections, or policy state are written to
 and the Staff Access projection is memory-only. The API's `private, no-store`
 response policy remains authoritative.
 
-Test classification: the Phase 1A.4B service and AuthService specs were
+Test classification: the Staff Access service and AuthService specs were
 source-inspected and cover the exact empty projection, strict/unknown response
 rejection, `401` versus ordinary `403`, concurrent refresh deduplication,
 account replacement, logout invalidation, non-CRM admission, initialization,
@@ -209,7 +209,7 @@ now coordinates the separate Staff Access projection. CRM UI role checks and
 `hasCapability()` remain presentation hints; they do not replace backend
 authorization.
 
-The Phase 1A.4B implementation includes `StaffAccessService`, its projection
+The Staff Access implementation includes `StaffAccessService`, its projection
 types/signals, and AuthService lifecycle integration. Mobile JWT authentication,
 Community sessions, Community projections, and existing CRM role semantics are
 outside this implementation; their cross-repository compatibility is
@@ -217,7 +217,7 @@ outside this implementation; their cross-repository compatibility is
 
 ## Staff privacy administration
 
-Historical evidence label: **Phase 1A.4C.3**. The evidence below is retained
+Historical evidence label: **privacy-administration route validation**. The evidence below is retained
 for traceability; current status is summarized in the functional map above.
 
 Status: **Implemented / isolated local runtime verified; deployment and
@@ -325,7 +325,7 @@ deployment, and cross-repository behavior remain **Unverified**.
 
 ## Current evidence and verification status
 
-This register preserves the original validation batches, phase labels,
+This register preserves the original validation batches and historical labels,
 superseded disclosures, and unexecuted prerequisites. They are evidence
 records, not a second current contract; use the functional map above for
 current status.
@@ -397,7 +397,7 @@ repository's [GDPR guide](../../elevate-mk-api/docs/GDPR.md),
 
 ## Historical evidence — privacy-audit foundation
 
-This CRM repository has no Phase 1A.3 application change. The API-only
+This CRM repository has no capability-and-audit application change. The API-only
 privacy-audit foundation is **Implemented and verified in the API's isolated
 PostgreSQL validation**, but remains **Unverified from the CRM runtime
 perspective**. It introduces separate operational and

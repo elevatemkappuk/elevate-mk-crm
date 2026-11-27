@@ -1,6 +1,6 @@
 # Staff Management V1
 
-Status: **Approved architecture / Phase 2B backend role integrity implemented; CRM implementation planned**
+Status: **Approved architecture / backend role integrity implemented; CRM implementation planned**
 
 This document is the CRM repository's living guide to the planned Staff
 Management experience. The Django API remains authoritative for identity,
@@ -16,7 +16,7 @@ The current Administration page is a placeholder. Proposed routes, components
 and services in this document are not available until implementation is
 authorized and completed.
 
-Phase 2A now provides the API-side Staff Management authorization foundation:
+The API now provides the Staff Management authorization foundation:
 active CRM Administrators and eligible active Django Superusers with a valid
 linked Person may reach the Staff Management boundary. The Superuser exception
 is narrowly scoped and does not grant general CRM or privacy authority. This
@@ -28,7 +28,24 @@ The API now enforces one active CRM-family role per staff member, atomic role
 replacement, final usable-Administrator continuity and CRM-session invalidation
 for material role changes. These backend contracts do not make CRM screens,
 navigation, directory contracts or lifecycle workflows available. Full CRM
-regression remains reserved for final Phase 8 verification.
+regression remains deferred until final hardening.
+
+Administrator approval governance is implemented in the backend. The API stores
+dedicated pending/approved/effected/rejected/cancelled/expired/invalidated
+Administrator proposals, requires distinct authorized proposer and approver
+accounts, and effects existing staff promotion atomically. New onboarding and
+former-staff reactivation approvals remain invitation-dependent for the
+onboarding and reactivation workflows. No CRM approval UI or frontend contract
+is implemented.
+
+The backend provides lifecycle foundations. Staff-access deactivation is
+separate from global account disablement: it removes CRM-family roles,
+suspends individual privacy grants, preserves restrictions and global account
+eligibility, and invalidates incompatible invitations/proposals. Global
+disablement retains role history but invalidates authentication credentials;
+enablement does not restore roles, grants, sessions or tokens. No CRM lifecycle
+UI or new public lifecycle endpoint is available, and the complete
+invitation-backed reactivation workflow remains planned.
 
 The historical CRM regression baseline of 493/493 is not new Staff Management
 verification.
