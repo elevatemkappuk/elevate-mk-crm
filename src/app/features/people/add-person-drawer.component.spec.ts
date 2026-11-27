@@ -7,6 +7,8 @@ import { Subject, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { StaffAccessService } from '../../core/auth/staff-access.service';
+import { API_CONFIG } from '../../core/http/api-config';
 import { PeopleService } from '../../core/people/people.service';
 import { PersonListItem, DuplicatePersonConflict } from '../../core/people/people.types';
 import { AddPersonDrawerComponent } from './add-person-drawer.component';
@@ -50,9 +52,11 @@ describe('Add person drawer and shared creation', () => {
       imports: [DrawerHost, PersonWritePageComponent],
       providers: [
         provideRouter([]),
+        { provide: API_CONFIG, useValue: { apiBaseUrl: 'http://localhost:8000/api/v1' } },
         { provide: ActivatedRoute, useValue: { snapshot: { data: {}, paramMap: convertToParamMap({}) } } },
         { provide: PeopleService, useValue: service },
         { provide: AuthService, useValue: { currentUser: signal({ staff_roles: ['CRM_MANAGER'] }) } },
+        { provide: StaffAccessService, useValue: { isReady: () => true, hasCapability: () => true, selectAccount: vi.fn(), refresh: vi.fn() } },
       ],
     }).compileComponents();
     navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);

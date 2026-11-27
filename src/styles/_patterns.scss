@@ -24,12 +24,14 @@
 .crm-button--secondary { border-color: var(--crm-control-border); }
 .crm-button--quiet { background: transparent; color: var(--crm-action); }
 .crm-button--destructive { background: var(--crm-destructive); color: var(--crm-on-action); }
+.crm-button--destructive-outline { border-color: var(--crm-destructive); background: transparent; color: var(--crm-destructive); }
 .crm-button:not(:disabled):not([aria-disabled='true']):hover {
   background: var(--crm-surface-subtle);
 }
 .crm-button--primary:not(:disabled):not([aria-disabled='true']):hover { background: var(--crm-action-hover); }
-.crm-button--brand:not(:disabled):not([aria-disabled='true']):hover { background: #f2c94f; }
+.crm-button--brand:not(:disabled):not([aria-disabled='true']):hover { background: var(--crm-shell-accent-hover); }
 .crm-button--destructive:not(:disabled):not([aria-disabled='true']):hover { background: var(--crm-destructive-hover); }
+.crm-button--destructive-outline:not(:disabled):not([aria-disabled='true']):hover { background: var(--crm-error-surface); }
 
 .crm-control {
   display: block;

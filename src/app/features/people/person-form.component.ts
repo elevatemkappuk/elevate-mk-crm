@@ -15,67 +15,11 @@ export interface PersonFormSubmission {
   person: PersonWriteFields;
   joined_at?: string;
 }
-
 @Component({
   selector: 'app-person-form',
   imports: [CommonModule, ReactiveFormsModule],
-  template: `
-    <form [formGroup]="form" [class.drawer-layout]="drawer()" (ngSubmit)="submit()" novalidate>
-      <fieldset [disabled]="pending()">
-      <section class="field-group">
-        <h3>Personal details</h3>
-        <div class="fields">
-          <label>First name <input formControlName="first_name" autocomplete="given-name" /><span class="validation-slot">@if (invalid('first_name')) { <small>First name is required.</small> }</span></label>
-          <label>Last name <input formControlName="last_name" autocomplete="family-name" /><span class="validation-slot">@if (invalid('last_name')) { <small>Last name is required.</small> }</span></label>
-          <label>Email <input type="email" formControlName="primary_email" autocomplete="email" /><span class="validation-slot">@if (invalid('primary_email')) { <small>Enter a valid email address.</small> } @if (emailError()) { <small>{{ emailError() }}</small> }</span></label>
-          <label>Mobile <input type="tel" formControlName="mobile" autocomplete="tel" /><span class="validation-slot">@if (mobileError()) { <small>{{ mobileError() }}</small> }</span></label>
-          <label>Location <input formControlName="location" autocomplete="address-level2" /></label>
-          <label>Age range
-            <select formControlName="age_range">
-              <option value="">Not specified</option>
-              @for (option of ageRangeOptions; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
-            </select>
-          </label>
-          <label>Gender
-            <select formControlName="gender">
-              <option value="">Not specified</option>
-              @for (option of genderOptions; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
-            </select>
-          </label>
-        </div>
-      </section>
-      @if (member()) {
-        <section class="field-group membership">
-          <h3>Membership</h3>
-          <label>Join date <input type="date" formControlName="joined_at" /> @if (invalid('joined_at')) { <small>Join date is required.</small> }</label>
-        </section>
-      }
-      </fieldset>
-      <div class="actions">
-        <button type="submit" class="button-primary" [disabled]="pending()">{{ pending() ? 'Saving...' : submitLabel() }}</button>
-        <button type="button" class="button-secondary" [disabled]="pending()" (click)="cancelled.emit()">Cancel</button>
-      </div>
-    </form>
-  `,
-  styles: `
-    form,.field-group,.fields { display:grid; gap:1rem; } .field-group { padding:1.15rem; border:1px solid rgba(22,39,53,.09); border-radius:1rem; background:#fff; }
-    h3 { margin:0; color:#173248; font-size:1.05rem; } .fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
-    label { display:grid; gap:.38rem; font-weight:650; color:#294456; } input,select { min-width:0; padding:.68rem .78rem; border:1px solid #b7c7d4; border-radius:.7rem; font:inherit; color:#173248; background:#fff; }
-    input:focus-visible,select:focus-visible { outline:0; border-color:#5d88a0; box-shadow:0 0 0 3px rgba(108,154,180,.2); } small { color:#a12929; font-weight:600; }
-    .drawer-layout .validation-slot { min-height:1.1em; }
-    .membership { max-width:22rem; } .actions { display:flex; gap:.7rem; flex-wrap:wrap; } button { border:0; border-radius:999px; padding:.72rem 1.1rem; font:inherit; font-weight:700; cursor:pointer; }
-    .button-primary { color:#fff; background:#1d6077; } .button-secondary { color:#244359; background:#edf3f6; } button:disabled { opacity:.6; cursor:not-allowed; }
-    fieldset { display:grid; gap:1rem; border:0; margin:0; padding:0; min-width:0; }
-    .drawer-layout .field-group { padding:0; border:0; border-radius:0; }
-    .drawer-layout h3 { font-size:.75rem; text-transform:uppercase; letter-spacing:.08em; }
-    .drawer-layout input,.drawer-layout select { min-height:2.75rem; border-radius:var(--crm-radius-sm); }
-    .drawer-layout .actions { position:sticky; bottom:0; padding:1rem 0; background:var(--crm-surface); border-top:1px solid var(--crm-border); justify-content:space-between; }
-    .drawer-layout .button-primary { order:1; background:var(--crm-shell-accent); color:var(--crm-text-strong); }
-    .drawer-layout .button-primary:hover:not(:disabled) { background:#f3c64c; }
-    .drawer-layout button { border-radius:var(--crm-radius-sm); min-height:2.75rem; }
-    button:focus-visible { outline:2px solid var(--crm-focus-ring); outline-offset:3px; }
-    @media (max-width:650px) { .fields { grid-template-columns:1fr; } }
-  `,
+  templateUrl: './person-form.component.html',
+  styleUrl: './person-form.component.css',
 })
 export class PersonFormComponent {
   readonly initialPerson = input<PersonListItem | null>(null);
@@ -85,6 +29,8 @@ export class PersonFormComponent {
   readonly emailError = input<string | null>(null);
   readonly mobileError = input<string | null>(null);
   readonly drawer = input(false);
+  readonly contactFieldsEditable = input(true);
+  readonly demographicFieldsEditable = input(true);
   readonly edited = output<void>();
   readonly submitted = output<PersonFormSubmission>();
   readonly cancelled = output<void>();
@@ -133,14 +79,19 @@ export class PersonFormComponent {
     if (this.form.invalid || this.pending()) { this.form.markAllAsTouched(); return; }
     const value = this.form.getRawValue();
     const person: PersonWriteFields = {
-      first_name: value.first_name.trim(), last_name: value.last_name.trim(),
-      primary_email: value.primary_email.trim() || null, mobile: value.mobile.trim(), location: value.location.trim(),
-      age_range: toAgeRange(value.age_range), gender: toGender(value.gender),
+      first_name: value.first_name.trim(), last_name: value.last_name.trim(), location: value.location.trim(),
     };
+    if (this.contactFieldsEditable()) {
+      person.primary_email = value.primary_email.trim() || null;
+      person.mobile = value.mobile.trim();
+    }
+    if (this.demographicFieldsEditable()) {
+      person.age_range = toAgeRange(value.age_range);
+      person.gender = toGender(value.gender);
+    }
     this.submitted.emit({ person, ...(this.member() ? { joined_at: value.joined_at } : {}) });
   }
 }
-
 function trimmedEmailValidator(control: AbstractControl): ValidationErrors | null {
   const value = typeof control.value === 'string' ? control.value.trim() : control.value;
   return Validators.email(new FormControl(value));

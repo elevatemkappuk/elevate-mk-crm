@@ -1,0 +1,111 @@
+<section class="audience-page">
+  <a routerLink="/people" class="back-link">Back to People</a>
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">Marketing</p>
+      <h1>Audience Preview</h1>
+      <p class="intro">Check who can currently receive marketing email from the People matching your criteria.</p>
+    </div>
+  </header>
+
+  <app-crm-section-card title="Audience criteria">
+    <app-people-directory-filters
+      [query]="directoryQuery()"
+      [compact]="true"
+      [contactSearchAllowed]="contactSearchAllowed()"
+      (changed)="selectionChanged($event)"
+      (cleared)="clearFilters()"
+    />
+    @if (response(); as preview) {
+      <div class="selection-summary"><strong>Selection</strong><span>{{ selectionSummary(preview) }}</span></div>
+    }
+    <div class="display-controls" aria-label="Audience preview display controls">
+      <label>
+        <span>Order by</span>
+        <select [value]="queryState().ordering" (change)="changeOrdering($any($event.target).value)">
+          @for (option of orderingOptions; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
+        </select>
+      </label>
+      <label>
+        <span>Page size</span>
+        <select [value]="queryState().page_size" (change)="changePageSize($any($event.target).value)">
+          @for (size of pageSizes; track size) { <option [value]="size">{{ size }}</option> }
+        </select>
+      </label>
+    </div>
+  </app-crm-section-card>
+
+  @if (!contactSearchAllowed()) {
+    <p class="privacy-note" role="status">Contact search is unavailable for your current privacy permissions. Audience eligibility remains available.</p>
+  }
+
+  @if (response(); as preview) {
+    @if (canCreateCampaign()) {
+      <div class="campaign-action">
+        <div><strong>{{ preview.eligible_count }} {{ preview.eligible_count === 1 ? 'person can' : 'people can' }} receive this campaign</strong><span>Eligibility will be checked again when the Campaign is prepared.</span></div>
+        <button type="button" class="crm-button crm-button--primary" (click)="createDialogOpen.set(true)">Continue to Campaign</button>
+      </div>
+    }
+    @if (preview.excluded_count > 0) {
+      <app-crm-section-card [title]="'Exclusions (' + preview.excluded_count + ')'">
+        <dl class="breakdown">
+          @for (reason of activeExclusionReasons(preview); track reason) {
+            <div><dt>{{ exclusionLabel(reason) }}</dt><dd>{{ preview.exclusion_counts[reason] }}</dd></div>
+          }
+        </dl>
+      </app-crm-section-card>
+    }
+  }
+
+  <app-crm-section-card title="Recipients">
+    <div class="result-tabs" role="tablist" aria-label="Audience result views">
+      @for (view of resultViews; track view) {
+        <button type="button" role="tab" [attr.aria-selected]="queryState().result === view" [class.active]="queryState().result === view" (click)="changeResult(view)">{{ resultLabel(view, response()) }}</button>
+      }
+    </div>
+    @if (loading()) {
+      <div class="state-card" aria-live="polite"><p>Loading audience preview...</p></div>
+    } @else if (errorMessage()) {
+      <div class="state-card state-card-error" role="alert"><p>{{ errorMessage() }}</p><button type="button" class="crm-button crm-button--secondary" (click)="retry()">Retry</button></div>
+    } @else if (response(); as preview) {
+      @if (preview.results.results.length === 0) {
+        <div class="state-card" aria-live="polite"><p>{{ emptyMessage(preview) }}</p></div>
+      } @else {
+        <div class="table-wrap">
+          <table>
+            <caption class="sr-only">{{ activeResultLabel() }} audience People</caption>
+            <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Marketing eligibility</th></tr></thead>
+            <tbody>
+              @for (person of preview.results.results; track person.id) {
+                <tr>
+                  <td data-label="Name"><a [routerLink]="['/people', person.id]">{{ fullName(person) }}</a></td>
+                  <td data-label="Email">{{ person.primary_email || '-' }}</td>
+                  <td data-label="Marketing eligibility">
+                    @if (person.classification === 'ELIGIBLE') { <app-status-badge label="Eligible" tone="success" /> }
+                    @else { <div class="excluded-status"><app-status-badge [label]="exclusionLabel(person.exclusion_reasons[0])" tone="warning" />@if (queryState().result === 'excluded') { <span>{{ exclusionExplanation(person.exclusion_reasons[0]) }}</span> }</div> }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" aria-label="Audience results pagination">
+          <button type="button" class="crm-button crm-button--secondary" [disabled]="preview.results.previous_page === null" (click)="goToPage(preview.results.previous_page)">Previous</button>
+          <span>Page {{ preview.results.page }}</span>
+          <button type="button" class="crm-button crm-button--secondary" [disabled]="preview.results.next_page === null" (click)="goToPage(preview.results.next_page)">Next</button>
+        </div>
+      }
+    }
+  </app-crm-section-card>
+</section>
+<app-campaign-create-dialog
+  [open]="createDialogOpen()"
+  [selection]="currentSelection()"
+  [selectedCount]="response()?.selected_count || 0"
+  [eligibleCount]="response()?.eligible_count || 0"
+  [excludedCount]="response()?.excluded_count || 0"
+  [busy]="campaignSubmitting()"
+  [errorMessage]="campaignError()"
+  (cancelled)="createDialogOpen.set(false)"
+  (submitted)="createCampaign($event)"
+/>

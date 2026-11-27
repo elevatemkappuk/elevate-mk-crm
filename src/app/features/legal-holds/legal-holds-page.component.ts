@@ -1,0 +1,637 @@
+import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, DestroyRef, effect, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
+import { Observable, finalize } from 'rxjs';
+import { ActivatedRoute, Router } from '@angular/router';
+
+import { formatForbiddenError } from '../../core/http/forbidden-error';
+import { StaffAccessService } from '../../core/auth/staff-access.service';
+import { AuthService } from '../../core/auth/auth.service';
+import { LegalHoldsService } from '../../core/privacy/legal-holds.service';
+import { LegalHold, LegalHoldActor, LegalHoldReleaseRequest, LegalHoldReleaseRequestResult } from '../../core/privacy/legal-hold.types';
+import { PeopleService } from '../../core/people/people.service';
+import { PersonDirectoryItem } from '../../core/people/people.types';
+import { PersonListItem } from '../../core/people/people.types';
+import { recordTypeLabel } from '../../core/people/record-type-label';
+import { ConfirmationDialogComponent } from '../../shared/ui/confirmation-dialog.component';
+import { StateMessageComponent } from '../../shared/ui/state-message.component';
+import { ToastService } from '../../shared/ui/toast.service';
+
+type LegalHoldsTab = 'active' | 'requests' | 'history';
+
+interface ReleaseRequestRow {
+  readonly hold: LegalHold;
+  readonly request: LegalHoldReleaseRequest;
+  readonly fromHistory?: boolean;
+}
+
+interface HistoryRow {
+  readonly hold: LegalHold;
+  readonly request: LegalHoldReleaseRequest | null;
+  readonly outcome: string;
+  readonly timestamp: string;
+}
+
+type LegalHoldConfirmation =
+  | { readonly kind: 'release'; readonly hold: LegalHold }
+  | { readonly kind: 'approve' | 'reject' | 'cancel'; readonly request: LegalHoldReleaseRequest };
+
+@Component({
+  selector: 'app-legal-holds-page',
+  imports: [CommonModule, FormsModule, ConfirmationDialogComponent, StateMessageComponent],
+  templateUrl: './legal-holds-page.component.html',
+  styleUrl: './legal-holds-page.component.css',
+})
+export class LegalHoldsPageComponent {
+  private readonly service = inject(LegalHoldsService);
+  private readonly peopleService = inject(PeopleService);
+  private readonly staffAccess = inject(StaffAccessService);
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly toast = inject(ToastService);
+
+  readonly holds = signal<readonly LegalHold[]>([]);
+  readonly loading = signal(false);
+  readonly saving = signal(false);
+  readonly errorMessage = signal<string | null>(null);
+  readonly feedback = signal<string | null>(null);
+  readonly createValidationMessage = signal<string | null>(null);
+  readonly personOptions = signal<readonly PersonDirectoryItem[]>([]);
+  readonly selectedPerson = signal<PersonListItem | null>(null);
+  readonly personSearchLoading = signal(false);
+  readonly personSearchError = signal<string | null>(null);
+  readonly releaseHoldId = signal<string | null>(null);
+  personId: number | null = null;
+  private listPersonId: number | null = null;
+  personSearch = '';
+  private selectedPersonName = '';
+  auditEventReference = '';
+  createReason = '';
+  releaseReason = '';
+  releaseRequestId = '';
+  resolveReason = '';
+  resolveAction: 'approve' | 'reject' = 'approve';
+  readonly resolvingRequest = signal(false);
+  readonly activeTab = signal<LegalHoldsTab>('active');
+  readonly selectedHold = signal<LegalHold | null>(null);
+  readonly selectedReleaseRequest = signal<ReleaseRequestRow | null>(null);
+  readonly createDialogOpen = signal(false);
+  readonly pendingConfirmation = signal<LegalHoldConfirmation | null>(null);
+  confirmationReason = '';
+  private authorizationEpoch = 0;
+  private holdsRequestSequence = 0;
+  private personSearchRequestSequence = 0;
+  private selectedPersonRequestSequence = 0;
+  private revalidatingAuthorization = false;
+
+  constructor() {
+    effect(() => {
+      if (!this.staffAccess.hasCapability('LEGAL_HOLD_ADMIN')) {
+        this.authorizationEpoch += 1;
+        this.clearProtectedState();
+      }
+    });
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
+      const value = Number(params.get('personId'));
+      this.personId = Number.isSafeInteger(value) && value > 0 ? value : null;
+      this.listPersonId = this.personId;
+      this.auditEventReference = params.get('eventReference') ?? '';
+      if (this.personId !== null) this.loadSelectedPerson(this.personId);
+      this.loadHolds();
+    });
+  }
+
+  searchPeople(): void {
+    if (!this.personSearch.trim()) {
+      this.personSearchError.set('Enter a name to search.');
+      this.personOptions.set([]);
+      return;
+    }
+    const requestEpoch = this.authorizationEpoch;
+    const requestSequence = ++this.personSearchRequestSequence;
+    this.personSearchLoading.set(true);
+    this.personSearchError.set(null);
+    this.peopleService.searchPeople(this.personSearch.trim()).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => {
+        if (requestSequence === this.personSearchRequestSequence) this.personSearchLoading.set(false);
+      }),
+    ).subscribe({
+      next: response => {
+        if (this.isProtectedRequestCurrent(requestEpoch) && requestSequence === this.personSearchRequestSequence) {
+          this.personOptions.set(response.results);
+        }
+      },
+      error: () => {
+        if (this.isProtectedRequestCurrent(requestEpoch) && requestSequence === this.personSearchRequestSequence) {
+          this.personSearchError.set('Person search could not be completed.');
+        }
+      },
+    });
+  }
+
+  selectTab(tab: LegalHoldsTab): void {
+    this.activeTab.set(tab);
+    this.selectedHold.set(null);
+    this.selectedReleaseRequest.set(null);
+  }
+
+  activeHolds(): readonly LegalHold[] {
+    return this.holds()
+      .filter(hold => hold.status === 'ACTIVE')
+      .slice()
+      .sort((left, right) => Date.parse(right.placed_at) - Date.parse(left.placed_at));
+  }
+
+  pendingReleaseRequests(): readonly ReleaseRequestRow[] {
+    return this.holds().flatMap(hold => hold.release_requests
+      .filter(request => request.status === 'PENDING')
+      .map(request => ({ hold, request })));
+  }
+
+  historyHolds(): readonly LegalHold[] {
+    return this.historyRows().map(row => row.hold);
+  }
+
+  historyReleaseRequests(): readonly ReleaseRequestRow[] {
+    return this.holds().flatMap(hold => hold.release_requests
+      .filter(request => request.status !== 'PENDING')
+      .map(request => ({ hold, request })));
+  }
+
+  historyRows(): readonly HistoryRow[] {
+    return this.holds().flatMap(hold => {
+      const completed = hold.release_requests
+        .filter(request => request.status !== 'PENDING')
+        .map(request => ({
+          hold,
+          request,
+          outcome: this.releaseStatusLabel(request.status),
+          timestamp: request.approved_at || request.rejected_at || request.cancelled_at || request.requested_at,
+        }));
+      if (completed.some(row => row.request?.status === 'APPROVED')) return completed;
+      if (hold.status === 'RELEASED') {
+        return [...completed, { hold, request: null, outcome: hold.execution_mode === 'DIRECT_SUPERUSER' ? 'Applied by superuser' : 'Applied', timestamp: hold.released_at || hold.placed_at }];
+      }
+      return completed;
+    }).sort((left, right) => Date.parse(right.timestamp) - Date.parse(left.timestamp));
+  }
+
+  historyActor(request: LegalHoldReleaseRequest): LegalHoldActor | null {
+    return request.status === 'APPROVED'
+      ? request.approved_by
+      : request.status === 'REJECTED'
+        ? request.rejected_by
+        : request.status === 'CANCELLED'
+          ? request.cancelled_by
+          : request.requested_by;
+  }
+
+  historyTimestamp(request: LegalHoldReleaseRequest): string {
+    return request.status === 'APPROVED'
+      ? request.approved_at || request.requested_at
+      : request.status === 'REJECTED'
+        ? request.rejected_at || request.requested_at
+        : request.status === 'CANCELLED'
+          ? request.cancelled_at || request.requested_at
+          : request.requested_at;
+  }
+
+  historyReason(request: LegalHoldReleaseRequest): string {
+    return request.status === 'APPROVED'
+      ? request.approval_justification || 'No approval reason recorded.'
+      : request.status === 'REJECTED'
+        ? request.rejection_reason || 'No rejection reason recorded.'
+        : request.status === 'CANCELLED'
+          ? request.cancellation_reason || 'No cancellation reason recorded.'
+          : request.justification;
+  }
+
+  selectHold(hold: LegalHold): void {
+    this.selectedHold.set(hold);
+  }
+
+  selectReleaseRequest(row: ReleaseRequestRow): void {
+    this.selectedReleaseRequest.set(row);
+  }
+
+  backToLegalHoldList(): void {
+    const returnTab = this.selectedReleaseRequest()?.fromHistory ? 'history' : this.activeTab();
+    this.activeTab.set(returnTab);
+    this.selectedHold.set(null);
+    this.selectedReleaseRequest.set(null);
+  }
+
+  openReleaseConfirmation(hold: LegalHold): void {
+    this.confirmationReason = '';
+    this.pendingConfirmation.set({ kind: 'release', hold });
+  }
+
+  openDecisionConfirmation(request: LegalHoldReleaseRequest, action: 'approve' | 'reject' | 'cancel'): void {
+    this.confirmationReason = '';
+    this.pendingConfirmation.set({ kind: action, request });
+  }
+
+  closeConfirmation(): void {
+    if (!this.saving()) {
+      this.confirmationReason = '';
+      this.pendingConfirmation.set(null);
+    }
+  }
+
+  confirmationTitle(action: LegalHoldConfirmation): string {
+    if (action.kind === 'release') return action.hold.execution_mode === 'DIRECT_SUPERUSER' ? 'Release legal hold' : 'Request legal-hold release';
+    return action.kind === 'approve' ? 'Approve release request' : action.kind === 'reject' ? 'Reject release request' : 'Cancel release request';
+  }
+
+  confirmationContext(action: LegalHoldConfirmation): string {
+    const hold = action.kind === 'release' ? action.hold : this.requestHold;
+    return `${this.holdTypeLabel(hold.scope)} · ${this.holdTargetLabel(hold)}`;
+  }
+
+  confirmationMessage(action: LegalHoldConfirmation): string {
+    if (action.kind === 'release') return action.hold.execution_mode === 'DIRECT_SUPERUSER'
+      ? 'You are releasing this legal hold directly as a superuser without independent approval. Protection provided by this hold will end immediately. Other active legal holds will remain unaffected. This action will be recorded in legal-hold history.'
+      : 'Submitting a release request does not end retention protection. It remains active until an authorized administrator approves the request.';
+    return action.kind === 'approve'
+      ? 'Approval will release the legal hold and end retention protection. This decision will be recorded in legal-hold history.'
+      : action.kind === 'reject'
+        ? 'Rejecting this request leaves the legal hold active. The decision will be recorded in legal-hold history.'
+      : 'Cancelling this request will stop the release approval process. The legal hold will remain active and continue protecting the covered records from scheduled disposal. The cancellation will be recorded in legal hold history.';
+  }
+
+  confirmationVariant(action: LegalHoldConfirmation): 'primary' | 'destructive' | 'destructive-outline' | 'caution' {
+    return action.kind === 'reject' || action.kind === 'cancel' ? 'destructive-outline' : action.kind === 'approve' ? 'primary' : 'caution';
+  }
+
+  confirmationLabel(action: LegalHoldConfirmation): string {
+    if (action.kind === 'release') return action.hold.execution_mode === 'DIRECT_SUPERUSER' ? 'Release hold' : 'Request release';
+    return action.kind === 'approve' ? 'Approve request' : action.kind === 'reject' ? 'Reject request' : 'Cancel request';
+  }
+
+  confirmationReasonLabel(action: LegalHoldConfirmation): string {
+    return action.kind === 'approve' ? 'Reason for approval' : action.kind === 'reject' ? 'Reason for rejection' : action.kind === 'cancel' ? 'Reason for cancellation' : 'Reason for release';
+  }
+
+  confirmPendingAction(): void {
+    const action = this.pendingConfirmation();
+    if (!action || !this.confirmationReason.trim()) return;
+    const requestEpoch = this.authorizationEpoch;
+    this.saving.set(true);
+    const request$ = (action.kind === 'release'
+      ? (action.hold.execution_mode === 'DIRECT_SUPERUSER'
+        ? this.service.directRelease(action.hold.public_id, this.confirmationReason.trim())
+        : this.service.requestRelease(action.hold.public_id, this.confirmationReason.trim()))
+      : action.kind === 'approve'
+        ? this.service.approveRelease(action.request.public_id, this.confirmationReason.trim())
+        : action.kind === 'reject'
+          ? this.service.rejectRelease(action.request.public_id, this.confirmationReason.trim())
+          : this.service.cancelRelease(action.request.public_id, this.confirmationReason.trim())) as Observable<LegalHold | LegalHoldReleaseRequestResult>;
+    request$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: response => {
+        if (!this.isProtectedRequestCurrent(requestEpoch)) return;
+        const pending = action.kind === 'release' && 'status' in response && response.status === 'PENDING';
+        this.confirmationReason = '';
+        this.pendingConfirmation.set(null);
+        this.selectedHold.set(null);
+        this.selectedReleaseRequest.set(null);
+        this.toast.success(
+          pending ? 'Release request submitted' : action.kind === 'approve' ? 'Release request approved' : action.kind === 'reject' ? 'Release request rejected' : action.kind === 'cancel' ? 'Request cancelled' : 'Legal hold released',
+          pending ? 'The hold remains active until an authorized administrator approves release.' : action.kind === 'cancel' ? 'Existing permissions remain unchanged.' : 'The legal-hold history was updated.',
+        );
+        this.loadHolds();
+      },
+      error: (error: HttpErrorResponse) => !this.isProtectedRequestCurrent(requestEpoch)
+        ? undefined
+        : error.status === 403
+        ? this.handleProtectedReadDenied()
+        : this.showError(error, 'The legal-hold operation was not accepted.'),
+      complete: () => this.saving.set(false),
+    });
+  }
+
+  private get requestHold(): LegalHold {
+    const action = this.pendingConfirmation();
+    if (!action || action.kind === 'release') throw new Error('A release request is required.');
+    return this.holds().find(hold => hold.release_requests.some(request => request.public_id === action.request.public_id))!;
+  }
+
+  openCreateDialog(): void {
+    this.createDialogOpen.set(true);
+    this.createValidationMessage.set(null);
+  }
+
+  closeCreateDialog(): void {
+    if (!this.saving()) this.createDialogOpen.set(false);
+  }
+
+  activateRow(event: KeyboardEvent, action: () => void): void {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    action();
+  }
+
+  holdTypeLabel(scope: LegalHold['scope']): string {
+    return scope === 'PERSON' ? 'Person-wide hold' : 'Privacy audit event hold';
+  }
+
+  statusLabel(status: LegalHold['status']): string {
+    return status === 'ACTIVE' ? 'Active' : 'Released';
+  }
+
+  releaseStatusLabel(status: LegalHoldReleaseRequest['status']): string {
+    return status === 'PENDING' ? 'Pending approval' : status === 'APPROVED' ? 'Approved' : status === 'CANCELLED' ? 'Cancelled' : 'Rejected';
+  }
+
+  statusClass(status: LegalHold['status'] | LegalHoldReleaseRequest['status']): string {
+    if (status === 'PENDING') return 'status-badge status-badge--warning';
+    if (status === 'REJECTED' || status === 'CANCELLED') return 'status-badge status-badge--muted';
+    return 'status-badge';
+  }
+
+  holdTargetLabel(hold: LegalHold): string {
+    return hold.person_display_name || (hold.person_id ? `Person ${hold.person_id}` : 'Authorized audit event');
+  }
+
+  canRequestRelease(hold: LegalHold): boolean {
+    const pendingRequestExists = hold.release_requests.some(request => request.status === 'PENDING');
+    return hold.status === 'ACTIVE' && !pendingRequestExists && (hold.permitted_actions.includes('request_release') || hold.permitted_actions.includes('direct_release'));
+  }
+
+  requestActionLabel(hold: LegalHold): string {
+    return hold.permitted_actions.includes('direct_release') ? 'Release hold' : 'Request release';
+  }
+
+  historyActorLabel(actor: LegalHoldActor | null): string {
+    return actor ? this.actorLabel(actor) : 'Not recorded';
+  }
+
+  selectPerson(person: PersonDirectoryItem): void {
+    this.personId = person.id;
+    this.auditEventReference = '';
+    this.personOptions.set([]);
+    this.selectedPerson.set(person);
+    this.personSearch = `${person.first_name} ${person.last_name}`;
+    this.selectedPersonName = this.personSearch;
+  }
+
+  onPersonSearchChange(value: string): void {
+    this.personSearch = value;
+    if (this.personId !== null && value.trim() !== this.selectedPersonName) {
+      this.personId = null;
+      this.selectedPerson.set(null);
+      this.selectedPersonName = '';
+    }
+  }
+
+  selectedPersonLabel(): string {
+    const person = this.selectedPerson();
+    return person ? `${person.first_name} ${person.last_name}` : '';
+  }
+
+  selectedPersonTypeLabel(): string {
+    return recordTypeLabel(this.selectedPerson()?.record_type);
+  }
+
+  personTypeLabel(value: string | undefined): string {
+    return recordTypeLabel(value);
+  }
+
+  clearSelectedPerson(): void {
+    this.personId = null;
+    this.selectedPerson.set(null);
+    this.personOptions.set([]);
+    this.personSearch = '';
+    this.selectedPersonName = '';
+    this.personSearchError.set(null);
+  }
+
+  actorLabel(actor: { display_name: string; contact_restricted: boolean }): string {
+    return actor.contact_restricted ? 'Restricted user' : actor.display_name;
+  }
+
+  private loadSelectedPerson(personId: number): void {
+    const requestEpoch = this.authorizationEpoch;
+    const requestSequence = ++this.selectedPersonRequestSequence;
+    this.peopleService.getPerson(personId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: person => {
+        if (this.isProtectedRequestCurrent(requestEpoch) && requestSequence === this.selectedPersonRequestSequence) {
+          this.selectedPerson.set(person);
+          this.personSearch = `${person.first_name} ${person.last_name}`;
+          this.selectedPersonName = this.personSearch;
+        }
+      },
+      error: () => {
+        if (this.isProtectedRequestCurrent(requestEpoch) && requestSequence === this.selectedPersonRequestSequence) {
+          this.selectedPerson.set(null);
+          this.personSearch = '';
+          this.selectedPersonName = '';
+          this.personId = null;
+        }
+      },
+    });
+  }
+
+  loadHolds(): void {
+    const requestEpoch = this.authorizationEpoch;
+    const requestSequence = ++this.holdsRequestSequence;
+    this.loading.set(true);
+    this.errorMessage.set(null);
+    this.service.list(this.listPersonId ?? undefined).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: response => {
+        if (requestSequence === this.holdsRequestSequence && requestEpoch === this.authorizationEpoch && this.staffAccess.hasCapability('LEGAL_HOLD_ADMIN')) {
+          this.holds.set(response.results);
+        }
+      },
+      error: (error: HttpErrorResponse) => {
+        if (requestSequence !== this.holdsRequestSequence) return;
+        if (error.status === 403) this.handleProtectedReadDenied();
+        else this.showError(error, 'Legal holds could not be loaded.');
+      },
+      complete: () => {
+        if (requestSequence === this.holdsRequestSequence) this.loading.set(false);
+      },
+    });
+  }
+
+  createHold(): void {
+    const hasPerson = this.personId !== null;
+    const hasEvent = this.auditEventReference.trim().length > 0;
+    if (hasPerson === hasEvent || !this.createReason.trim()) {
+      this.createValidationMessage.set('Select a person and provide a reason for placing a legal hold.');
+      return;
+    }
+    const requestEpoch = this.authorizationEpoch;
+    this.saving.set(true);
+    this.createValidationMessage.set(null);
+    this.feedback.set(null);
+    this.service.create({
+      ...(hasPerson ? { person_id: this.personId! } : { audit_event_reference: this.auditEventReference.trim() }),
+      reason: this.createReason.trim(),
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        if (!this.isProtectedRequestCurrent(requestEpoch)) return;
+        this.createReason = '';
+        this.createDialogOpen.set(false);
+        this.feedback.set(null);
+        this.toast.success('Legal hold placed', 'The hold is now protecting the authorized target.');
+        this.loadHolds();
+      },
+      error: (error: HttpErrorResponse) => !this.isProtectedRequestCurrent(requestEpoch)
+        ? undefined
+        : error.status === 403
+        ? this.handleProtectedReadDenied()
+        : this.showError(error, 'Legal hold could not be placed.'),
+      complete: () => this.saving.set(false),
+    });
+  }
+
+  beginRelease(hold: LegalHold): void {
+    this.releaseHoldId.set(hold.public_id);
+    this.releaseReason = '';
+    this.feedback.set(null);
+  }
+
+  cancelRelease(): void {
+    this.releaseHoldId.set(null);
+    this.releaseReason = '';
+  }
+
+  releaseHold(hold: LegalHold): void {
+    if (!this.releaseReason.trim()) return;
+    const requestEpoch = this.authorizationEpoch;
+    this.saving.set(true);
+    this.feedback.set(null);
+    const request$ = (hold.permitted_actions.includes('direct_release')
+      ? this.service.directRelease(hold.public_id, this.releaseReason.trim())
+      : this.service.requestRelease(hold.public_id, this.releaseReason.trim())) as Observable<LegalHold | LegalHoldReleaseRequestResult>;
+    request$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: response => {
+        if (!this.isProtectedRequestCurrent(requestEpoch)) return;
+        const pending = 'status' in response && response.status === 'PENDING';
+        this.feedback.set(null);
+        this.toast.success(pending ? 'Release request submitted' : 'Legal hold released', pending ? 'The hold remains active until an authorized administrator approves release.' : 'The legal hold was released and recorded.');
+        this.releaseRequestId = 'public_id' in response ? response.public_id : this.releaseRequestId;
+        this.cancelRelease();
+        this.loadHolds();
+      },
+      error: (error: HttpErrorResponse) => !this.isProtectedRequestCurrent(requestEpoch)
+        ? undefined
+        : error.status === 403
+        ? this.handleProtectedReadDenied()
+        : this.showError(error, 'The legal-hold release operation was not accepted.'),
+      complete: () => this.saving.set(false),
+    });
+  }
+
+  beginResolve(releaseRequest: LegalHoldReleaseRequest, action: 'approve' | 'reject'): void {
+    this.releaseRequestId = releaseRequest.public_id;
+    this.resolveAction = action;
+    this.resolveReason = '';
+    this.resolvingRequest.set(true);
+    this.feedback.set(null);
+  }
+
+  cancelResolve(): void {
+    this.releaseRequestId = '';
+    this.resolveReason = '';
+    this.resolvingRequest.set(false);
+  }
+
+  resolveRequest(): void {
+    if (!this.releaseRequestId.trim() || !this.resolveReason.trim()) return;
+    const requestEpoch = this.authorizationEpoch;
+    this.saving.set(true);
+    this.feedback.set(null);
+    const request$ = (this.resolveAction === 'approve'
+      ? this.service.approveRelease(this.releaseRequestId.trim(), this.resolveReason.trim())
+      : this.service.rejectRelease(this.releaseRequestId.trim(), this.resolveReason.trim())) as Observable<LegalHold | LegalHoldReleaseRequestResult>;
+    request$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        if (!this.isProtectedRequestCurrent(requestEpoch)) return;
+        this.feedback.set(null);
+        this.toast.success(`Release request ${this.resolveAction}d`, 'The legal-hold history was updated.');
+        this.resolveReason = '';
+        this.releaseRequestId = '';
+        this.resolvingRequest.set(false);
+        this.loadHolds();
+      },
+      error: (error: HttpErrorResponse) => !this.isProtectedRequestCurrent(requestEpoch)
+        ? undefined
+        : error.status === 403
+        ? this.handleProtectedReadDenied()
+        : this.showError(error, `The release request could not be ${this.resolveAction}d.`),
+      complete: () => this.saving.set(false),
+    });
+  }
+
+  formatDateTime(value: string): string {
+    return new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+  }
+
+  private showError(error: HttpErrorResponse, fallback: string): void {
+    this.loading.set(false);
+    this.saving.set(false);
+    this.errorMessage.set(error.status === 403 ? formatForbiddenError(error, 'This account is not authorized for legal-hold administration.') : fallback);
+  }
+
+  private handleProtectedReadDenied(): void {
+    if (this.revalidatingAuthorization) return;
+    this.revalidatingAuthorization = true;
+    this.authorizationEpoch += 1;
+    this.loading.set(false);
+    this.clearProtectedState();
+    const user = this.auth.currentUser();
+    if (!user) {
+      this.revalidatingAuthorization = false;
+      void this.router.navigateByUrl('/login');
+      return;
+    }
+    this.staffAccess.refresh(user).subscribe({
+      next: () => {
+        this.revalidatingAuthorization = false;
+        if (!this.staffAccess.hasCapability('LEGAL_HOLD_ADMIN')) {
+          void this.router.navigateByUrl('/access-denied');
+        }
+      },
+      error: () => {
+        this.revalidatingAuthorization = false;
+        void this.router.navigateByUrl('/access-denied');
+      },
+    });
+  }
+
+  private isProtectedRequestCurrent(requestEpoch: number): boolean {
+    return requestEpoch === this.authorizationEpoch && this.staffAccess.hasCapability('LEGAL_HOLD_ADMIN');
+  }
+
+  private clearProtectedState(): void {
+    this.holdsRequestSequence += 1;
+    this.personSearchRequestSequence += 1;
+    this.selectedPersonRequestSequence += 1;
+    this.holds.set([]);
+    this.selectedHold.set(null);
+    this.selectedReleaseRequest.set(null);
+    this.pendingConfirmation.set(null);
+    this.confirmationReason = '';
+    this.createDialogOpen.set(false);
+    this.personId = null;
+    this.listPersonId = null;
+    this.auditEventReference = '';
+    this.createReason = '';
+    this.personSearch = '';
+    this.selectedPersonName = '';
+    this.personOptions.set([]);
+    this.selectedPerson.set(null);
+    this.personSearchLoading.set(false);
+    this.personSearchError.set(null);
+    this.createValidationMessage.set(null);
+    this.releaseHoldId.set(null);
+    this.releaseReason = '';
+    this.cancelResolve();
+  }
+}

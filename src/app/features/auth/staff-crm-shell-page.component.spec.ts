@@ -41,6 +41,8 @@ class MockAuthService {
 
   readonly currentUser = this.currentUserState.asReadonly();
   readonly isCrmAdmin = computed(() => this.currentUser()?.staff_roles.includes('CRM_ADMIN') ?? false);
+  readonly hasPrivacyAdministration = vi.fn(() => false);
+  readonly hasLegalHoldAdministration = vi.fn(() => false);
   readonly logout = vi.fn(() => of(void 0));
 
   setUser(user: AuthenticatedUser): void {

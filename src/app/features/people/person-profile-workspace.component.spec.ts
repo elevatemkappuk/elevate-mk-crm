@@ -8,6 +8,8 @@ import { of, Subject, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { StaffAccessService } from '../../core/auth/staff-access.service';
+import { API_CONFIG } from '../../core/http/api-config';
 import { PeopleService } from '../../core/people/people.service';
 import { PersonListItem, PersonOverview } from '../../core/people/people.types';
 import { CrmDrawerComponent } from '../../shared/ui/crm-drawer.component';
@@ -62,7 +64,10 @@ describe('Person profile workspace', () => {
     };
     await TestBed.configureTestingModule({
       providers: [provideRouter([{ path: 'people/:id', component: PersonDetailPageComponent }]),
-        { provide: AuthService, useValue: { currentUser } }, { provide: PeopleService, useValue: service }],
+        { provide: API_CONFIG, useValue: { apiBaseUrl: 'http://localhost:8000/api/v1' } },
+        { provide: AuthService, useValue: { currentUser, hasPrivacyAuditRead: signal(false), hasLegalHoldAdministration: () => false } },
+        { provide: StaffAccessService, useValue: { isReady: () => true, hasCapability: () => true, selectAccount: vi.fn(), refresh: vi.fn() } },
+        { provide: PeopleService, useValue: service }],
     }).compileComponents();
   });
   afterEach(() => {

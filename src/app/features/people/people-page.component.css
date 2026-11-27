@@ -1,0 +1,274 @@
+    :host {
+      display: block;
+    }
+
+    .page {
+      display: grid;
+      gap: var(--crm-space-3);
+    }
+
+    .page-actions { display:flex; margin-left:auto; gap:.7rem; flex-wrap:wrap; }
+    .export-actions { align-items:end; }
+    .export-format { width: 7rem; }
+    .state-error { flex-basis:100%; margin:0; color:var(--crm-error); }
+
+    .controls,
+    .results-card,
+    .state-card {
+      display: grid;
+      gap: var(--crm-space-3);
+      padding: var(--crm-space-5);
+      border-radius: var(--crm-radius-lg);
+      border: 1px solid var(--crm-border);
+      background: var(--crm-surface);
+      box-shadow: var(--crm-shadow-sm);
+    }
+
+    .state-card p {
+      max-width: 42rem;
+      color: var(--crm-text-secondary);
+      line-height: 1.5;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      gap: 0.85rem 1rem;
+    }
+    .display-controls {
+      display: flex;
+      flex: 1 1 31.5rem;
+      min-width: 0;
+      flex-wrap: wrap;
+      align-items: end;
+      gap: 0.85rem 1rem;
+    }
+    .controls select { width: 100%; min-width: 0; }
+    .record-control { width: 8.5rem; }
+    .ordering-control { width: 15rem; }
+    .size-control { width: 6rem; }
+
+    label {
+      display: grid;
+      gap: 0.4rem;
+      color: #1c3344;
+      font-weight: 600;
+    }
+
+    label span {
+      margin: 0;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #5c7789;
+    }
+
+    input,
+    select,
+    .pagination-button {
+      border: 1px solid var(--crm-control-border);
+      border-radius: var(--crm-radius-sm);
+      padding: 0.72rem 0.88rem;
+      font: inherit;
+      background: var(--crm-surface);
+      color: var(--crm-text-strong);
+      transition:
+        border-color 120ms ease,
+        box-shadow 120ms ease,
+        background-color 120ms ease,
+        color 120ms ease;
+    }
+
+    input::placeholder {
+      color: var(--crm-text-muted);
+    }
+
+    input:focus-visible,
+    select:focus-visible,
+    .pagination-button:focus-visible,
+    .row-link:focus-visible {
+      outline: none;
+      border-color: var(--crm-focus-ring);
+      box-shadow: 0 0 0 3px rgb(23 109 155 / 20%);
+    }
+
+    .results-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .results-count,
+    .results-page {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--crm-text-muted);
+    }
+
+    .results-count {
+      font-weight: 700;
+      color: var(--crm-text-strong);
+    }
+
+    .table-wrap {
+      min-width: 0;
+      overflow-x: auto;
+      border-radius: 0.9rem;
+      border: 1px solid var(--crm-border);
+      background: var(--crm-surface-subtle);
+    }
+
+    table {
+      width: 100%;
+      min-width: 56rem;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 0.82rem 1rem;
+      border-bottom: 1px solid var(--crm-border);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--crm-text-muted);
+      background: var(--crm-surface-subtle);
+    }
+
+    td {
+      color: var(--crm-text-secondary);
+      overflow-wrap: anywhere;
+    }
+
+    .person-row {
+      cursor: pointer;
+      transition: background-color 120ms ease;
+    }
+
+    .person-row:hover,
+    .person-row:focus-within {
+      background: var(--crm-info-surface);
+    }
+    .person-row:focus-within { outline: 2px solid var(--crm-focus-ring); outline-offset: -2px; }
+
+    .row-link {
+      display: inline-block;
+      border-radius: 0.35rem;
+      color: var(--crm-text-strong);
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .row-link:hover,
+    .row-link:focus-visible {
+      color: var(--crm-action);
+      text-decoration: underline;
+    }
+
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      padding-top: 0.15rem;
+    }
+
+    .pagination-button {
+      min-width: 7.25rem;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--crm-surface-subtle);
+    }
+
+    .pagination-button:not(:disabled):hover {
+      background: var(--crm-info-surface);
+      border-color: var(--crm-control-border);
+    }
+
+    .pagination-button:disabled {
+      cursor: not-allowed;
+      opacity: 1;
+      color: var(--crm-text-muted);
+      border-color: var(--crm-border);
+      background: var(--crm-surface-subtle);
+      box-shadow: none;
+    }
+
+    .state-card {
+      min-height: 9.5rem;
+      align-content: center;
+    }
+
+    .state-card-error {
+      background: var(--crm-error-surface);
+      border-color: var(--crm-error);
+    }
+
+    .state-card-error p {
+      color: var(--crm-error);
+      font-weight: 600;
+    }
+
+    @media (max-width: 680px) {
+      .table-wrap {
+        border: 0;
+        background: transparent;
+      }
+
+      table,
+      thead,
+      tbody,
+      tr,
+      th,
+      td {
+        display: block;
+      }
+
+      table {
+        min-width: 0;
+      }
+
+      thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+      }
+
+      tr {
+        padding: 0.2rem 0;
+        border-bottom: 1px solid var(--crm-border);
+      }
+
+      td {
+        padding: 0.5rem 0.95rem;
+        border-bottom: 0;
+      }
+
+      td::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 0.15rem;
+        font-size: 0.74rem;
+        font-weight: 700;
+        color: var(--crm-text-muted);
+      }
+
+      .pagination {
+        justify-content: stretch;
+      }
+
+      .pagination-button {
+        flex: 1 1 10rem;
+      }
+    }
+

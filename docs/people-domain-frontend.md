@@ -168,3 +168,30 @@ When extending this UI:
 ## Focused Test Coverage
 
 Focused specs cover directory query parsing/serialization, repeated query values and URL behavior, directory component states, Person forms and duplicate confirmation, detail sections, lifecycle actions, notes, and audit history. Existing tests are component/service focused; documentation does not imply that the full Angular suite was run for a documentation change.
+
+## Phase 1B.1 privacy presentation
+
+People components consume the API `privacy` indicators and projected field
+values. `StaffAccessService` is the single frontend capability-state source;
+it does not replace backend authorization. Search placeholders and form
+controls reflect effective contact/demographic capability state. On revocation,
+in-memory directory, detail, and edit state is redacted, and tracked response
+effects re-redact late in-flight responses. Protected values are not written to
+browser storage.
+
+The API remains authoritative for masking, search filtering, write rejection,
+record scope, and superuser behavior. This document records source-level
+implementation and the recorded CRM suite/build evidence; targeted
+runtime/browser validation and cross-repository deployment compatibility remain
+unverified. Final hardening remains outstanding.
+
+## Frontend component file organization
+
+Application UI components use separate TypeScript, HTML, CSS, and applicable
+component-spec files. Component metadata references external templates with
+`templateUrl` and external styles with `styleUrl` or `styleUrls`; component
+logic and state remain in TypeScript. GDPR Phase 1A/1B.1 components converted
+under this stage include Privacy Administration, Legal Holds, Person Privacy
+Audit, People Directory, directory filters, Person form, Person write, and
+Person detail. Existing unrelated legacy inline components remain outside this
+stage and are tracked for consolidated UI polishing.

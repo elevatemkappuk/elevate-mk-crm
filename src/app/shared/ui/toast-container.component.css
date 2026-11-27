@@ -1,0 +1,17 @@
+:host { position: fixed; inset: var(--crm-space-4) var(--crm-space-4) auto auto; z-index: var(--crm-layer-toast); pointer-events: none; }
+.toast-region { display: grid; gap: var(--crm-space-2); width: min(100vw - 2rem, 24rem); }
+.toast { display: grid; grid-template-columns: auto 1fr auto; align-items: start; gap: var(--crm-space-3); padding: var(--crm-space-3) var(--crm-space-4); border: 1px solid var(--crm-border); border-left: 4px solid var(--crm-info); border-radius: var(--crm-radius-md); background: var(--crm-surface); box-shadow: var(--crm-shadow-dialog); pointer-events: auto; }
+.toast--success { border-left-color: var(--crm-success); }
+.toast--warning { border-left-color: var(--crm-warning); }
+.toast--error { border-left-color: var(--crm-error); }
+.toast__icon { display: grid; place-items: center; width: 1.4rem; height: 1.4rem; border-radius: 50%; background: var(--crm-info-surface); color: var(--crm-info); font-weight: var(--crm-weight-bold); }
+.toast--success .toast__icon { background: var(--crm-success-surface); color: var(--crm-success); }
+.toast--warning .toast__icon { background: var(--crm-warning-surface); color: var(--crm-warning); }
+.toast--error .toast__icon { background: var(--crm-error-surface); color: var(--crm-error); }
+.toast__content { min-width: 0; }
+.toast__content strong { display: block; color: var(--crm-text-strong); }
+.toast__content p { margin: .2rem 0 0; color: var(--crm-text-secondary); line-height: var(--crm-leading); }
+.toast__dismiss { min-width: 1.75rem; min-height: 1.75rem; padding: 0; border: 0; border-radius: var(--crm-radius-sm); background: transparent; color: var(--crm-text-muted); font-size: 1.25rem; line-height: 1; cursor: pointer; }
+.toast__dismiss:hover, .toast__dismiss:focus-visible { background: var(--crm-surface-subtle); color: var(--crm-text-strong); }
+.toast__dismiss:focus-visible { outline: 2px solid var(--crm-focus-ring); outline-offset: 2px; }
+@media (max-width: 700px) { :host { inset: var(--crm-space-3) var(--crm-space-3) auto; } .toast-region { width: 100%; } }

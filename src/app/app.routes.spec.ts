@@ -59,6 +59,9 @@ class MockAuthService {
   readonly authInitialized = this.initializedState.asReadonly();
   readonly hasStaffAccess = computed(() => (this.currentUser()?.staff_roles.length ?? 0) > 0);
   readonly isCrmAdmin = computed(() => this.canAccessAdministration(this.currentUser()));
+  readonly hasPrivacyAdministration = () => false;
+  readonly hasPrivacyAuditRead = () => false;
+  readonly hasLegalHoldAdministration = () => false;
 
   logout = () => of(void 0);
 

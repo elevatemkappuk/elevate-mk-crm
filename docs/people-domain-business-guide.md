@@ -6,7 +6,10 @@ Last updated: 2026-09-02
 
 A **Person** is Elevate MK's core CRM record for an individual. A Person may be a Contact, an active Member, or a Former Member. A Person can exist without a login account, without a membership, and without a professional profile.
 
-This guide explains current staff-facing behavior. For technical implementation details, see the [CRM implementation guide](people-domain-frontend.md) and [backend guide](../../elevate-mk-api/docs/people-domain-backend.md).
+This guide explains current staff-facing behavior. For the cross-product summary
+of privacy and permissions, see the [Privacy and Permissions Business Guide](privacy-and-permissions-business-guide.md).
+For technical implementation details, see the [CRM implementation guide](people-domain-frontend.md)
+and [backend guide](../../elevate-mk-api/docs/people-domain-backend.md).
 
 ## People You Can See
 
@@ -73,6 +76,13 @@ CRM roles govern operational access:
 - **CRM Viewer** can read People information but cannot perform normal People changes; Internal Notes are not available to this role.
 
 Django Admin access (`is_staff` or `is_superuser`) is separate technical administration access. It does not itself grant Staff CRM People permissions.
+
+Privacy capabilities can further restrict contact, demographic, search, export,
+and governance behavior. The API evaluates those boundaries; CRM controls are
+presentation guidance and do not authorize a request. See the [API authorization
+contract](../../elevate-mk-api/docs/AUTHORIZATION.md) and the [Privacy and
+Permissions Business Guide](privacy-and-permissions-business-guide.md) for the
+current cross-product summary.
 
 ## Historical Imports
 

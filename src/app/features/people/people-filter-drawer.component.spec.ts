@@ -8,6 +8,7 @@ import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { API_CONFIG } from '../../core/http/api-config';
 import { PeopleService } from '../../core/people/people.service';
 import { PeoplePageComponent } from './people-page.component';
 import { PeopleDirectoryFiltersComponent } from './people-directory-filters.component';
@@ -37,6 +38,7 @@ describe('People filter drawer', () => {
     await TestBed.configureTestingModule({
       providers: [
         provideRouter([{ path: 'people', component: PeoplePageComponent }]), provideLocationMocks(),
+        { provide: API_CONFIG, useValue: { apiBaseUrl: 'http://localhost:8000/api/v1' } },
         { provide: PeopleService, useValue: service },
         { provide: AuthService, useValue: { currentUser: signal({ staff_roles: ['CRM_MANAGER'] }) } },
       ],

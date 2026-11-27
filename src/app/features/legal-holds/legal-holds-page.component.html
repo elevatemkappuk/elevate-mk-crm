@@ -1,0 +1,105 @@
+<section class="workspace crm-page" aria-labelledby="legal-holds-title">
+  <header class="crm-page-heading">
+    <div class="crm-page-heading__copy">
+      <h1 id="legal-holds-title" class="crm-page-heading__title">Legal holds</h1>
+      <p class="crm-page-heading__description">Protect records from scheduled disposal while a legal or privacy matter is active.</p>
+    </div>
+    <button class="crm-button crm-button--brand" type="button" (click)="openCreateDialog()">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14" /></svg>
+      <span>Place legal hold</span>
+    </button>
+  </header>
+
+  @if (errorMessage()) {
+    <p class="crm-banner crm-banner--error" role="alert">{{ errorMessage() }}</p>
+    <button class="crm-button crm-button--secondary" type="button" (click)="loadHolds()" [disabled]="loading()">Retry</button>
+  }
+
+  <nav class="hold-tabs" role="tablist" aria-label="Legal hold sections">
+    <button type="button" role="tab" id="active-holds-tab" aria-controls="active-holds-panel" [attr.aria-selected]="activeTab() === 'active'" [class.active]="activeTab() === 'active'" (click)="selectTab('active')">Active holds</button>
+    <button type="button" role="tab" id="release-requests-tab" aria-controls="release-requests-panel" [attr.aria-selected]="activeTab() === 'requests'" [class.active]="activeTab() === 'requests'" (click)="selectTab('requests')">Release requests</button>
+    <button type="button" role="tab" id="hold-history-tab" aria-controls="hold-history-panel" [attr.aria-selected]="activeTab() === 'history'" [class.active]="activeTab() === 'history'" (click)="selectTab('history')">History</button>
+  </nav>
+
+  @if (loading()) {
+    <app-state-message title="Loading legal holds" message="Retrieving authorized legal-hold records." />
+  } @else if (selectedReleaseRequest(); as selectedRequest) {
+    <section class="detail-view" aria-labelledby="release-request-title">
+      <button class="crm-button crm-button--quiet back-link" type="button" (click)="backToLegalHoldList()"><span aria-hidden="true">&larr;</span> Back to {{ selectedRequest.fromHistory ? 'history' : 'release requests' }}</button>
+      <header class="detail-header"><div><h2 id="release-request-title">Release request</h2><p>{{ holdTypeLabel(selectedRequest.hold.scope) }} &middot; {{ holdTargetLabel(selectedRequest.hold) }}</p></div><span [class]="statusClass(selectedRequest.request.status)">{{ releaseStatusLabel(selectedRequest.request.status) }}</span></header>
+      <dl class="detail-meta">
+        <div><dt>Requested by</dt><dd>{{ actorLabel(selectedRequest.request.requested_by) }}</dd></div>
+        <div><dt>Requested on</dt><dd>{{ formatDateTime(selectedRequest.request.requested_at) }}</dd></div>
+        @if (selectedRequest.request.approved_by) { <div><dt>Approved by</dt><dd>{{ actorLabel(selectedRequest.request.approved_by) }}</dd></div><div><dt>Approved on</dt><dd>{{ formatDateTime(selectedRequest.request.approved_at!) }}</dd></div> }
+        @if (selectedRequest.request.rejected_by) { <div><dt>Rejected by</dt><dd>{{ actorLabel(selectedRequest.request.rejected_by) }}</dd></div><div><dt>Rejected on</dt><dd>{{ formatDateTime(selectedRequest.request.rejected_at!) }}</dd></div> }
+        @if (selectedRequest.request.cancelled_by) { <div><dt>Cancelled by</dt><dd>{{ actorLabel(selectedRequest.request.cancelled_by) }}</dd></div><div><dt>Cancelled on</dt><dd>{{ formatDateTime(selectedRequest.request.cancelled_at!) }}</dd></div> }
+      </dl>
+      <section class="hold-reason-panel"><h3>Reason for request</h3><p>{{ selectedRequest.request.justification || 'Not recorded' }}</p></section>
+      @if (selectedRequest.request.approved_by) { <section class="hold-reason-panel"><h3>Reason for approval</h3><p>{{ selectedRequest.request.approval_justification || 'Not recorded' }}</p></section> }
+      @if (selectedRequest.request.rejected_by) { <section class="hold-reason-panel"><h3>Reason for rejection</h3><p>{{ selectedRequest.request.rejection_reason || 'Not recorded' }}</p></section> }
+      @if (selectedRequest.request.cancelled_by) { <section class="hold-reason-panel"><h3>Reason for cancellation</h3><p>{{ selectedRequest.request.cancellation_reason || 'Not recorded' }}</p></section> }
+      @if (selectedRequest.request.permitted_actions.length) {
+        <div class="detail-actions">
+          @if (selectedRequest.request.permitted_actions.includes('reject')) { <button class="crm-button crm-button--destructive-outline" type="button" (click)="openDecisionConfirmation(selectedRequest.request, 'reject')" [disabled]="saving()"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18" /></svg>Reject request</button> }
+          @if (selectedRequest.request.permitted_actions.includes('approve')) { <button class="crm-button crm-button--primary" type="button" (click)="openDecisionConfirmation(selectedRequest.request, 'approve')" [disabled]="saving()">Approve request</button> }
+          @if (selectedRequest.request.permitted_actions.includes('cancel')) { <button class="crm-button crm-button--destructive-outline" type="button" (click)="openDecisionConfirmation(selectedRequest.request, 'cancel')" [disabled]="saving()"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18" /></svg>Cancel request</button> }
+        </div>
+      }
+    </section>
+  } @else if (selectedHold(); as selected) {
+    <section class="detail-view" aria-labelledby="hold-detail-title">
+      <button class="crm-button crm-button--quiet back-link" type="button" (click)="backToLegalHoldList()"><span aria-hidden="true">&larr;</span> Back to {{ activeTab() === 'history' ? 'history' : 'active holds' }}</button>
+      <header class="detail-header"><div><h2 id="hold-detail-title">{{ holdTypeLabel(selected.scope) }}</h2><p>{{ holdTargetLabel(selected) }}</p></div><span [class]="selected.release_requests.some(request => request.status === 'PENDING') ? 'status-badge status-badge--warning' : statusClass(selected.status)">{{ selected.release_requests.some(request => request.status === 'PENDING') ? 'Release pending approval' : statusLabel(selected.status) }}</span></header>
+      <dl class="detail-meta">
+        <div><dt>Placed by</dt><dd>{{ actorLabel(selected.placed_by) }}</dd></div>
+        <div><dt>Placed on</dt><dd>{{ formatDateTime(selected.placed_at) }}</dd></div>
+        @if (selected.audit_event_reference) { <div><dt>Audit event</dt><dd>Authorized contextual reference</dd></div> }
+        @if (selected.released_by) { <div><dt>Released by</dt><dd>{{ actorLabel(selected.released_by) }} &middot; {{ formatDateTime(selected.released_at!) }}</dd></div> }
+      </dl>
+      <section class="hold-reason-panel"><h3>Reason for legal hold</h3><p>{{ selected.justification || 'Not recorded' }}</p></section>
+      <p class="retention-notice"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3 5 6v5c0 4.6 2.9 8.4 7 10 4.1-1.6 7-5.4 7-10V6l-7-3Z" /><path d="m9 12 2 2 4-4" /></svg><span>This hold protects the target from scheduled disposal while it remains active.</span></p>
+      @if (selected.status === 'ACTIVE' && canRequestRelease(selected)) { <div class="detail-actions detail-actions--compact"><button class="crm-button crm-button--primary" type="button" (click)="openReleaseConfirmation(selected)" [disabled]="saving()">{{ requestActionLabel(selected) }}</button></div> }
+      @if (selected.release_requests.length) { <section class="release-history" aria-labelledby="release-history-title"><h3 id="release-history-title">Release request history</h3>@for (request of selected.release_requests; track request.public_id) { <article class="release-history__item"><div><strong>{{ releaseStatusLabel(request.status) }}</strong><span>{{ historyActor(request) ? actorLabel(historyActor(request)!) : 'Not recorded' }}</span><small>Requested by {{ actorLabel(request.requested_by) }} on {{ formatDateTime(request.requested_at) }}</small></div><div><time>{{ formatDateTime(historyTimestamp(request)) }}</time><p>{{ request.status === 'CANCELLED' ? 'Reason for cancellation' : request.status === 'REJECTED' ? 'Reason for rejection' : request.status === 'APPROVED' ? 'Reason for approval' : 'Reason for request' }}: {{ historyReason(request) }}</p><p>Reason for request: {{ request.justification }}</p></div></article> }</section> }
+    </section>
+  } @else if (activeTab() === 'active') {
+    <div id="active-holds-panel" role="tabpanel" aria-labelledby="active-holds-tab"><div class="crm-table-wrap"><table class="crm-table holds-table" aria-label="Active legal holds"><thead><tr><th scope="col">Hold</th><th scope="col">Target</th><th scope="col">Placed</th><th scope="col">Status</th><th scope="col" aria-hidden="true"></th></tr></thead><tbody>
+      @for (hold of activeHolds(); track hold.public_id) { <tr class="selectable-row" tabindex="0" [attr.aria-label]="'View ' + holdTypeLabel(hold.scope) + ' for ' + holdTargetLabel(hold)" (click)="selectHold(hold)" (keydown)="activateRow($event, () => selectHold(hold))"><td><strong>{{ holdTypeLabel(hold.scope) }}</strong><small>{{ actorLabel(hold.placed_by) }}</small></td><td>{{ holdTargetLabel(hold) }}</td><td>{{ formatDateTime(hold.placed_at) }}</td><td><span [class]="hold.release_requests.some(request => request.status === 'PENDING') ? 'status-badge status-badge--warning' : 'status-badge'">{{ hold.release_requests.some(request => request.status === 'PENDING') ? 'Release pending' : 'Active' }}</span></td><td class="row-action" aria-hidden="true">&rsaquo;</td></tr> }
+      @empty { <tr><td colspan="5"><div class="empty-state"><strong>No active legal holds</strong><span>Active retention protections will appear here.</span></div></td></tr> }
+    </tbody></table></div></div>
+  } @else if (activeTab() === 'requests') {
+    <div id="release-requests-panel" role="tabpanel" aria-labelledby="release-requests-tab">
+      @if (pendingReleaseRequests().length) { <p class="record-count">{{ pendingReleaseRequests().length }} pending release request{{ pendingReleaseRequests().length === 1 ? '' : 's' }}</p> }
+      <div class="crm-table-wrap"><table class="crm-table holds-table" aria-label="Pending legal-hold release requests"><thead><tr><th scope="col">Request</th><th scope="col">Target</th><th scope="col">Requested</th><th scope="col">Status</th><th scope="col" aria-hidden="true"></th></tr></thead><tbody>
+        @for (row of pendingReleaseRequests(); track row.request.public_id) { <tr class="selectable-row" tabindex="0" [attr.aria-label]="'View release request for ' + holdTargetLabel(row.hold)" (click)="selectReleaseRequest(row)" (keydown)="activateRow($event, () => selectReleaseRequest(row))"><td><strong>Release request</strong><small>{{ holdTypeLabel(row.hold.scope) }}</small></td><td>{{ holdTargetLabel(row.hold) }}</td><td>{{ formatDateTime(row.request.requested_at) }}<small>{{ actorLabel(row.request.requested_by) }}</small></td><td><span class="status-badge status-badge--warning">Pending approval</span></td><td class="row-action" aria-hidden="true">&rsaquo;</td></tr> }
+        @empty { <tr><td colspan="5"><div class="empty-state"><strong>No pending release requests</strong><span>Requests awaiting approval will appear here.</span></div></td></tr> }
+      </tbody></table></div>
+    </div>
+  } @else {
+    <div id="hold-history-panel" role="tabpanel" aria-labelledby="hold-history-tab"><div class="crm-table-wrap"><table class="crm-table holds-table" aria-label="Legal-hold history"><thead><tr><th scope="col">Hold</th><th scope="col">Target</th><th scope="col">Outcome</th><th scope="col">Date</th><th scope="col" aria-hidden="true"></th></tr></thead><tbody>
+      @for (row of historyRows(); track row.request?.public_id || row.hold.public_id + row.timestamp) { <tr class="selectable-row" tabindex="0" [attr.aria-label]="'View ' + row.outcome + ' legal hold history for ' + holdTargetLabel(row.hold)" (click)="row.request ? selectReleaseRequest({ hold: row.hold, request: row.request, fromHistory: true }) : selectHold(row.hold)" (keydown)="activateRow($event, () => row.request ? selectReleaseRequest({ hold: row.hold, request: row.request, fromHistory: true }) : selectHold(row.hold))"><td><strong>{{ row.request ? 'Release request' : holdTypeLabel(row.hold.scope) }}</strong><small>{{ row.request ? holdTypeLabel(row.hold.scope) : actorLabel(row.hold.placed_by) }}</small></td><td>{{ holdTargetLabel(row.hold) }}</td><td><span [class]="statusClass(row.request?.status || row.hold.status)">{{ row.outcome }}</span></td><td>{{ formatDateTime(row.timestamp) }}</td><td class="row-action" aria-hidden="true">&rsaquo;</td></tr> }
+      @empty { <tr><td colspan="5"><div class="empty-state"><strong>No legal-hold history</strong><span>Completed legal-hold events will appear here.</span></div></td></tr> }
+    </tbody></table></div></div>
+  }
+
+  @if (createDialogOpen()) {
+    <div class="dialog-backdrop" role="presentation" (click)="closeCreateDialog()"><section class="create-dialog" role="dialog" aria-modal="true" aria-labelledby="create-hold-title" (click)="$event.stopPropagation()">
+      <header class="detail-header"><div><h2 id="create-hold-title">Place a legal hold</h2><p>Select a person and provide a reason for placing a legal hold.</p></div><button class="crm-button crm-button--quiet" type="button" (click)="closeCreateDialog()" [disabled]="saving()" aria-label="Close">&times;</button></header>
+      <form (ngSubmit)="createHold()">
+        @if (auditEventReference) { <p class="selected-target">Authorized privacy-audit event context selected. The event reference will not be displayed.</p> } @else {
+          <div class="person-picker">@if (selectedPerson(); as person) {
+              <div class="selected-person" aria-live="polite"><span class="person-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M20 21a8 8 0 0 0-16 0M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" /></svg></span><div><strong>{{ selectedPersonLabel() }}</strong><span>{{ selectedPersonTypeLabel() }}</span></div><button class="crm-button crm-button--quiet" type="button" (click)="clearSelectedPerson()" [disabled]="saving()">Change</button></div>
+            } @else {
+              <label for="hold-person-search">Person <span aria-hidden="true">*</span><span class="visually-hidden">required</span></label><div class="picker-search"><input class="crm-control" id="hold-person-search" name="personSearch" type="search" required [(ngModel)]="personSearch" (ngModelChange)="onPersonSearchChange($event)" placeholder="Search by name" /><button class="crm-button crm-button--secondary" type="button" (click)="searchPeople()" [disabled]="personSearchLoading() || !personSearch.trim()"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="6" /><path d="m16 16 4 4" /></svg><span>{{ personSearchLoading() ? 'Searching...' : 'Search' }}</span></button></div>
+              @if (personSearchError()) { <p class="crm-banner crm-banner--error" role="alert">{{ personSearchError() }}</p> } @if (personOptions().length) { <div class="person-options" role="listbox" aria-label="Person results">@for (person of personOptions(); track person.id) { <button type="button" role="option" class="person-option" (click)="selectPerson(person)"><span class="person-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M20 21a8 8 0 0 0-16 0M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" /></svg></span><span><strong>{{ person.first_name }} {{ person.last_name }}</strong><small>{{ personTypeLabel(person.record_type) }}</small></span></button> }</div> }
+            }
+          </div>
+        }
+        <label for="hold-reason">Reason for legal hold <span aria-hidden="true">*</span></label><textarea class="crm-control" id="hold-reason" name="createReason" rows="3" required placeholder="Enter a reason" [(ngModel)]="createReason"></textarea>
+        @if (createValidationMessage()) { <p class="crm-banner crm-banner--error" role="alert">{{ createValidationMessage() }}</p> }
+        <div class="detail-actions"><button class="crm-button crm-button--secondary" type="button" (click)="closeCreateDialog()" [disabled]="saving()">Cancel</button><button class="crm-button crm-button--primary" type="submit" [disabled]="saving() || !createReason.trim() || (!auditEventReference && personId === null)">{{ saving() ? 'Saving...' : 'Place legal hold' }}</button></div>
+      </form>
+    </section></div>
+  }
+
+  @if (pendingConfirmation(); as action) { <app-confirmation-dialog [open]="true" [title]="confirmationTitle(action)" [context]="confirmationContext(action)" [message]="confirmationMessage(action)" [confirmLabel]="confirmationLabel(action)" [cancelLabel]="action.kind === 'cancel' ? 'Keep request' : 'Cancel'" [reasonLabel]="confirmationReasonLabel(action)" [actionVariant]="confirmationVariant(action)" [busy]="saving()" [requireReason]="true" [reason]="confirmationReason" (reasonChanged)="confirmationReason = $event" (confirmed)="confirmPendingAction()" (cancelled)="closeConfirmation()" /> }
+</section>

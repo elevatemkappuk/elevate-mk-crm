@@ -8,6 +8,7 @@ import { vi } from 'vitest';
 
 import { AuthService } from '../auth/auth.service';
 import { AuthenticatedUser } from '../auth/auth.types';
+import { StaffAccessService } from '../auth/staff-access.service';
 import { API_CONFIG } from './api-config';
 import { sessionExpiryInterceptor } from './auth-http.interceptors';
 
@@ -76,5 +77,31 @@ describe('sessionExpiryInterceptor', () => {
 
     expect(auth.currentUser()).toBeNull();
     expect(router.navigateByUrl).toHaveBeenCalledExactlyOnceWith('/login');
+  });
+
+  it('clears staff access state when the projection receives a session 401', () => {
+    const access = TestBed.inject(StaffAccessService);
+    auth.setAuthenticatedUser(staffUser);
+    access.refresh(staffUser).subscribe({ error: () => undefined });
+
+    const request = httpTesting.expectOne(`${apiBaseUrl}/staff/access/me/`);
+    request.flush({}, { status: 401, statusText: 'Unauthorized' });
+
+    expect(auth.currentUser()).toBeNull();
+    expect(access.status()).toBe('unauthenticated');
+    expect(router.navigateByUrl).toHaveBeenCalledExactlyOnceWith('/login');
+  });
+
+  it('keeps the authenticated user while ordinary projection 403 becomes forbidden state', () => {
+    const access = TestBed.inject(StaffAccessService);
+    auth.setAuthenticatedUser(staffUser);
+    access.refresh(staffUser).subscribe({ error: () => undefined });
+
+    const request = httpTesting.expectOne(`${apiBaseUrl}/staff/access/me/`);
+    request.flush({ code: 'permission_denied' }, { status: 403, statusText: 'Forbidden' });
+
+    expect(auth.currentUser()).toEqual(staffUser);
+    expect(access.status()).toBe('forbidden');
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
   });
 });

@@ -3,7 +3,9 @@
 This is the plain-language operating guide for the implemented Elevate MK CRM
 and Brevo Marketing integration. It complements the
 [technical integration reference](../../elevate-mk-api/docs/brevo-crm-integration.md) and the
-[Staff CRM frontend guide](brevo-crm-frontend-guide.md).
+[Staff CRM frontend guide](brevo-crm-frontend-guide.md). For the wider
+cross-product privacy and permissions boundary, see the [Privacy and
+Permissions Business Guide](privacy-and-permissions-business-guide.md).
 
 ## What the integration does
 
@@ -52,6 +54,10 @@ The CRM and the provider have different jobs:
 - CRM identity answers **which person is this?**
 - CRM consent answers **may Elevate send marketing email?**
 - Brevo answers provider delivery and contact-state questions.
+
+CRM role access, privacy capabilities, Community visibility, and Mobile access
+are separate concerns. Brevo provider state never grants Staff CRM access or
+overrides the backend consent decision.
 
 Having an email address, being a Member, or appearing in a Brevo contact list
 does not by itself prove marketing consent. Membership status is not a

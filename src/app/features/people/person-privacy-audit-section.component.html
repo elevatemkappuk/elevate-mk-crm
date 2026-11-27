@@ -1,0 +1,53 @@
+    <app-crm-section-card title="Privacy audit history">
+      @if (loading() && !loaded()) {
+        <app-state-message title="Loading privacy history" message="Retrieving privacy events for this person." />
+      } @else if (errorMessage()) {
+        <app-state-message title="Privacy history could not be loaded" [message]="errorMessage()!" tone="error">
+          <button type="button" class="button-secondary" (click)="retry()">Retry</button>
+        </app-state-message>
+      } @else {
+        <div class="privacy-results">
+          <form class="privacy-filters" (ngSubmit)="applyFilters()">
+            <label>From <input type="date" name="from" [(ngModel)]="occurredFrom" /></label>
+            <label>To <input type="date" name="to" [(ngModel)]="occurredTo" /></label>
+            <label>Activity <select name="activity" [(ngModel)]="activityType"><option value="">All activities</option>@for (option of activityOptions; track option[0]) { <option [value]="option[0]">{{ option[1] }}</option> }</select></label>
+            <label>Outcome <select name="outcome" [(ngModel)]="outcome"><option value="">All outcomes</option>@for (option of outcomeOptions; track option[0]) { <option [value]="option[0]">{{ option[1] }}</option> }</select></label>
+            <label class="checkbox-filter"><input type="checkbox" name="superuser" [(ngModel)]="superuserOnly" /> Superuser operations</label>
+            <button type="submit" class="button-secondary" [disabled]="loading()">Filter</button>
+          </form>
+          <p class="supporting-copy">{{ countLabel() }}</p>
+          @if (!events().length) {
+            <app-state-message message="No privacy audit history recorded." />
+          } @else {
+            <ol class="privacy-list" aria-live="polite">
+              @for (event of events(); track event.id) {
+                <li>
+                  <article class="privacy-event">
+                    <div class="event-summary">
+                      <h4>{{ event.description }}</h4>
+                      <p>{{ formatDateTime(event.occurred_at) }} Â· {{ actorLabel(event) }}</p>
+                    </div>
+                    <div class="event-details">
+                      <span>{{ event.outcome }}</span>
+                      @if (event.capability) { <span>Capability: {{ event.capability }}</span> }
+                      @if (event.superuser_operation) { <span>Audited superuser operation</span> }
+                      @if (event.permitted_actions.includes('place_event_hold')) { <button type="button" class="button-secondary" (click)="placeEventHold(event.legal_hold_event_reference!)">Place event hold</button> }
+                    </div>
+                  </article>
+                </li>
+              }
+            </ol>
+          }
+
+          @if (loading() && loaded()) { <p class="supporting-copy">Refreshing privacy history.</p> }
+          @if (hasPagination()) {
+            <div class="pagination">
+              <button type="button" class="button-secondary" [disabled]="!hasPreviousPage() || loading()" (click)="goToPreviousPage()">Previous</button>
+              <p>Showing newest privacy events first.</p>
+              <button type="button" class="button-secondary" [disabled]="!hasNextPage() || loading()" (click)="goToNextPage()">Next</button>
+            </div>
+          }
+        </div>
+      }
+    </app-crm-section-card>
+

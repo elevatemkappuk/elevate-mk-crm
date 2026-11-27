@@ -3,6 +3,7 @@ import { CanActivateFn, Router, UrlTree } from '@angular/router';
 
 import { AuthService } from '../auth/auth.service';
 import { canManagePeople } from '../auth/auth-access';
+import { StaffAccessService } from '../auth/staff-access.service';
 
 function redirectTo(url: string): UrlTree {
   return inject(Router).createUrlTree([url]);
@@ -66,6 +67,23 @@ export const administrationGuard: CanActivateFn = () => {
   }
 
   return auth.canAccessAdministration(user) ? true : redirectTo('/access-denied');
+};
+
+export const privacyAdministrationGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  const staffAccess = inject(StaffAccessService);
+  const user = auth.currentUser();
+  if (!auth.authInitialized()) return true;
+  if (!user) return redirectTo('/login');
+  return staffAccess.hasCapability('STAFF_CAPABILITY_ADMIN') ? true : redirectTo('/access-denied');
+};
+
+export const legalHoldGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  const user = auth.currentUser();
+  if (!auth.authInitialized()) return true;
+  if (!user) return redirectTo('/login');
+  return auth.hasLegalHoldAdministration() ? true : redirectTo('/access-denied');
 };
 
 export const moderationGuard: CanActivateFn = () => {

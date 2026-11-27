@@ -7,11 +7,13 @@ import { API_CONFIG } from '../http/api-config';
 import { clearCsrfToken, setCsrfToken } from '../http/auth-http.interceptors';
 import { hasStaffCrmAccess, isCrmAdmin } from './auth-access';
 import { AuthenticatedUser, CsrfBootstrapResponse, DetailResponse, LoginCredentials, PasswordResetConfirmRequest, PasswordResetRequest } from './auth.types';
+import { StaffAccessService } from './staff-access.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly apiConfig = inject(API_CONFIG);
+  private readonly staffAccess = inject(StaffAccessService);
 
   private readonly currentUserState = signal<AuthenticatedUser | null>(null);
   private readonly initializedState = signal(false);
@@ -24,6 +26,9 @@ export class AuthService {
   readonly isAuthenticated = computed(() => this.currentUser() !== null);
   readonly hasStaffAccess = computed(() => hasStaffCrmAccess(this.currentUser()));
   readonly isCrmAdmin = computed(() => isCrmAdmin(this.currentUser()));
+  readonly hasPrivacyAdministration = computed(() => this.staffAccess.hasCapability('STAFF_CAPABILITY_ADMIN'));
+  readonly hasPrivacyAuditRead = computed(() => this.staffAccess.hasCapability('PRIVACY_AUDIT_READ'));
+  readonly hasLegalHoldAdministration = computed(() => this.staffAccess.hasCapability('LEGAL_HOLD_ADMIN'));
 
   async initialize(): Promise<void> {
     await firstValueFrom(
@@ -53,18 +58,21 @@ export class AuthService {
       switchMap(() =>
         this.http.post<AuthenticatedUser>(this.buildUrl('/auth/login/'), payload),
       ),
-      switchMap((user) =>
-        this.bootstrapCsrf().pipe(
-          tap(() => this.setAuthenticatedUser(user)),
-          map(() => user),
-        ),
-      ),
+      switchMap((user) => {
+        const normalizedUser = normalizeAuthenticatedUser(user);
+
+        return this.bootstrapCsrf().pipe(
+          tap(() => this.setAuthenticatedUser(normalizedUser)),
+          switchMap(() => this.refreshStaffAccess(normalizedUser)),
+        );
+      }),
     );
   }
 
   loadCurrentUser(): Observable<AuthenticatedUser | null> {
     return this.http.get<AuthenticatedUser>(this.buildUrl('/auth/me/')).pipe(
       tap((user) => this.setAuthenticatedUser(user)),
+      switchMap((user) => this.refreshStaffAccess(user)),
       catchError((error: { status?: number }) => {
         if (error.status === 401) {
           this.clearUserState();
@@ -105,10 +113,13 @@ export class AuthService {
   }
 
   setAuthenticatedUser(user: AuthenticatedUser): void {
-    this.currentUserState.set(normalizeAuthenticatedUser(user));
+    const normalizedUser = normalizeAuthenticatedUser(user);
+    this.staffAccess.selectAccount(normalizedUser.id);
+    this.currentUserState.set(normalizedUser);
   }
 
   clearUserState(): void {
+    this.staffAccess.clearUnauthenticated();
     this.currentUserState.set(null);
   }
 
@@ -144,6 +155,15 @@ export class AuthService {
 
   private buildUrl(path: string): string {
     return `${this.apiConfig.apiBaseUrl}${path}`;
+  }
+
+  private refreshStaffAccess(user: AuthenticatedUser): Observable<AuthenticatedUser> {
+    return this.staffAccess.refresh(user).pipe(
+      map(() => user),
+      catchError((error: { status?: number }) =>
+        error.status === 401 ? throwError(() => error) : of(user),
+      ),
+    );
   }
 }
 

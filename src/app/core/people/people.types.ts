@@ -32,6 +32,12 @@ export interface PersonListItem {
   archived_at: string | null;
   created_at: string;
   updated_at: string;
+  privacy?: PersonPrivacyIndicators;
+}
+
+export interface PersonPrivacyIndicators {
+  contact_restricted: boolean;
+  demographic_restricted: boolean;
 }
 
 export interface PersonDirectoryItem extends PersonListItem {

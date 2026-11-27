@@ -60,6 +60,11 @@ describe('AuthService', () => {
     expect(request.request.withCredentials).toBe(true);
     request.flush(staffUser);
 
+    const accessRequest = httpTesting.expectOne(`${apiBaseUrl}/staff/access/me/`);
+    expect(accessRequest.request.method).toBe('GET');
+    expect(accessRequest.request.withCredentials).toBe(true);
+    accessRequest.flush({ capability_codes: [], policy_version: 2 });
+
     await initializePromise;
 
     expect(authService.authInitialized()).toBe(true);
@@ -108,6 +113,9 @@ describe('AuthService', () => {
     expect(refreshedCsrfRequest.request.withCredentials).toBe(true);
     refreshedCsrfRequest.flush({ detail: 'CSRF cookie set.', csrf_token: 'post-login-token' });
 
+    const accessRequest = httpTesting.expectOne(`${apiBaseUrl}/staff/access/me/`);
+    accessRequest.flush({ capability_codes: [], policy_version: 2 });
+
     http.post(`${apiBaseUrl}/members/`, {}).subscribe();
     const memberRequest = httpTesting.expectOne(`${apiBaseUrl}/members/`);
     expect(memberRequest.request.headers.get('X-CSRFToken')).toBe('post-login-token');
@@ -136,6 +144,9 @@ describe('AuthService', () => {
 
     const refreshedCsrfRequest = httpTesting.expectOne(`${apiBaseUrl}/auth/csrf/`);
     refreshedCsrfRequest.flush({ detail: 'CSRF cookie set.', csrf_token: 'post-login-token' });
+
+    const accessRequest = httpTesting.expectOne(`${apiBaseUrl}/staff/access/me/`);
+    accessRequest.flush({ capability_codes: [], policy_version: 2 });
 
     expect(currentUserDuringNext).toEqual(staffUser);
     expect(routeDuringNext).toBe('/');

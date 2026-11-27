@@ -27,7 +27,7 @@ import { PersonLifecycleActionsComponent } from './person-lifecycle-actions.comp
           @if (canManagePeople()) {
             <div class="profile-actions">
               @if (!person()!.archived_at) {
-                <button type="button" class="button-primary edit-person" (click)="edit.emit()">Edit person</button>
+                <button type="button" class="button-primary crm-button crm-button--primary edit-person" (click)="edit.emit()">Edit person</button>
               }
               <app-person-lifecycle-actions [person]="person()!" [submitting]="submitting()" [errorMessage]="errorMessage()" (archive)="archive.emit()" (restore)="restore.emit()" />
             </div>

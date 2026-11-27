@@ -4,13 +4,15 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { of } from 'rxjs';
 import { vi } from 'vitest';
 
 import { apiCredentialsInterceptor, csrfHeaderInterceptor } from '../../core/http/auth-http.interceptors';
 import { API_CONFIG } from '../../core/http/api-config';
 import { AudiencePreviewPageComponent } from './audience-preview-page.component';
 import { AuthService } from '../../core/auth/auth.service';
-import { Component } from '@angular/core';
+import { StaffAccessService } from '../../core/auth/staff-access.service';
+import { Component, signal } from '@angular/core';
 
 @Component({ standalone: true, template: '' })
 class CampaignDestinationComponent {}
@@ -19,10 +21,13 @@ const apiBaseUrl = 'http://localhost:8000/api/v1';
 
 describe('AudiencePreviewPageComponent', () => {
   let httpTesting: HttpTestingController;
+  let contactRead: () => boolean;
   const showModal = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'showModal');
   const close = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'close');
 
   beforeEach(() => {
+    const contactAllowed = signal(true);
+    contactRead = vi.fn(() => contactAllowed());
     Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value: vi.fn(function(this: HTMLDialogElement) { this.open = true; }) });
     Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value: function(this: HTMLDialogElement) { this.open = false; } });
     TestBed.configureTestingModule({
@@ -34,6 +39,13 @@ describe('AudiencePreviewPageComponent', () => {
         provideHttpClient(withInterceptors([apiCredentialsInterceptor, csrfHeaderInterceptor])),
         provideHttpClientTesting(),
         { provide: API_CONFIG, useValue: { apiBaseUrl } },
+        { provide: StaffAccessService, useValue: {
+          isReady: () => true,
+          hasCapability: (code: string) => code !== 'PERSON_CONTACT_READ' || contactRead(),
+          revokeContactRead: () => contactAllowed.set(false),
+          selectAccount: vi.fn(),
+          refresh: vi.fn(() => of(null)),
+        } },
       ],
     });
     httpTesting = TestBed.inject(HttpTestingController);
@@ -99,7 +111,8 @@ describe('AudiencePreviewPageComponent', () => {
     expect(harness.routeNativeElement?.textContent).toContain('Search: mentor');
     expect(harness.routeNativeElement?.textContent).not.toContain('1 of 2 selected People can currently receive marketing email.');
     expect(harness.routeNativeElement?.textContent).toContain('Recipients');
-    expect(harness.routeNativeElement?.querySelector('.results-panel h2')?.textContent).toBe('Recipients');
+    expect(Array.from(harness.routeNativeElement?.querySelectorAll('.section-card h3') ?? [])
+      .map((heading) => heading.textContent?.trim())).toContain('Recipients');
     expect(harness.routeNativeElement?.textContent).not.toContain('Recipient inspection');
     expect(harness.routeNativeElement?.textContent).not.toContain('All selected People');
     expect(harness.routeNativeElement?.textContent).not.toContain('Eligible recipients');
@@ -196,5 +209,19 @@ describe('AudiencePreviewPageComponent', () => {
     request.flush({ id: 8 });
     await harness.fixture.whenStable();
     expect(TestBed.inject(Router).url).toBe('/marketing/campaigns/8');
+  });
+
+  it('clears protected audience results when contact capability is revoked', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/marketing/audience-preview');
+    flushCatalogRequests();
+    const request = httpTesting.expectOne(`${apiBaseUrl}/marketing/audiences/preview/`);
+    (TestBed.inject(StaffAccessService) as unknown as { revokeContactRead: () => void }).revokeContactRead();
+    harness.detectChanges();
+    request.flush(response());
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+
+    expect(harness.routeNativeElement?.textContent).not.toContain('eligible@example.com');
   });
 });

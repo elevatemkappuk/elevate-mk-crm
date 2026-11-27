@@ -1,0 +1,10 @@
+    .page { display:grid; gap:1rem; max-width:58rem; } .intro { color:#526f81; } .intro p,.error { margin:0; line-height:1.5; }
+    .error { padding:.85rem 1rem; border-radius:.75rem; background:#fff5f5; color:#9b1c1c; font-weight:600; }
+    .person-types { display:flex; flex-wrap:wrap; gap:.75rem; padding:0; margin:0 0 .5rem; border:0; min-width:0; }
+    legend { padding:0; margin-bottom:.75rem; font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
+    .person-types label { display:flex; flex:1 1 12rem; align-items:start; gap:.65rem; padding:1rem; border:1px solid var(--crm-border); border-radius:var(--crm-radius-md); cursor:pointer; }
+    .person-types .selected { background:#fff9e7; border-color:#ad8422; }
+    .person-types small { display:block; margin-top:.3rem; font-size:.75rem; color:var(--crm-text-secondary); }
+    .person-types input { margin:.2rem 0 0; accent-color:var(--crm-shell-sidebar); }
+    .person-types label:focus-within { outline:2px solid var(--crm-focus-ring); outline-offset:2px; }
+
