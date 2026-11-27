@@ -41,6 +41,7 @@ export class PrivacyAdministrationPageComponent {
   readonly roleDefaultHistory = signal<readonly GovernanceProposal[]>([]);
   readonly decisionHistory = signal<readonly GovernanceProposal[]>([]);
   readonly selectedProposal = signal<GovernanceProposal | null>(null);
+  readonly selectedHistory = signal<GovernanceProposal | null>(null);
   readonly activeTab = signal<PrivacyAdministrationTab>('staff-permissions');
   readonly openCapabilityMenu = signal<string | null>(null);
   readonly loadingDirectory = signal(false);
@@ -578,6 +579,77 @@ export class PrivacyAdministrationPageComponent {
       });
   }
 
+  selectHistoryItem(proposal: GovernanceProposal): void {
+    this.selectedHistory.set(proposal);
+  }
+
+  backToHistory(): void {
+    this.selectedHistory.set(null);
+  }
+
+  activateHistoryRow(event: KeyboardEvent, proposal: GovernanceProposal): void {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    this.selectHistoryItem(proposal);
+  }
+
+  historyOutcome(proposal: GovernanceProposal): string {
+    if (proposal.history_entry_type === 'audit') return proposal.superuser_operation ? 'Applied by superuser' : 'Applied';
+    if (proposal.status === 'APPROVED') return 'Approved';
+    if (proposal.status === 'REJECTED') return 'Rejected';
+    if (proposal.status === 'CANCELLED') return 'Cancelled';
+    if (proposal.status === 'EXPIRED') return 'Expired';
+    if (proposal.status === 'INVALIDATED') return 'Invalidated';
+    return proposal.status.replaceAll('_', ' ').toLowerCase().replace(/^./, value => value.toUpperCase());
+  }
+
+  historyOutcomeClass(proposal: GovernanceProposal): string {
+    if (proposal.status === 'APPROVED') return 'status-badge';
+    if (proposal.status === 'EXPIRED' || proposal.status === 'INVALIDATED') return 'status-badge status-badge--warning';
+    return 'status-badge status-badge--muted';
+  }
+
+  historyTargetLabel(proposal: GovernanceProposal): string {
+    if (!proposal.target_user_id && proposal.role_code) return this.roleName(proposal.role_code);
+    return proposal.target_label || (proposal.target_user_id ? this.staffDisplayName(proposal.target_user_id) : 'Historical target unavailable');
+  }
+
+  historyActorLabel(proposal: GovernanceProposal): string {
+    const actorId = proposal.actor_user_id ?? proposal.decision?.decided_by_id ?? proposal.proposed_by_id;
+    return this.staffDisplayName(actorId);
+  }
+
+  historyDecisionActorLabel(proposal: GovernanceProposal): string {
+    if (proposal.history_entry_type === 'audit') return `Applied by${proposal.superuser_operation ? ' superuser' : ''}`;
+    if (proposal.status === 'APPROVED') return 'Approved by';
+    if (proposal.status === 'REJECTED') return 'Rejected by';
+    if (proposal.status === 'CANCELLED') return 'Cancelled by';
+    return 'Recorded by';
+  }
+
+  historyDate(proposal: GovernanceProposal): string {
+    return proposal.timestamp || proposal.resolved_at || proposal.created_at;
+  }
+
+  historyOutcomeDescription(proposal: GovernanceProposal): string {
+    if (proposal.status === 'REJECTED' || proposal.status === 'CANCELLED') return 'No proposed permission change was applied.';
+    if (proposal.status === 'APPROVED' || proposal.history_entry_type === 'audit') return 'The recorded permission change was applied.';
+    return `The historical outcome was ${this.historyOutcome(proposal).toLowerCase()}.`;
+  }
+
+  historicalStateLabel(state: Record<string, unknown>): string {
+    const values: string[] = [];
+    if (typeof state['target_kind'] === 'string' && state['target_kind'] === 'role_default' && typeof state['enabled'] === 'boolean') {
+      return state['enabled'] ? 'Enabled by default' : 'Disabled by default';
+    }
+    if (state['restriction_active'] === true) values.push('Restriction active');
+    if (state['assignment_state'] === 'ACTIVE') values.push('Access granted');
+    if (state['assignment_state'] === 'SUSPENDED') values.push('Access suspended');
+    if (state['assignment_state'] === 'REVOKED') values.push('Access revoked');
+    if (typeof state['effective'] === 'boolean') values.push(state['effective'] ? 'Allowed' : 'Not granted');
+    return values.length ? values.join(' · ') : 'Historical state unavailable';
+  }
+
   stateSummary(state: Record<string, unknown>): string {
     return Object.entries(state)
       .map(([key, value]) => `${key.replaceAll('_', ' ')}: ${Array.isArray(value) ? value.join(', ') : String(value)}`)
@@ -678,6 +750,7 @@ export class PrivacyAdministrationPageComponent {
     this.pendingProposalAction.set(null);
     this.pendingRoleAction.set(null);
     this.selectedProposal.set(null);
+    this.selectedHistory.set(null);
     this.saving.set(false);
     this.feedback.set(null);
   }
