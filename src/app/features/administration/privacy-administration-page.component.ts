@@ -43,6 +43,9 @@ export class PrivacyAdministrationPageComponent {
   readonly loadingDirectory = signal(false);
   readonly directoryStatus = signal<'idle' | 'loading' | 'success' | 'empty' | 'error'>('idle');
   readonly directoryError = signal('The staff directory could not be loaded.');
+  readonly governanceLoading = signal(false);
+  readonly governanceReadError = signal(false);
+  private governanceResponseCount = 0;
   reason = '';
   proposalReason = '';
   staffSearch = '';
@@ -73,10 +76,18 @@ export class PrivacyAdministrationPageComponent {
 
   refreshGovernance(): void {
     const requestEpoch = this.authorizationEpoch;
-    this.service.roleDefaults().subscribe({ next: value => { if (requestEpoch === this.authorizationEpoch) this.roleDefaults.set(value); }, error: error => this.handleGovernanceReadError(error) });
-    this.service.history('individual').subscribe({ next: value => { if (requestEpoch === this.authorizationEpoch) this.individualHistory.set(value.results); }, error: error => this.handleGovernanceReadError(error) });
-    this.service.history('role-defaults').subscribe({ next: value => { if (requestEpoch === this.authorizationEpoch) this.roleDefaultHistory.set(value.results); }, error: error => this.handleGovernanceReadError(error) });
-    this.service.history('decisions').subscribe({ next: value => { if (requestEpoch === this.authorizationEpoch) this.decisionHistory.set(value.results); }, error: error => this.handleGovernanceReadError(error) });
+    this.governanceResponseCount = 0;
+    this.governanceLoading.set(true);
+    this.governanceReadError.set(false);
+    const markResponse = () => {
+      if (requestEpoch !== this.authorizationEpoch) return;
+      this.governanceResponseCount += 1;
+      if (this.governanceResponseCount === 4) this.governanceLoading.set(false);
+    };
+    this.service.roleDefaults().subscribe({ next: value => { if (requestEpoch === this.authorizationEpoch) this.roleDefaults.set(value); markResponse(); }, error: error => { markResponse(); this.handleGovernanceReadError(error); } });
+    this.service.history('individual').subscribe({ next: value => { if (requestEpoch === this.authorizationEpoch) this.individualHistory.set(value.results); markResponse(); }, error: error => { markResponse(); this.handleGovernanceReadError(error); } });
+    this.service.history('role-defaults').subscribe({ next: value => { if (requestEpoch === this.authorizationEpoch) this.roleDefaultHistory.set(value.results); markResponse(); }, error: error => { markResponse(); this.handleGovernanceReadError(error); } });
+    this.service.history('decisions').subscribe({ next: value => { if (requestEpoch === this.authorizationEpoch) this.decisionHistory.set(value.results); markResponse(); }, error: error => { markResponse(); this.handleGovernanceReadError(error); } });
   }
 
   pendingProposals(): GovernanceProposal[] {
@@ -236,10 +247,20 @@ export class PrivacyAdministrationPageComponent {
   }
 
   actionIconPath(action: string): string {
-    if (action.includes('REVOKE') || action.includes('RESTRICT') || action === 'reject') return 'M6 6l12 12M18 6 6 18';
+    if (action.includes('REVOKE')) return 'M6 7h12M9 7V4h6v3m-8 0 1 13h8l1-13';
+    if (action.includes('UNRESTRICT')) return 'M7 10V8a5 5 0 0 1 9-3m1 5v2m-12-2h14v10H5V10Z';
+    if (action.includes('RESTRICT')) return 'M7 10V8a5 5 0 0 1 10 0v2m-12 0h14v10H5V10Z';
     if (action.includes('SUSPEND')) return 'M8 5v14M16 5v14';
-    if (action.includes('RESTORE') || action.includes('UNRESTRICT') || action.includes('GRANT') || action.includes('ENABLE') || action === 'approve') return 'M5 12h14m-6-6 6 6-6 6';
+    if (action.includes('RESTORE')) return 'M5 12a7 7 0 1 0 2-5m-2 0V3m0 4h4';
+    if (action.includes('GRANT') || action.includes('ENABLE') || action === 'approve') return 'M5 12h14m-6-6 6 6-6 6';
     return 'M5 12h14';
+  }
+
+  actionTone(action: string): 'positive' | 'warning' | 'destructive' | 'neutral' {
+    if (action.includes('GRANT') || action.includes('RESTORE') || action.includes('UNRESTRICT') || action.includes('ENABLE') || action === 'approve') return 'positive';
+    if (action.includes('SUSPEND')) return 'warning';
+    if (action.includes('RESTRICT') || action.includes('REVOKE') || action === 'reject') return 'destructive';
+    return 'neutral';
   }
 
   capabilityName(capability: string): string {
@@ -279,10 +300,29 @@ export class PrivacyAdministrationPageComponent {
 
   accessLabel(state: GovernanceTargetDetail['capabilities'][string]): string {
     if (state.restriction_active) return 'Restricted';
-    if (state.effective) return 'Allowed';
     if (state.assignment_state === 'SUSPENDED') return 'Suspended';
     if (state.assignment_state === 'REVOKED') return 'Revoked';
+    if (state.effective) return 'Allowed';
     return 'Not granted';
+  }
+
+  pendingCapabilityAction(capability: string): GovernanceProposal | null {
+    const targetUserId = this.target()?.target_user_id;
+    return [...this.individualHistory(), ...this.roleDefaultHistory()].find(proposal =>
+      proposal.status === 'PENDING'
+      && proposal.target_user_id === targetUserId
+      && proposal.capability === capability,
+    ) ?? null;
+  }
+
+  pendingCapabilityLabel(capability: string): string | null {
+    const pending = this.pendingCapabilityAction(capability);
+    if (!pending) return null;
+    return pending.operation === 'INDIVIDUAL_UNRESTRICT' ? 'Removal pending approval' : `${this.actionLabel(pending.operation)} pending approval`;
+  }
+
+  isPendingCapabilityAction(capability: string, action: string): boolean {
+    return this.pendingCapabilityAction(capability)?.operation === action;
   }
 
   sourceLabel(source: string): string {
@@ -452,6 +492,7 @@ export class PrivacyAdministrationPageComponent {
   }
 
   private handleGovernanceReadError(error: { status?: number; error?: { detail?: string } }): void {
+    this.governanceReadError.set(true);
     if (error.status === 403) {
       this.handleProtectedReadDenied();
       return;
