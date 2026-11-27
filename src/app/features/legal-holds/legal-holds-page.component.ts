@@ -22,6 +22,7 @@ type LegalHoldsTab = 'active' | 'requests' | 'history';
 interface ReleaseRequestRow {
   readonly hold: LegalHold;
   readonly request: LegalHoldReleaseRequest;
+  readonly fromHistory?: boolean;
 }
 
 interface HistoryRow {
@@ -168,6 +169,8 @@ export class LegalHoldsPageComponent {
   }
 
   backToLegalHoldList(): void {
+    const returnTab = this.selectedReleaseRequest()?.fromHistory ? 'history' : this.activeTab();
+    this.activeTab.set(returnTab);
     this.selectedHold.set(null);
     this.selectedReleaseRequest.set(null);
   }

@@ -25,16 +25,19 @@
     <app-state-message title="Loading legal holds" message="Retrieving authorized legal-hold records." />
   } @else if (selectedReleaseRequest(); as selectedRequest) {
     <section class="detail-view" aria-labelledby="release-request-title">
-      <button class="crm-button crm-button--quiet back-link" type="button" (click)="backToLegalHoldList()"><span aria-hidden="true">&larr;</span> Back to release requests</button>
+      <button class="crm-button crm-button--quiet back-link" type="button" (click)="backToLegalHoldList()"><span aria-hidden="true">&larr;</span> Back to {{ selectedRequest.fromHistory ? 'history' : 'release requests' }}</button>
       <header class="detail-header"><div><h2 id="release-request-title">Release request</h2><p>{{ holdTypeLabel(selectedRequest.hold.scope) }} &middot; {{ holdTargetLabel(selectedRequest.hold) }}</p></div><span [class]="statusClass(selectedRequest.request.status)">{{ releaseStatusLabel(selectedRequest.request.status) }}</span></header>
       <dl class="detail-meta">
         <div><dt>Requested by</dt><dd>{{ actorLabel(selectedRequest.request.requested_by) }}</dd></div>
-        <div><dt>Requested</dt><dd>{{ formatDateTime(selectedRequest.request.requested_at) }}</dd></div>
-        <div><dt>Reason for request</dt><dd>{{ selectedRequest.request.justification }}</dd></div>
-        @if (selectedRequest.request.approved_by) { <div><dt>Approved by</dt><dd>{{ actorLabel(selectedRequest.request.approved_by) }} &middot; {{ formatDateTime(selectedRequest.request.approved_at!) }}</dd></div><div><dt>Approval reason</dt><dd>{{ selectedRequest.request.approval_justification || 'Not recorded' }}</dd></div> }
-        @if (selectedRequest.request.rejected_by) { <div><dt>Rejected by</dt><dd>{{ actorLabel(selectedRequest.request.rejected_by) }} &middot; {{ formatDateTime(selectedRequest.request.rejected_at!) }}</dd></div><div><dt>Rejection reason</dt><dd>{{ selectedRequest.request.rejection_reason || 'Not recorded' }}</dd></div> }
-        @if (selectedRequest.request.cancelled_by) { <div><dt>Cancelled by</dt><dd>{{ actorLabel(selectedRequest.request.cancelled_by) }} &middot; {{ formatDateTime(selectedRequest.request.cancelled_at!) }}</dd></div><div><dt>Cancellation reason</dt><dd>{{ selectedRequest.request.cancellation_reason || 'Not recorded' }}</dd></div> }
+        <div><dt>Requested on</dt><dd>{{ formatDateTime(selectedRequest.request.requested_at) }}</dd></div>
+        @if (selectedRequest.request.approved_by) { <div><dt>Approved by</dt><dd>{{ actorLabel(selectedRequest.request.approved_by) }}</dd></div><div><dt>Approved on</dt><dd>{{ formatDateTime(selectedRequest.request.approved_at!) }}</dd></div> }
+        @if (selectedRequest.request.rejected_by) { <div><dt>Rejected by</dt><dd>{{ actorLabel(selectedRequest.request.rejected_by) }}</dd></div><div><dt>Rejected on</dt><dd>{{ formatDateTime(selectedRequest.request.rejected_at!) }}</dd></div> }
+        @if (selectedRequest.request.cancelled_by) { <div><dt>Cancelled by</dt><dd>{{ actorLabel(selectedRequest.request.cancelled_by) }}</dd></div><div><dt>Cancelled on</dt><dd>{{ formatDateTime(selectedRequest.request.cancelled_at!) }}</dd></div> }
       </dl>
+      <section class="hold-reason-panel"><h3>Reason for request</h3><p>{{ selectedRequest.request.justification || 'Not recorded' }}</p></section>
+      @if (selectedRequest.request.approved_by) { <section class="hold-reason-panel"><h3>Reason for approval</h3><p>{{ selectedRequest.request.approval_justification || 'Not recorded' }}</p></section> }
+      @if (selectedRequest.request.rejected_by) { <section class="hold-reason-panel"><h3>Reason for rejection</h3><p>{{ selectedRequest.request.rejection_reason || 'Not recorded' }}</p></section> }
+      @if (selectedRequest.request.cancelled_by) { <section class="hold-reason-panel"><h3>Reason for cancellation</h3><p>{{ selectedRequest.request.cancellation_reason || 'Not recorded' }}</p></section> }
       @if (selectedRequest.request.permitted_actions.length) {
         <div class="detail-actions">
           @if (selectedRequest.request.permitted_actions.includes('reject')) { <button class="crm-button crm-button--destructive-outline" type="button" (click)="openDecisionConfirmation(selectedRequest.request, 'reject')" [disabled]="saving()"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18" /></svg>Reject request</button> }
@@ -73,7 +76,7 @@
     </div>
   } @else {
     <div id="hold-history-panel" role="tabpanel" aria-labelledby="hold-history-tab"><div class="crm-table-wrap"><table class="crm-table holds-table" aria-label="Legal-hold history"><thead><tr><th scope="col">Hold</th><th scope="col">Target</th><th scope="col">Outcome</th><th scope="col">Date</th><th scope="col" aria-hidden="true"></th></tr></thead><tbody>
-      @for (row of historyRows(); track row.request?.public_id || row.hold.public_id + row.timestamp) { <tr class="selectable-row" tabindex="0" [attr.aria-label]="'View ' + row.outcome + ' legal hold history for ' + holdTargetLabel(row.hold)" (click)="row.request ? selectReleaseRequest({ hold: row.hold, request: row.request }) : selectHold(row.hold)" (keydown)="activateRow($event, () => row.request ? selectReleaseRequest({ hold: row.hold, request: row.request }) : selectHold(row.hold))"><td><strong>{{ row.request ? 'Release request' : holdTypeLabel(row.hold.scope) }}</strong><small>{{ row.request ? holdTypeLabel(row.hold.scope) : actorLabel(row.hold.placed_by) }}</small></td><td>{{ holdTargetLabel(row.hold) }}</td><td><span [class]="statusClass(row.request?.status || row.hold.status)">{{ row.outcome }}</span></td><td>{{ formatDateTime(row.timestamp) }}</td><td class="row-action" aria-hidden="true">&rsaquo;</td></tr> }
+      @for (row of historyRows(); track row.request?.public_id || row.hold.public_id + row.timestamp) { <tr class="selectable-row" tabindex="0" [attr.aria-label]="'View ' + row.outcome + ' legal hold history for ' + holdTargetLabel(row.hold)" (click)="row.request ? selectReleaseRequest({ hold: row.hold, request: row.request, fromHistory: true }) : selectHold(row.hold)" (keydown)="activateRow($event, () => row.request ? selectReleaseRequest({ hold: row.hold, request: row.request, fromHistory: true }) : selectHold(row.hold))"><td><strong>{{ row.request ? 'Release request' : holdTypeLabel(row.hold.scope) }}</strong><small>{{ row.request ? holdTypeLabel(row.hold.scope) : actorLabel(row.hold.placed_by) }}</small></td><td>{{ holdTargetLabel(row.hold) }}</td><td><span [class]="statusClass(row.request?.status || row.hold.status)">{{ row.outcome }}</span></td><td>{{ formatDateTime(row.timestamp) }}</td><td class="row-action" aria-hidden="true">&rsaquo;</td></tr> }
       @empty { <tr><td colspan="5"><div class="empty-state"><strong>No legal-hold history</strong><span>Completed legal-hold events will appear here.</span></div></td></tr> }
     </tbody></table></div></div>
   }
