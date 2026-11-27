@@ -20,12 +20,42 @@ CRM-side consumer in `StaffAccessService` and AuthService lifecycle integration;
 this guide records source inspection and the supplied focused test/build
 evidence, but does not claim runtime or cross-repository verification.
 
+The next paragraph preserves the original foundation-stage boundary for
+traceability. It is historical context, not the current summary; use the
+functional map below for current CRM privacy behavior.
+
 The foundation adds no capability response to `/auth/me/`, no Angular capability
 guard, no masking behavior, no Person projection changes, and no new sensitive
 data access path. Phase 1A.4A adds the API Staff Access contract, which the
 Phase 1A.4B CRM consumer now reads into memory-only presentation state.
 
-## API-authoritative capability foundation
+The staff-facing summary is now consolidated in the
+[Privacy and Permissions Business Guide](privacy-and-permissions-business-guide.md).
+This technical guide remains the evidence record for CRM implementation and
+validation; the API remains authoritative for backend contracts.
+
+## Current functional and technical map
+
+The guide is organized for current subjects first. Detailed phase material is
+retained below as historical implementation evidence, including superseded
+disclosures, named test results, UAT records, and unresolved prerequisites.
+
+| Subject | Current classification | Primary detail |
+| --- | --- | --- |
+| Staff roles, sessions, and backend authorization | Implemented / source-inspected; cross-repository runtime unverified | [API `AUTHORIZATION.md`](../../elevate-mk-api/docs/AUTHORIZATION.md) |
+| CRM capability consumption | Implemented / source-inspected; focused validation recorded | [CRM client architecture](#crm-client-architecture-and-contracts) |
+| Privacy Administration | Implemented / isolated local runtime evidence recorded; deployment unverified | [Staff privacy administration](#staff-privacy-administration) |
+| People privacy projections and capability-loss handling | Implemented / source-inspected; final runtime and broader verification remain scoped | [People privacy and protected disclosure](#people-privacy-and-protected-disclosure) |
+| Marketing consent and campaign privacy | Implemented / source-inspected; provider/runtime verification remains scoped | [Marketing consent and provider privacy](#marketing-consent-and-provider-privacy) |
+| People exports | Implemented / source-inspected; download, audit, migration, and final-hardening checks remain unverified | [Exports and bulk operations](#exports-and-bulk-operations) |
+| Mobile and Community compatibility | Unverified from the CRM repository | [Cross-repository verification](#cross-repository-verification-and-final-hardening) |
+| Comprehensive Person record-access auditing | Deferred | `GDPR-FUTURE-001` in the [API GDPR guide](../../elevate-mk-api/docs/GDPR.md) |
+
+Status labels describe evidence, not legal approval. Existing focused tests,
+builds, isolated runtime checks, and manual UAT are cited as recorded evidence;
+this documentation stage did not rerun them.
+
+## API authority and current capability boundary
 
 Status: API foundation and governance implementation are source-inspected;
 governance migration/test execution is verified in the API's isolated
@@ -61,7 +91,7 @@ the dedicated privacy projection remains API-authoritative and requires
 backend capability plus Person-scope authorization. The Phase 1A.4D CRM
 consumer is documented below; broader record-access auditing remains deferred.
 
-### Phase 1A.4A Staff Access contract (historical; superseded disclosure)
+### Historical evidence — Staff Access contract
 
 The API now exposes `GET /api/v1/staff/access/me/`. It is a session-only CRM
 endpoint admitted for authenticated users with an active `CRM_ADMIN`,
@@ -108,7 +138,7 @@ isolated validation: capability foundation 13/13 passed, CRM-admin concurrency
 1/1 passed, and the complete focused run passed 41/41. CRM behavior, CRM
 capability integration, and cross-repository compatibility remain unverified.
 
-### Phase 1A.4B CRM Staff Access consumer
+### Historical evidence — CRM Staff Access consumer
 
 Status: **Implemented / source-inspected; focused test and build validation
 verified; runtime and cross-repository verification not claimed.**
@@ -171,7 +201,7 @@ tests; `npm run build` passed; `npm run test:config` passed 3/3; and
 `git diff --check` passed. CRM runtime, staging, deployment, and
 cross-repository behavior remain **Unverified**.
 
-## Current Angular architecture and contracts
+## CRM client architecture and contracts
 
 Existing route, component, session, CSRF, and role-guard behavior remains
 unchanged. `AuthService` continues consuming `/auth/me/` and `staff_roles`, and
@@ -185,7 +215,10 @@ Community sessions, Community projections, and existing CRM role semantics are
 outside this implementation; their cross-repository compatibility is
 **Unverified**.
 
-## Phase 1A.4C.3 Staff Privacy Administration
+## Staff privacy administration
+
+Historical evidence label: **Phase 1A.4C.3**. The evidence below is retained
+for traceability; current status is summarized in the functional map above.
 
 Status: **Implemented / isolated local runtime verified; deployment and
 cross-repository production compatibility remain unverified.**
@@ -290,7 +323,12 @@ workflows remain deferred. The Phase 1A.4B memory-only Staff Access integration
 and Phase 1A.4D privacy consumers are implemented as documented below; runtime/browser, staging,
 deployment, and cross-repository behavior remain **Unverified**.
 
-## Evidence status
+## Current evidence and verification status
+
+This register preserves the original validation batches, phase labels,
+superseded disclosures, and unexecuted prerequisites. They are evidence
+records, not a second current contract; use the functional map above for
+current status.
 
 - **Approved:** CRM remains a permission-aware client of backend-authoritative
   contracts.
@@ -357,7 +395,7 @@ repository's [GDPR guide](../../elevate-mk-api/docs/GDPR.md),
 [DATABASE.md](../../elevate-mk-api/docs/DATABASE.md), and
 [AUTHORIZATION.md](../../elevate-mk-api/docs/AUTHORIZATION.md).
 
-## Phase 1A.3 status
+## Historical evidence — privacy-audit foundation
 
 This CRM repository has no Phase 1A.3 application change. The API-only
 privacy-audit foundation is **Implemented and verified in the API's isolated
@@ -401,7 +439,7 @@ recorded above.
 - OWASP review: **Implemented review gate; independent runtime security evidence
   remains unverified.**
 
-### Final Phase 1A.4C closure-batch presentation
+### Historical evidence — privacy administration presentation
 
 The CRM governance page renders backend-projected effective capability state,
 including whether a capability is effective, its source (role default,
@@ -425,7 +463,7 @@ references, safe reason codes, and route-specific operation labels. The CRM
 preserves the existing authorization error and access-loss handling. Browser
 workflow and deployment behavior remain unverified.
 
-### Phase 1A.4D frontend implementation
+### Historical evidence — legal-hold and privacy-history presentation
 
 The CRM now has typed `PrivacyAuditService` and `LegalHoldsService` consumers,
 a separate Privacy audit tab on Person profiles, and a capability-guarded
@@ -470,7 +508,7 @@ accepted for the API/CRM workflow. Minor UX polish remains deferred as
 non-blocking backlog work; operational migrations, deployment, cross-repository
 release compatibility, and final-hardening evidence remain outstanding.
 
-## Phase 1A.4E and 1A.6 consolidated status
+## Historical evidence — security implementation and activation readiness
 
 Status: **Implemented / source-inspected; final automated hardening deferred.**
 The CRM continues to consume backend-calculated capability state, permitted
@@ -494,7 +532,10 @@ tests were **Implemented / Unexecuted at this pre-Phase 1C cutoff**. Production 
 the final security, QA, architecture and documentation gates plus runtime and
 deployment verification.
 
-## Phase 1B.1 People privacy
+## People privacy and protected disclosure
+
+Historical evidence label: **Phase 1B.1**. The evidence below is retained for
+traceability; current status is summarized in the functional map above.
 
 Status: **Implemented / source-inspected; automated tests and runtime
 verification were deferred at the Phase 1B.1 cutoff**.
@@ -584,7 +625,10 @@ fields and unrelated editable fields remain available. The same shared form
 is used by the edit drawer, contextual edit, add-person drawer, and write
 routes. This correction is **Implemented / focused verification pending**.
 
-## Phase 1B.2 Marketing privacy
+## Marketing consent and provider privacy
+
+Historical evidence label: **Phase 1B.2**. The evidence below is retained for
+traceability; current status is summarized in the functional map above.
 
 Status: **Implemented / source-inspected; Angular tests and runtime/provider
 verification deferred**.
@@ -610,7 +654,10 @@ Unexecuted at the Phase 1B.2 cutoff** under the deferred-test policy. Build,
 runtime compatibility, and manual marketing UAT remain pending final GDPR
 hardening.
 
-## Phase 1B.3 Exports and bulk operations
+## Exports and bulk operations
+
+Historical evidence label: **Phase 1B.3**. The evidence below is retained for
+traceability; current status is summarized in the functional map above.
 
 Status: **Implemented / source-inspected; Angular tests, runtime downloads,
 and final-hardening verification were deferred for the Phase 1B.3 closure
@@ -657,7 +704,7 @@ not claim completion of the outstanding Phase 1C automated hardening,
 cross-repository/runtime verification, specialist acceptance, or
 production-activation gates.
 
-## Consolidated Phase 1 UI polishing
+## Historical evidence — consolidated UI consistency
 
 Status: **Implemented / source-inspected; automated tests and browser visual
 verification remain Unverified.** The CRM feature surfaces now reuse the
@@ -688,7 +735,10 @@ warning reduced to 17 bytes over its 4.00 kB limit; this remains a non-blocking
 UI-polishing backlog item. Remaining minor UX polish is backlog work, not a new
 privacy capability or authorization change.
 
-## Phase 1C final hardening status
+## Cross-repository verification and final hardening
+
+Historical evidence label: **Phase 1C**. The evidence below is retained for
+traceability; current status is summarized in the functional map above.
 
 Status: **In progress / not accepted**. Audience Preview now clears protected
 results when contact access becomes unavailable and rejects late responses from
@@ -727,3 +777,21 @@ Admin privacy-mutation, and trusted-provenance corrections reviewed in the
 latest API remediation are implemented and targeted-tested; the remaining
 items are full-suite, deployment, cross-repository runtime, and independent
 release-gate verification rather than unreviewed CRM defects.
+
+## Historical evidence archive
+
+The following records preserve implementation chronology only for traceability.
+Current CRM behavior is defined by the subject-based sections above and by the
+API technical contracts they reference:
+
+| Historical subject | Preserved evidence |
+| --- | --- |
+| Staff access and privacy administration | Capability projection, governance screens, action modes, revocation handling and isolated UAT evidence |
+| People privacy | Masking, restricted fields, protected forms, capability-loss handling and focused validation records |
+| Marketing and exports | Consent boundaries, audience privacy, recipient protection, export controls and documented verification limits |
+| Legal holds and retention | Permission-aware workflows, release history, retention limitations and manual UAT evidence |
+| UI consistency | Shared CRM styling, component conventions, build diagnostics and browser-verification limitations |
+| Final hardening | Cross-repository, deployment, migration, independent acceptance and security prerequisites |
+
+Historical records retain their original evidence classifications. They do not
+upgrade source inspection or isolated UAT into production readiness.
