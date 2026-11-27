@@ -97,6 +97,44 @@ component. It is 36rem wide and becomes full-screen below the compact threshold.
 Keep opener controls mounted behind the modal so focus can return after closing.
 Forms retain their own API requests, validation, footer actions, and business state.
 
+## Shared operation notifications
+
+The CRM has one shared transient notification pattern: `ToastService` publishes
+notifications and `ToastContainerComponent` renders them in the application
+shell. Future modules, including Events V1, should use this infrastructure rather
+than adding a second toast, snackbar, or ad-hoc notification system.
+
+Use a toast for a short-lived, authoritative operation outcome, such as a
+successful save, permission change, approval decision, cancellation, or request
+submission. The message must use a concise, business-friendly title and explain
+the result in plain language. A successful rejection, revocation, restriction,
+or suspension is still a success outcome and therefore uses the success tone.
+Pending governance proposals must say that approval is awaiting; they must not
+be described as already applied. Never imply that removing a restriction alone
+grants effective access.
+
+Use the warning and error tones for operation-level warnings and failures. Do not
+put raw API errors, credentials, tokens, personal information, request payloads,
+or internal implementation details in a notification. Keep inline validation,
+authorization-denied states, page-loading failures, pending indicators, durable
+business warnings, and corrective modal errors in their persistent or contextual
+location.
+
+After a confirmed successful operation, close the relevant dialog, refresh the
+authoritative affected state, and show exactly one outcome toast. Guard duplicate
+submissions and keep the modal open with its entered reason when a corrective
+failure is returned. A notification is announced through the shared live-region
+behavior, has a dismiss control, uses the existing CRM semantic tokens, and
+auto-dismisses after a short period; errors remain visible longer. The placement,
+focus styling, contrast, responsive layout, and keyboard-accessible dismissal are
+shared by the container and must not be reimplemented per feature.
+
+Privacy Administration now uses this standard for confirmed permission changes,
+role-default changes, proposal approvals, rejections, cancellations, and pending
+approval submissions. Other screens that still use page-local feedback, including
+Legal Holds and unrelated save flows, remain documented migration exceptions and
+were not changed in this UI-polish stage.
+
 The filter drawer uses an optional `[drawerFooter]` projection for actions outside
 the scrolling body. Existing drawers without projected footer content retain
 their form-owned actions. `dialogId` optionally supplies an ID for an opener's

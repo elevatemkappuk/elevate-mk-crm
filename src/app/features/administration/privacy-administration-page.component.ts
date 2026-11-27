@@ -9,6 +9,7 @@ import { StaffAccessService } from '../../core/auth/staff-access.service';
 import { PrivacyAdministrationService } from './privacy-administration.service';
 import { GovernanceProposal, GovernanceRoleDefaults, GovernanceStaffSummary, GovernanceTargetDetail } from './privacy-administration.types';
 import { ConfirmationDialogComponent } from '../../shared/ui/confirmation-dialog.component';
+import { ToastService } from '../../shared/ui/toast.service';
 
 type PrivacyAdministrationTab = 'staff-permissions' | 'role-defaults' | 'approval-requests' | 'governance-history';
 
@@ -23,6 +24,7 @@ export class PrivacyAdministrationPageComponent {
   private readonly auth = inject(AuthService);
   private readonly staffAccess = inject(StaffAccessService);
   private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
   private authorizationEpoch = 0;
   private revalidatingAuthorization = false;
   readonly target = signal<GovernanceTargetDetail | null>(null);
@@ -47,6 +49,7 @@ export class PrivacyAdministrationPageComponent {
   readonly governanceLoading = signal(false);
   readonly governanceReadError = signal(false);
   private governanceResponseCount = 0;
+  private governanceRefreshEpoch = 0;
   reason = '';
   proposalReason = '';
   staffSearch = '';
@@ -77,18 +80,20 @@ export class PrivacyAdministrationPageComponent {
 
   refreshGovernance(): void {
     const requestEpoch = this.authorizationEpoch;
+    const refreshEpoch = ++this.governanceRefreshEpoch;
     this.governanceResponseCount = 0;
     this.governanceLoading.set(true);
     this.governanceReadError.set(false);
+    const isCurrentRefresh = () => requestEpoch === this.authorizationEpoch && refreshEpoch === this.governanceRefreshEpoch;
     const markResponse = () => {
-      if (requestEpoch !== this.authorizationEpoch) return;
+      if (!isCurrentRefresh()) return;
       this.governanceResponseCount += 1;
       if (this.governanceResponseCount === 4) this.governanceLoading.set(false);
     };
-    this.service.roleDefaults().subscribe({ next: value => { if (requestEpoch === this.authorizationEpoch) this.roleDefaults.set(value); markResponse(); }, error: error => { markResponse(); this.handleGovernanceReadError(error); } });
-    this.service.history('individual').subscribe({ next: value => { if (requestEpoch === this.authorizationEpoch) this.individualHistory.set(value.results); markResponse(); }, error: error => { markResponse(); this.handleGovernanceReadError(error); } });
-    this.service.history('role-defaults').subscribe({ next: value => { if (requestEpoch === this.authorizationEpoch) this.roleDefaultHistory.set(value.results); markResponse(); }, error: error => { markResponse(); this.handleGovernanceReadError(error); } });
-    this.service.history('decisions').subscribe({ next: value => { if (requestEpoch === this.authorizationEpoch) this.decisionHistory.set(value.results); markResponse(); }, error: error => { markResponse(); this.handleGovernanceReadError(error); } });
+    this.service.roleDefaults().subscribe({ next: value => { if (isCurrentRefresh()) this.roleDefaults.set(value); markResponse(); }, error: error => { markResponse(); if (isCurrentRefresh()) this.handleGovernanceReadError(error); } });
+    this.service.history('individual').subscribe({ next: value => { if (isCurrentRefresh()) this.individualHistory.set(value.results); markResponse(); }, error: error => { markResponse(); if (isCurrentRefresh()) this.handleGovernanceReadError(error); } });
+    this.service.history('role-defaults').subscribe({ next: value => { if (isCurrentRefresh()) this.roleDefaultHistory.set(value.results); markResponse(); }, error: error => { markResponse(); if (isCurrentRefresh()) this.handleGovernanceReadError(error); } });
+    this.service.history('decisions').subscribe({ next: value => { if (isCurrentRefresh()) this.decisionHistory.set(value.results); markResponse(); }, error: error => { markResponse(); if (isCurrentRefresh()) this.handleGovernanceReadError(error); } });
   }
 
   pendingProposals(): GovernanceProposal[] {
@@ -315,6 +320,29 @@ export class PrivacyAdministrationPageComponent {
     return 'neutral';
   }
 
+  confirmationVariant(action: string): 'primary' | 'destructive' | 'caution' | 'neutral' {
+    if (action === 'approve' || action.includes('GRANT') || action.includes('RESTORE') || action.includes('UNRESTRICT') || action.includes('ENABLE')) return 'primary';
+    if (action === 'reject' || action.includes('REVOKE')) return 'destructive';
+    if (action.includes('SUSPEND') || action.includes('RESTRICT') || action.includes('DISABLE')) return 'caution';
+    return 'neutral';
+  }
+
+  confirmationReasonLabel(action: string): string {
+    if (action === 'approve') return 'Reason for approval';
+    if (action === 'reject') return 'Reason for rejection';
+    if (action === 'cancel') return 'Reason for cancellation';
+    return `Reason for ${this.actionLabel(action).toLowerCase()}`;
+  }
+
+  confirmationContext(action: { targetUserId: number; capability: string } | { roleCode: string; capability: string }): string {
+    if ('targetUserId' in action) return `Staff member ${action.targetUserId} · ${this.capabilityName(action.capability)}`;
+    return `${this.roleName(action.roleCode)} · ${this.capabilityName(action.capability)}`;
+  }
+
+  proposalConfirmationContext(proposal: GovernanceProposal, action: string): string {
+    return `${this.actionLabel(action)} · ${this.proposalTargetLabel(proposal)} · ${this.capabilityName(proposal.capability)}`;
+  }
+
   capabilityName(capability: string): string {
     const names: Record<string, string> = {
       PERSON_CONTACT_READ: 'View contact information',
@@ -425,7 +453,13 @@ export class PrivacyAdministrationPageComponent {
         ? this.service.createProposal(request)
         : this.service.applyIndividualChange(request);
     mutation.subscribe({
-      next: () => { this.pendingAction.set(null); this.feedback.set(action.executionMode === 'PROPOSAL' ? 'The proposal is awaiting independent approval.' : 'The capability change was applied and audited.'); this.loadTarget(); this.refreshGovernance(); },
+      next: () => {
+        this.pendingAction.set(null);
+        if (action.executionMode === 'PROPOSAL') this.notifySuccess('Approval requested', 'The permission change is awaiting independent approval.', 'The proposal is awaiting independent approval.');
+        else this.notifySuccess(this.operationSuccessTitle(action.operation), 'The backend confirmed the audited change was applied.');
+        this.loadTarget();
+        this.refreshGovernance();
+      },
       error: (error: { error?: { code?: string; detail?: string }; status?: number }) => this.showError(error),
       complete: () => this.saving.set(false),
     });
@@ -454,7 +488,16 @@ export class PrivacyAdministrationPageComponent {
     this.error.set(null);
     this.feedback.set(null);
     this.service.resolveProposal(pending.proposal.public_id, pending.action, reason).subscribe({
-      next: value => { this.pendingProposalAction.set(null); this.feedback.set(`Proposal ${value.status.toLowerCase()}.`); this.refreshGovernance(); },
+      next: value => {
+        this.pendingProposalAction.set(null);
+        this.backToApprovalRequests();
+        this.selectTab('approval-requests');
+        this.replaceResolvedProposal(value);
+        const title = pending.action === 'approve' ? 'Request approved' : pending.action === 'reject' ? 'Request rejected' : 'Request cancelled';
+        this.notifySuccess(title, `The request was ${value.status.toLowerCase()} and governance history was refreshed.`);
+        if (this.targetUserId) this.loadTarget();
+        this.refreshGovernance();
+      },
       error: error => this.showError(error),
       complete: () => this.saving.set(false),
     });
@@ -473,7 +516,8 @@ export class PrivacyAdministrationPageComponent {
     mutation.subscribe({
       next: () => {
         this.pendingRoleAction.set(null);
-        this.feedback.set(action.executionMode === 'DIRECT_SUPERUSER' ? 'The role-default change was applied and audited.' : 'The role-default proposal is awaiting independent approval.');
+        if (action.executionMode === 'DIRECT_SUPERUSER') this.notifySuccess('Role default updated', 'The backend confirmed the audited role-default change was applied.', 'The role-default change was applied and audited.');
+        else this.notifySuccess('Approval requested', 'The role-default change is awaiting independent approval.', 'The role-default proposal is awaiting independent approval.');
         this.refreshGovernance();
       },
       error: (error: { error?: { code?: string; detail?: string }; status?: number }) => this.showError(error),
@@ -532,6 +576,32 @@ export class PrivacyAdministrationPageComponent {
       INDIVIDUAL_UNRESTRICT: 'Remove the restriction; suspended or revoked grants remain inactive.',
     };
     return descriptions[operation] ?? 'Change governed capability state.';
+  }
+
+  operationSuccessTitle(operation: string): string {
+    const titles: Record<string, string> = {
+      INDIVIDUAL_GRANT: 'Access granted',
+      INDIVIDUAL_RESTORE: 'Access restored',
+      INDIVIDUAL_SUSPEND: 'Access suspended',
+      INDIVIDUAL_REVOKE: 'Access revoked',
+      INDIVIDUAL_RESTRICT: 'Access restricted',
+      INDIVIDUAL_UNRESTRICT: 'Restriction removed',
+      ROLE_DEFAULT_ENABLE: 'Role default updated',
+      ROLE_DEFAULT_DISABLE: 'Role default updated',
+    };
+    return titles[operation] ?? 'Change completed';
+  }
+
+  private notifySuccess(title: string, description: string, legacyFeedback = title): void {
+    this.feedback.set(legacyFeedback);
+    this.toast.success(title, description);
+  }
+
+  private replaceResolvedProposal(resolved: GovernanceProposal): void {
+    const replace = (items: readonly GovernanceProposal[]): readonly GovernanceProposal[] => items.map(item => item.public_id === resolved.public_id ? resolved : item);
+    this.individualHistory.update(replace);
+    this.roleDefaultHistory.update(replace);
+    this.decisionHistory.update(replace);
   }
 
   private showError(error: { error?: { code?: string; detail?: string }; status?: number }): void {

@@ -145,6 +145,38 @@ describe('PrivacyAdministrationPageComponent', () => {
     expect(component.feedback()).toBe('The role-default change was applied and audited.');
   });
 
+  it('returns to the approval list and removes a resolved request from pending state', () => {
+    http.expectOne(`${apiBaseUrl}/staff/governance/targets/`).flush({ count: 0, page: 1, page_size: 25, results: [] });
+    flushOverviewRequests();
+
+    const proposal = {
+      public_id: 'proposal-resolved',
+      operation: 'ROLE_DEFAULT_ENABLE',
+      status: 'PENDING',
+      role_id: 3,
+      role_code: 'CRM_VIEWER',
+      target_user_id: null,
+      capability: 'PERSON_CONTACT_READ',
+      proposed_by_id: 7,
+      reason: 'Enable access',
+      permitted_actions: ['approve'],
+    } as any;
+    component.roleDefaultHistory.set([proposal]);
+    component.selectedProposal.set(proposal);
+    component.selectTab('approval-requests');
+    component.beginProposalAction(proposal, 'approve');
+    component.proposalReason = 'Approved after review';
+    component.confirmProposalAction();
+
+    const resolution = http.expectOne(`${apiBaseUrl}/staff/governance/proposals/proposal-resolved/approve/`);
+    resolution.flush({ ...proposal, status: 'APPROVED', permitted_actions: [] });
+    expect(component.pendingProposalAction()).toBeNull();
+    expect(component.selectedProposal()).toBeNull();
+    expect(component.activeTab()).toBe('approval-requests');
+    expect(component.pendingProposals()).toEqual([]);
+    flushOverviewRequests();
+  });
+
   it('renders backend effective explanations and de-duplicates governance history', () => {
     http.expectOne(`${apiBaseUrl}/staff/governance/targets/`).flush({ count: 0, page: 1, page_size: 25, results: [] });
     flushOverviewRequests();

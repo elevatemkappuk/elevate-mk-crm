@@ -1,0 +1,16 @@
+<section class="toast-region" aria-label="Notifications" aria-live="polite" aria-atomic="false">
+  @for (toast of toastService.toasts(); track toast.id) {
+    <article class="toast" [class]="'toast--' + toast.tone" [attr.role]="toast.tone === 'error' ? 'alert' : 'status'">
+      <span class="toast__icon" aria-hidden="true">
+        @switch (toast.tone) {
+          @case ('success') { ✓ }
+          @case ('error') { × }
+          @case ('warning') { ! }
+          @default { i }
+        }
+      </span>
+      <div class="toast__content"><strong>{{ toast.title }}</strong>@if (toast.description) { <p>{{ toast.description }}</p> }</div>
+      <button class="toast__dismiss" type="button" [attr.aria-label]="'Dismiss notification: ' + toast.title" (click)="toastService.dismiss(toast.id)">×</button>
+    </article>
+  }
+</section>

@@ -16,21 +16,21 @@ let nextDialogId = 0;
           role="dialog"
           aria-modal="true"
           [attr.aria-labelledby]="titleId"
-          [attr.aria-describedby]="messageId"
+          [attr.aria-describedby]="context() ? messageId + ' ' + contextId : messageId"
           (click)="$event.stopPropagation()"
           (keydown.escape)="cancel()"
           (keydown)="trapTab($event)"
         >
           <h2 [id]="titleId">{{ title() }}</h2>
+          @if (context(); as summary) { <div class="context-summary" [id]="contextId">{{ summary }}</div> }
           <p [id]="messageId">{{ message() }}</p>
           @if (requireReason()) {
-            <label [for]="reasonId">Justification</label>
-            <textarea [id]="reasonId" rows="4" [value]="reason()" (input)="reasonChanged.emit($any($event.target).value)" required></textarea>
+            <div class="reason-field"><label class="crm-label" [for]="reasonId">{{ reasonLabel() }} <span aria-hidden="true">*</span><span class="visually-hidden">required</span></label><textarea class="crm-control" [id]="reasonId" rows="4" [placeholder]="reasonPlaceholder()" [value]="reason()" (input)="reasonChanged.emit($any($event.target).value)" required></textarea></div>
           }
           <div class="crm-actions crm-actions--end">
             <button type="button" class="button-secondary crm-button crm-button--secondary" [disabled]="busy()" (click)="cancel()">Cancel</button>
-            <button type="button" class="button-primary crm-button crm-button--primary" [attr.aria-busy]="busy()" [disabled]="busy() || (requireReason() && !reason().trim())" (click)="confirmed.emit()">
-              {{ confirmLabel() }}
+            <button type="button" class="button-primary crm-button" [class.crm-button--primary]="actionVariant() === 'primary'" [class.confirm-button--destructive]="actionVariant() === 'destructive'" [class.confirm-button--caution]="actionVariant() === 'caution'" [class.confirm-button--neutral]="actionVariant() === 'neutral'" [attr.aria-busy]="busy()" [disabled]="busy() || (requireReason() && !reason().trim())" (click)="confirmed.emit()">
+              @if (actionVariant() !== 'neutral') { <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path [attr.d]="confirmIconPath()" /></svg> }<span>{{ confirmLabel() }}</span>
             </button>
           </div>
         </section>
@@ -44,8 +44,14 @@ let nextDialogId = 0;
     h2, p { margin: 0; overflow-wrap: anywhere; }
     h2 { color: var(--crm-text-strong); font-size: var(--crm-font-lg); line-height: var(--crm-leading-heading); }
     p { color: var(--crm-text-secondary); line-height: var(--crm-leading); }
-    label { color: var(--crm-text-strong); font-weight: 600; }
-    textarea { width: 100%; min-height: 6rem; box-sizing: border-box; resize: vertical; }
+    .context-summary { padding: var(--crm-space-3); border: 1px solid var(--crm-border); border-radius: var(--crm-radius-md); background: var(--crm-surface-subtle); color: var(--crm-text-strong); font-weight: var(--crm-weight-medium); }
+    .reason-field { display: grid; gap: var(--crm-space-2); }
+    textarea { min-height: 6rem; box-sizing: border-box; resize: vertical; }
+    .crm-button svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .confirm-button--destructive { border-color: var(--crm-destructive); background: var(--crm-destructive); color: var(--crm-on-action); }
+    .confirm-button--caution { border-color: var(--crm-warning); background: var(--crm-warning-surface); color: var(--crm-text-strong); }
+    .confirm-button--neutral { border-color: var(--crm-control-border); background: var(--crm-surface); color: var(--crm-text-strong); }
+    .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
   `,
 })
 export class ConfirmationDialogComponent implements OnDestroy {
@@ -56,10 +62,15 @@ export class ConfirmationDialogComponent implements OnDestroy {
   readonly titleId = `confirmation-dialog-title-${nextDialogId++}`;
   readonly messageId = `${this.titleId}-message`;
   readonly reasonId = `${this.titleId}-reason`;
+  readonly contextId = `${this.titleId}-context`;
   readonly open = input(false);
   readonly title = input.required<string>();
   readonly message = input.required<string>();
+  readonly context = input<string | null>(null);
   readonly confirmLabel = input('Confirm');
+  readonly reasonLabel = input('Reason');
+  readonly reasonPlaceholder = input('Enter a reason');
+  readonly actionVariant = input<'primary' | 'destructive' | 'caution' | 'neutral'>('primary');
   readonly busy = input(false);
   readonly requireReason = input(false);
   readonly reason = input('');
@@ -88,9 +99,11 @@ export class ConfirmationDialogComponent implements OnDestroy {
   private focusInside(): void {
     const element = this.activeDialog;
     if (!element) return;
-    // Preserve the existing confirm-first focus; the container holds focus while busy.
-    const confirm = element.querySelector<HTMLButtonElement>('.crm-button--primary:not(:disabled)');
-    (confirm ?? element).focus();
+    const first = !this.busy() && this.requireReason()
+      ? element.querySelector<HTMLTextAreaElement>('textarea:not(:disabled)')
+      : element.querySelector<HTMLButtonElement>('.crm-button--primary:not(:disabled)')
+        ?? element.querySelector<HTMLButtonElement>('button:not(:disabled)');
+    (first ?? element).focus();
   }
 
   containFocus(event: FocusEvent): void {
@@ -103,9 +116,9 @@ export class ConfirmationDialogComponent implements OnDestroy {
     if (event.key !== 'Tab') return;
     const element = this.activeDialog;
     if (!element) return;
-    const buttons = Array.from(element.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'));
-    const first = buttons[0];
-    const last = buttons[buttons.length - 1];
+    const focusables = Array.from(element.querySelectorAll<HTMLElement>('button:not(:disabled), textarea:not(:disabled)'));
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
     const current = this.document.activeElement;
     if (!first) {
       event.preventDefault();
@@ -129,5 +142,13 @@ export class ConfirmationDialogComponent implements OnDestroy {
     if (!this.busy()) {
       this.cancelled.emit();
     }
+  }
+
+  confirmIconPath(): string {
+    return this.actionVariant() === 'destructive'
+      ? 'M6 6l12 12M18 6 6 18'
+      : this.actionVariant() === 'caution'
+        ? 'M12 8v4m0 4h.01M10.3 4.5 2.8 18a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 4.5a2 2 0 0 0-3.4 0Z'
+        : 'm5 12 4 4L19 6';
   }
 }
