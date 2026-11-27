@@ -30,7 +30,7 @@
           [jobTitle]="professionalProfile()?.job_title || ''" [canManagePeople]="canManagePeople()"
           [submitting]="personLifecycleSubmitting()" [errorMessage]="personLifecycleErrorMessage()"
           (edit)="editPersonOpen.set(true)" (archive)="archivePerson()" (restore)="restorePerson()" />
-        @if (auth.hasLegalHoldAdministration?.()) {
+        @if (auth.hasLegalHoldAdministration()) {
           <div class="person-privacy-actions">
             <a class="button-secondary" [routerLink]="['/legal-holds']" [queryParams]="{ personId: person()!.id }">Place legal hold</a>
           </div>
