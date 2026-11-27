@@ -196,8 +196,66 @@ describe('PrivacyAdministrationPageComponent', () => {
     fixture.detectChanges();
 
     expect(component.historyItems()).toHaveLength(1);
-    expect(fixture.nativeElement.textContent).toContain('Effective');
-    expect(fixture.nativeElement.textContent).toContain('Role default enable');
+    expect(fixture.nativeElement.textContent).toContain('Allowed');
+    expect(fixture.nativeElement.textContent).toContain('Enable by default');
     expect(fixture.nativeElement.textContent).toContain('Previous/proposed state:');
+  });
+
+  it('opens Staff Permissions by default and isolates each tab panel', () => {
+    http.expectOne(`${apiBaseUrl}/staff/governance/targets/`).flush({ count: 0, page: 1, page_size: 25, results: [] });
+    flushOverviewRequests();
+    fixture.detectChanges();
+
+    expect(component.activeTab()).toBe('staff-permissions');
+    expect(fixture.nativeElement.querySelector('#staff-permissions-panel')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('#role-defaults-panel')).toBeNull();
+
+    component.selectTab('governance-history');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#staff-permissions-panel')).toBeNull();
+    expect(fixture.nativeElement.querySelector('#governance-history-panel')).not.toBeNull();
+  });
+
+  it('renders role defaults as an API-backed permission matrix with pending current state', () => {
+    http.expectOne(`${apiBaseUrl}/staff/governance/targets/`).flush({ count: 0, page: 1, page_size: 25, results: [] });
+    http.expectOne(`${apiBaseUrl}/staff/governance/role-defaults/`).flush({ policy_version: 4, role_defaults: [
+      { id: 1, role_id: 1, role_code: 'CRM_ADMIN', capability: 'PERSON_CONTACT_READ', is_enabled: true, permitted_actions: [], execution_mode: 'PROPOSAL' },
+      { id: 2, role_id: 2, role_code: 'CRM_MANAGER', capability: 'PERSON_CONTACT_READ', is_enabled: false, permitted_actions: ['ROLE_DEFAULT_ENABLE'], execution_mode: 'PROPOSAL' },
+    ] });
+    http.expectOne(`${apiBaseUrl}/staff/governance/history/individual/`).flush({ results: [] });
+    http.expectOne(`${apiBaseUrl}/staff/governance/history/role-defaults/`).flush({ results: [{
+      public_id: 'pending-1', operation: 'ROLE_DEFAULT_ENABLE', status: 'PENDING', role_id: 2, role_code: 'CRM_MANAGER', target_user_id: null,
+      capability: 'PERSON_CONTACT_READ', proposed_by_id: 7, reason: 'Pending change', policy_version: 4, expires_at: '2026-01-01T00:00:00Z',
+      created_at: '2025-12-01T00:00:00Z', resolved_at: null, resolution_reason: '', permitted_actions: [], decision: null,
+    }] });
+    http.expectOne(`${apiBaseUrl}/staff/governance/history/decisions/`).flush({ results: [] });
+
+    component.selectTab('role-defaults');
+    fixture.detectChanges();
+
+    const matrix = fixture.nativeElement.querySelector('.permission-matrix');
+    expect(matrix).not.toBeNull();
+    expect(matrix.textContent).toContain('View contact information');
+    expect(matrix.textContent).toContain('CRM Administrator');
+    expect(matrix.textContent).toContain('CRM Manager');
+    expect(matrix.querySelectorAll('.permission-status').length).toBe(7 * 3);
+    expect(matrix.querySelector('.permission-status--pending')).not.toBeNull();
+    expect(matrix.querySelector('.permission-status--pending').getAttribute('aria-label')).toContain('pending enable by default');
+  });
+
+  it('uses one accessible row action and omits it for ineligible staff', () => {
+    http.expectOne(`${apiBaseUrl}/staff/governance/targets/`).flush({ count: 2, page: 1, page_size: 25, results: [
+      { user_id: 5, display_name: 'Synthetic Manager', record_type: 'STAFF', is_active: true, role_codes: ['CRM_MANAGER'], eligible: true, can_manage_privacy_permissions: true },
+      { user_id: 6, display_name: 'Synthetic Unauthorized', record_type: 'STAFF', is_active: true, role_codes: [], eligible: false, can_manage_privacy_permissions: false },
+    ] });
+    flushOverviewRequests();
+    fixture.detectChanges();
+
+    const rows = fixture.nativeElement.querySelectorAll('.staff-table tbody tr');
+    expect(rows[0].getAttribute('tabindex')).toBe('0');
+    expect(rows[0].getAttribute('aria-label')).toBe('View permissions for Synthetic Manager');
+    expect(rows[0].querySelector('.row-chevron')).not.toBeNull();
+    expect(rows[1].getAttribute('tabindex')).toBeNull();
+    expect(rows[1].querySelector('.row-chevron')).toBeNull();
   });
 });

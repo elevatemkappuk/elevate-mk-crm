@@ -10,6 +10,8 @@ import { PrivacyAdministrationService } from './privacy-administration.service';
 import { GovernanceProposal, GovernanceRoleDefaults, GovernanceStaffSummary, GovernanceTargetDetail } from './privacy-administration.types';
 import { ConfirmationDialogComponent } from '../../shared/ui/confirmation-dialog.component';
 
+type PrivacyAdministrationTab = 'staff-permissions' | 'role-defaults' | 'approval-requests' | 'governance-history';
+
 @Component({
   selector: 'app-privacy-administration-page',
   imports: [CommonModule, FormsModule, ConfirmationDialogComponent],
@@ -30,12 +32,14 @@ export class PrivacyAdministrationPageComponent {
   readonly saving = signal(false);
   readonly pendingAction = signal<{ capability: string; operation: string; targetUserId: number; executionMode: 'DIRECT' | 'PROPOSAL' | 'DIRECT_SUPERUSER' } | null>(null);
   readonly pendingProposalAction = signal<{ proposal: GovernanceProposal; action: 'approve' | 'reject' | 'cancel' } | null>(null);
-  readonly pendingRoleAction = signal<{ roleId: number; roleCode: string; capability: string; operation: string; executionMode: 'PROPOSAL' | 'DIRECT_SUPERUSER' } | null>(null);
+  readonly pendingRoleAction = signal<{ roleId: number; roleCode: string; capability: string; operation: string; executionMode: 'PROPOSAL' | 'DIRECT_SUPERUSER'; currentEnabled: boolean } | null>(null);
   readonly staffDirectory = signal<readonly GovernanceStaffSummary[]>([]);
   readonly roleDefaults = signal<GovernanceRoleDefaults | null>(null);
   readonly individualHistory = signal<readonly GovernanceProposal[]>([]);
   readonly roleDefaultHistory = signal<readonly GovernanceProposal[]>([]);
   readonly decisionHistory = signal<readonly GovernanceProposal[]>([]);
+  readonly activeTab = signal<PrivacyAdministrationTab>('staff-permissions');
+  readonly openCapabilityMenu = signal<string | null>(null);
   readonly loadingDirectory = signal(false);
   readonly directoryStatus = signal<'idle' | 'loading' | 'success' | 'empty' | 'error'>('idle');
   readonly directoryError = signal('The staff directory could not be loaded.');
@@ -43,6 +47,24 @@ export class PrivacyAdministrationPageComponent {
   proposalReason = '';
   staffSearch = '';
   targetUserId: number | null = null;
+
+  selectTab(tab: PrivacyAdministrationTab): void {
+    this.activeTab.set(tab);
+  }
+
+  backToStaffDirectory(): void {
+    this.target.set(null);
+    this.openCapabilityMenu.set(null);
+    this.error.set(null);
+  }
+
+  toggleCapabilityMenu(capability: string): void {
+    this.openCapabilityMenu.update(current => current === capability ? null : capability);
+  }
+
+  closeCapabilityMenu(): void {
+    this.openCapabilityMenu.set(null);
+  }
 
   constructor() {
     this.searchStaff();
@@ -72,6 +94,17 @@ export class PrivacyAdministrationPageComponent {
     return entry.is_enabled ? 'Current default' : 'Disabled default';
   }
 
+  readonly roleDefaultRoles = ['CRM_ADMIN', 'CRM_MANAGER', 'CRM_VIEWER'] as const;
+  readonly roleDefaultPermissionOrder = [
+    'PERSON_CONTACT_READ',
+    'PERSON_DEMOGRAPHIC_READ',
+    'PERSON_EXPORT',
+    'PERSON_RESTRICTED_ACCESS',
+    'PRIVACY_AUDIT_READ',
+    'STAFF_CAPABILITY_ADMIN',
+    'LEGAL_HOLD_ADMIN',
+  ] as const;
+
   searchStaff(): void {
     const requestEpoch = this.authorizationEpoch;
     this.directoryStatus.set('loading');
@@ -98,6 +131,13 @@ export class PrivacyAdministrationPageComponent {
     this.loadTarget();
   }
 
+  activateStaffRow(event: KeyboardEvent, staff: GovernanceStaffSummary): void {
+    if (!staff.can_manage_privacy_permissions) return;
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    this.selectStaff(staff.user_id);
+  }
+
   loadTarget(): void {
     if (!this.targetUserId || this.targetUserId < 1) return;
     const requestedTargetId = this.targetUserId;
@@ -120,8 +160,148 @@ export class PrivacyAdministrationPageComponent {
     return Object.entries(detail.capabilities).map(([code, state]) => ({ code, state }));
   }
 
+  orderedCapabilityEntries(detail: GovernanceTargetDetail): { code: string; state: GovernanceTargetDetail['capabilities'][string] }[] {
+    const order = [
+      'PERSON_CONTACT_READ',
+      'PERSON_DEMOGRAPHIC_READ',
+      'PERSON_EXPORT',
+      'PERSON_RESTRICTED_ACCESS',
+      'PRIVACY_AUDIT_READ',
+      'STAFF_CAPABILITY_ADMIN',
+      'LEGAL_HOLD_ADMIN',
+    ];
+    const rank = new Map(order.map((code, index) => [code, index]));
+    return this.capabilityEntries(detail).sort((left, right) => (rank.get(left.code) ?? order.length) - (rank.get(right.code) ?? order.length));
+  }
+
+  orderedRoleDefaults(defaults: GovernanceRoleDefaults['role_defaults']): GovernanceRoleDefaults['role_defaults'] {
+    const rank = new Map<string, number>(this.roleDefaultPermissionOrder.map((code, index) => [code, index]));
+    return [...defaults].sort((left, right) => (rank.get(left.capability) ?? this.roleDefaultPermissionOrder.length) - (rank.get(right.capability) ?? this.roleDefaultPermissionOrder.length));
+  }
+
+  roleDefaultEntry(defaults: GovernanceRoleDefaults, roleCode: string, capability: string): GovernanceRoleDefaults['role_defaults'][number] | null {
+    return defaults.role_defaults.find(entry => entry.role_code === roleCode && entry.capability === capability) ?? null;
+  }
+
+  roleDefaultPending(roleCode: string, capability: string): GovernanceProposal | null {
+    return this.roleDefaultHistory().find(proposal => proposal.status === 'PENDING' && proposal.role_code === roleCode && proposal.capability === capability) ?? null;
+  }
+
+  roleDefaultAction(entry: GovernanceRoleDefaults['role_defaults'][number] | null): string | null {
+    return entry?.permitted_actions[0] ?? null;
+  }
+
+  roleDefaultIconPath(entry: GovernanceRoleDefaults['role_defaults'][number]): string {
+    return entry.is_enabled ? 'M5 12.5 9.5 17 19 7.5' : 'M6 12h12';
+  }
+
+  roleDefaultCellLabel(roleCode: string, capability: string, entry: GovernanceRoleDefaults['role_defaults'][number] | null, pending: GovernanceProposal | null): string {
+    const role = this.roleName(roleCode);
+    const permission = this.capabilityName(capability);
+    if (!entry) return `${role}, ${permission}: unavailable in the current role-default response`;
+    const current = entry.is_enabled ? 'enabled by default' : 'disabled by default';
+    if (pending) return `${role}, ${permission}: ${current}; pending ${this.actionLabel(pending.operation).toLowerCase()}`;
+    const action = this.roleDefaultAction(entry);
+    return `${role}, ${permission}: ${current}${action ? `; ${this.actionLabel(action)}` : '; read only'}`;
+  }
+
+  roleDefaultActionTitle(operation: string): string {
+    return operation === 'ROLE_DEFAULT_ENABLE' ? 'Enable permission by default.' : 'Disable permission by default.';
+  }
+
+  roleDefaultActionMessage(action: { roleCode: string; capability: string; currentEnabled: boolean; operation: string; executionMode: 'PROPOSAL' | 'DIRECT_SUPERUSER' }): string {
+    const current = action.currentEnabled ? 'enabled by default' : 'disabled by default';
+    const proposed = action.operation === 'ROLE_DEFAULT_ENABLE' ? 'enabled by default' : 'disabled by default';
+    const approval = action.executionMode === 'DIRECT_SUPERUSER'
+      ? 'This change is applied immediately through the audited superuser path.'
+      : 'This change requires independent approval and is recorded in governance history.';
+    return `${this.roleName(action.roleCode)} / ${this.capabilityName(action.capability)} is currently ${current} and will be ${proposed}. Role defaults affect inherited permissions; individual grants and restrictions remain separate. ${approval}`;
+  }
+
   actionLabel(action: string): string {
-    return action.replaceAll('_', ' ').toLowerCase().replace(/^./, value => value.toUpperCase());
+    const labels: Record<string, string> = {
+      INDIVIDUAL_GRANT: 'Grant access',
+      INDIVIDUAL_RESTRICT: 'Restrict access',
+      INDIVIDUAL_REVOKE: 'Revoke access',
+      INDIVIDUAL_UNRESTRICT: 'Remove restriction',
+      INDIVIDUAL_SUSPEND: 'Suspend access',
+      INDIVIDUAL_RESTORE: 'Restore access',
+      ROLE_DEFAULT_ENABLE: 'Enable by default',
+      ROLE_DEFAULT_DISABLE: 'Disable by default',
+      approve: 'Approve',
+      reject: 'Reject',
+      cancel: 'Cancel',
+    };
+    return labels[action] ?? action.replaceAll('_', ' ').toLowerCase().replace(/^./, value => value.toUpperCase());
+  }
+
+  actionIconPath(action: string): string {
+    if (action.includes('REVOKE') || action.includes('RESTRICT') || action === 'reject') return 'M6 6l12 12M18 6 6 18';
+    if (action.includes('SUSPEND')) return 'M8 5v14M16 5v14';
+    if (action.includes('RESTORE') || action.includes('UNRESTRICT') || action.includes('GRANT') || action.includes('ENABLE') || action === 'approve') return 'M5 12h14m-6-6 6 6-6 6';
+    return 'M5 12h14';
+  }
+
+  capabilityName(capability: string): string {
+    const names: Record<string, string> = {
+      PERSON_CONTACT_READ: 'View contact information',
+      PERSON_DEMOGRAPHIC_READ: 'View demographic information',
+      PERSON_EXPORT: 'Export People information',
+      PERSON_RESTRICTED_ACCESS: 'Exceptional restricted access',
+      PRIVACY_AUDIT_READ: 'View privacy audit history',
+      STAFF_CAPABILITY_ADMIN: 'Manage staff permissions',
+      LEGAL_HOLD_ADMIN: 'Manage legal holds',
+    };
+    return names[capability] ?? capability.replaceAll('_', ' ').toLowerCase().replace(/^./, value => value.toUpperCase());
+  }
+
+  roleName(roleCode: string): string {
+    const names: Record<string, string> = {
+      CRM_ADMIN: 'CRM Administrator',
+      CRM_MANAGER: 'CRM Manager',
+      CRM_VIEWER: 'CRM Viewer',
+    };
+    return names[roleCode] ?? roleCode.replaceAll('_', ' ');
+  }
+
+  roleNames(roleCodes: readonly string[]): string {
+    return roleCodes.length ? roleCodes.map(role => this.roleName(role)).join(', ') : 'No active CRM role';
+  }
+
+  initials(displayName: string): string {
+    const parts = displayName.trim().split(/\s+/).filter(Boolean);
+    return (parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : parts[0]?.slice(0, 2) ?? '?').toUpperCase();
+  }
+
+  staffDisplayName(userId: number): string {
+    return this.staffDirectory().find(staff => staff.user_id === userId)?.display_name ?? `Staff user ${userId}`;
+  }
+
+  accessLabel(state: GovernanceTargetDetail['capabilities'][string]): string {
+    if (state.restriction_active) return 'Restricted';
+    if (state.effective) return 'Allowed';
+    if (state.assignment_state === 'SUSPENDED') return 'Suspended';
+    if (state.assignment_state === 'REVOKED') return 'Revoked';
+    return 'Not granted';
+  }
+
+  sourceLabel(source: string): string {
+    const labels: Record<string, string> = {
+      ROLE_DEFAULT: 'Inherited from role',
+      INDIVIDUAL_GRANT: 'Individually granted',
+      SUPERUSER: 'Django superuser authority',
+    };
+    return labels[source] ?? this.actionLabel(source);
+  }
+
+  permissionExplanation(state: GovernanceTargetDetail['capabilities'][string]): string | null {
+    if (state.effective_explanation.pending_change) {
+      return `Pending ${this.actionLabel(state.effective_explanation.pending_change.operation).toLowerCase()}; current access is unchanged.`;
+    }
+    if (state.restriction_active || state.assignment_state === 'SUSPENDED' || state.assignment_state === 'REVOKED') {
+      return state.effective_explanation.reason;
+    }
+    return null;
   }
 
   beginApply(capability: string, operation: string): void {
@@ -167,7 +347,7 @@ export class PrivacyAdministrationPageComponent {
   beginRoleDefaultAction(entry: GovernanceRoleDefaults['role_defaults'][number], operation: string): void {
     if (!entry.execution_mode || !entry.permitted_actions.includes(operation) || this.saving()) return;
     this.reason = '';
-    this.pendingRoleAction.set({ roleId: entry.role_id, roleCode: entry.role_code, capability: entry.capability, operation, executionMode: entry.execution_mode });
+    this.pendingRoleAction.set({ roleId: entry.role_id, roleCode: entry.role_code, capability: entry.capability, operation, executionMode: entry.execution_mode, currentEnabled: entry.is_enabled });
   }
 
   cancelProposalAction(): void {
@@ -209,10 +389,6 @@ export class PrivacyAdministrationPageComponent {
     });
   }
 
-  capabilityName(capability: string): string {
-    return capability.replaceAll('_', ' ').toLowerCase().replace(/^./, value => value.toUpperCase());
-  }
-
   capabilityDescription(capability: string): string {
     const descriptions: Record<string, string> = {
       PERSON_CONTACT_READ: 'View approved contact details.',
@@ -228,8 +404,8 @@ export class PrivacyAdministrationPageComponent {
 
   effectiveSources(state: GovernanceTargetDetail['capabilities'][string]): string {
     return state.effective_explanation.sources.length
-      ? state.effective_explanation.sources.map(source => this.actionLabel(source)).join(', ')
-      : 'None';
+      ? state.effective_explanation.sources.map(source => this.sourceLabel(source)).join(', ')
+      : '—';
   }
 
   historyItems(): GovernanceProposal[] {
@@ -251,17 +427,17 @@ export class PrivacyAdministrationPageComponent {
   stateSummary(state: Record<string, unknown>): string {
     return Object.entries(state)
       .map(([key, value]) => `${key.replaceAll('_', ' ')}: ${Array.isArray(value) ? value.join(', ') : String(value)}`)
-      .join(' Ã‚Â· ');
+      .join(' / ');
   }
 
   actionDescription(operation: string): string {
     const descriptions: Record<string, string> = {
-      INDIVIDUAL_GRANT: 'Grant the capability to this staff member.',
-      INDIVIDUAL_RESTORE: 'Restore a suspended individual capability.',
-      INDIVIDUAL_SUSPEND: 'Suspend the current individual capability assignment.',
-      INDIVIDUAL_REVOKE: 'Revoke the current individual capability assignment.',
-      INDIVIDUAL_RESTRICT: 'Add an explicit restriction that overrides grants and role defaults.',
-      INDIVIDUAL_UNRESTRICT: 'Remove the explicit restriction; suspended or revoked grants remain inactive.',
+      INDIVIDUAL_GRANT: 'Grant this permission to the staff member.',
+      INDIVIDUAL_RESTORE: 'Restore a suspended permission.',
+      INDIVIDUAL_SUSPEND: 'Suspend this permission.',
+      INDIVIDUAL_REVOKE: 'Revoke this permission.',
+      INDIVIDUAL_RESTRICT: 'Add a restriction that overrides grants and role defaults.',
+      INDIVIDUAL_UNRESTRICT: 'Remove the restriction; suspended or revoked grants remain inactive.',
     };
     return descriptions[operation] ?? 'Change governed capability state.';
   }
