@@ -258,4 +258,20 @@ describe('PrivacyAdministrationPageComponent', () => {
     expect(rows[1].getAttribute('tabindex')).toBeNull();
     expect(rows[1].querySelector('.row-chevron')).toBeNull();
   });
+
+  it('derives approval request current state from the target snapshot and requested operation', () => {
+    const removal = {
+      operation: 'INDIVIDUAL_UNRESTRICT',
+      proposed_state: { target_kind: 'individual', restriction_active: true, assignment_state: 'ACTIVE' },
+    } as any;
+    const roleDefault = {
+      operation: 'ROLE_DEFAULT_ENABLE',
+      proposed_state: { target_kind: 'role_default', enabled: false },
+    } as any;
+
+    expect(component.proposalCurrentState(removal)).toBe('Restriction active');
+    expect(component.proposalProposedChange(removal)).toBe('Remove restriction');
+    expect(component.proposalCurrentState(roleDefault)).toBe('Disabled by default');
+    expect(component.proposalProposedChange(roleDefault)).toBe('Enable by default');
+  });
 });

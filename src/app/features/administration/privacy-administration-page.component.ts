@@ -129,7 +129,22 @@ export class PrivacyAdministrationPageComponent {
   }
 
   proposalCurrentState(proposal: GovernanceProposal): string {
-    return proposal.status === 'PENDING' ? 'Current permission remains unchanged until approval.' : this.proposalStateLabel(proposal.resulting_state);
+    const state = proposal.proposed_state;
+    if (!state) return 'Current state unavailable';
+    if (state['target_kind'] === 'role_default' && typeof state['enabled'] === 'boolean') {
+      return state['enabled'] ? 'Enabled by default' : 'Disabled by default';
+    }
+    if (state['restriction_active'] === true) return 'Restriction active';
+    switch (state['assignment_state']) {
+      case 'ACTIVE': return 'Access granted';
+      case 'SUSPENDED': return 'Access suspended';
+      case 'REVOKED': return 'Access revoked';
+      default: return 'No individual access grant';
+    }
+  }
+
+  proposalProposedChange(proposal: GovernanceProposal): string {
+    return this.actionLabel(proposal.operation);
   }
 
   roleDefaultStatus(entry: GovernanceRoleDefaults['role_defaults'][number]): string {
