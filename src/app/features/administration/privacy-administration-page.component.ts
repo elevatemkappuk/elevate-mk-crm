@@ -38,6 +38,7 @@ export class PrivacyAdministrationPageComponent {
   readonly individualHistory = signal<readonly GovernanceProposal[]>([]);
   readonly roleDefaultHistory = signal<readonly GovernanceProposal[]>([]);
   readonly decisionHistory = signal<readonly GovernanceProposal[]>([]);
+  readonly selectedProposal = signal<GovernanceProposal | null>(null);
   readonly activeTab = signal<PrivacyAdministrationTab>('staff-permissions');
   readonly openCapabilityMenu = signal<string | null>(null);
   readonly loadingDirectory = signal(false);
@@ -93,6 +94,42 @@ export class PrivacyAdministrationPageComponent {
   pendingProposals(): GovernanceProposal[] {
     const proposals = [...this.individualHistory(), ...this.roleDefaultHistory()];
     return proposals.filter((proposal, index, all) => proposal.status === 'PENDING' && all.findIndex(item => item.public_id === proposal.public_id) === index);
+  }
+
+  selectProposal(proposal: GovernanceProposal): void {
+    this.selectedProposal.set(proposal);
+  }
+
+  backToApprovalRequests(): void {
+    this.selectedProposal.set(null);
+  }
+
+  activateProposalRow(event: KeyboardEvent, proposal: GovernanceProposal): void {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    this.selectProposal(proposal);
+  }
+
+  proposalTargetLabel(proposal: GovernanceProposal): string {
+    return proposal.target_user_id ? this.staffDisplayName(proposal.target_user_id) : this.roleName(proposal.role_code || '');
+  }
+
+  proposalTargetType(proposal: GovernanceProposal): string {
+    return proposal.target_user_id ? 'Individual permission' : 'Role default';
+  }
+
+  proposalStateLabel(state: Record<string, unknown> | null | undefined): string {
+    if (!state) return 'Not provided';
+    const values: string[] = [];
+    if (typeof state['enabled'] === 'boolean') values.push(state['enabled'] ? 'Enabled' : 'Disabled');
+    if (typeof state['effective'] === 'boolean') values.push(state['effective'] ? 'Allowed' : 'Not granted');
+    if (typeof state['restriction_active'] === 'boolean' && state['restriction_active']) values.push('Restricted');
+    if (typeof state['assignment_state'] === 'string') values.push(this.actionLabel(state['assignment_state']));
+    return values.length ? values.join(' · ') : 'Recorded state';
+  }
+
+  proposalCurrentState(proposal: GovernanceProposal): string {
+    return proposal.status === 'PENDING' ? 'Current permission remains unchanged until approval.' : this.proposalStateLabel(proposal.resulting_state);
   }
 
   roleDefaultStatus(entry: GovernanceRoleDefaults['role_defaults'][number]): string {
@@ -537,6 +574,7 @@ export class PrivacyAdministrationPageComponent {
     this.pendingAction.set(null);
     this.pendingProposalAction.set(null);
     this.pendingRoleAction.set(null);
+    this.selectedProposal.set(null);
     this.saving.set(false);
     this.feedback.set(null);
   }
