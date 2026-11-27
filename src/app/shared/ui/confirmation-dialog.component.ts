@@ -29,7 +29,7 @@ let nextDialogId = 0;
           }
           <div class="crm-actions crm-actions--end">
             <button type="button" class="button-secondary crm-button crm-button--secondary" [disabled]="busy()" (click)="cancel()">{{ cancelLabel() }}</button>
-            <button type="button" class="button-primary crm-button" [class.crm-button--primary]="actionVariant() === 'primary'" [class.crm-button--positive]="actionVariant() === 'positive'" [class.crm-button--destructive]="actionVariant() === 'destructive'" [class.crm-button--destructive-outline]="actionVariant() === 'destructive-outline'" [class.confirm-button--destructive]="actionVariant() === 'destructive'" [class.confirm-button--caution]="actionVariant() === 'caution'" [class.confirm-button--neutral]="actionVariant() === 'neutral'" [attr.aria-busy]="busy()" [disabled]="busy() || (requireReason() && !reason().trim())" (click)="confirmed.emit()">
+            <button type="button" class="button-primary crm-button" [class.crm-button--primary]="actionVariant() === 'primary'" [class.crm-button--destructive]="actionVariant() === 'destructive'" [class.crm-button--destructive-outline]="actionVariant() === 'destructive-outline'" [class.confirm-button--destructive]="actionVariant() === 'destructive'" [class.confirm-button--caution]="actionVariant() === 'caution'" [class.confirm-button--neutral]="actionVariant() === 'neutral'" [attr.aria-busy]="busy()" [disabled]="busy() || (requireReason() && !reason().trim())" (click)="confirmed.emit()">
               @if (actionVariant() !== 'neutral') { <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path [attr.d]="confirmIconPath()" /></svg> }<span>{{ confirmLabel() }}</span>
             </button>
           </div>
@@ -71,7 +71,7 @@ export class ConfirmationDialogComponent implements OnDestroy {
   readonly cancelLabel = input('Cancel');
   readonly reasonLabel = input('Reason');
   readonly reasonPlaceholder = input('Enter a reason');
-  readonly actionVariant = input<'primary' | 'positive' | 'destructive' | 'destructive-outline' | 'caution' | 'neutral'>('primary');
+  readonly actionVariant = input<'primary' | 'destructive' | 'destructive-outline' | 'caution' | 'neutral'>('primary');
   readonly busy = input(false);
   readonly requireReason = input(false);
   readonly reason = input('');

@@ -14,7 +14,7 @@
 .action-menu__items { position: absolute; z-index: 2; right: 0; bottom: calc(100% + var(--crm-space-2)); display: grid; max-height: min(18rem, calc(100vh - 2rem)); min-width: 14rem; overflow: auto; border: 1px solid var(--crm-border); background: var(--crm-surface); }
 .action-menu__items button { display: flex; align-items: center; gap: var(--crm-space-2); border: 0; background: transparent; color: var(--crm-text-strong); white-space: nowrap; }
 .action-menu__items button svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; }
-.action-menu__items .action-menu__item--positive { color: var(--crm-success); }
+.action-menu__items .action-menu__item--primary { color: var(--crm-action); }
 .action-menu__items .action-menu__item--destructive { color: var(--crm-error); }
 .advanced-lookup { border-top: 1px solid var(--crm-border); padding-top: var(--crm-space-3); }
 .advanced-lookup summary { color: var(--crm-action); cursor: pointer; font-weight: var(--crm-weight-medium); }

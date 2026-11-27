@@ -6,6 +6,8 @@
 .hold-tabs button { min-height: var(--crm-control-height); padding: var(--crm-space-2) var(--crm-space-3); border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--crm-text-secondary); font: inherit; font-weight: var(--crm-weight-medium); cursor: pointer; }
 .hold-tabs button.active, .hold-tabs button:hover { border-bottom-color: var(--crm-shell-accent); color: var(--crm-text-strong); }
 .crm-button svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.person-icon { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; flex: 0 0 2rem; border-radius: 50%; background: var(--crm-info-surface); color: var(--crm-action); }
+.person-icon svg { width: 1.1rem; height: 1.1rem; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
 .hold-tabs button:focus-visible, .selectable-row:focus-visible { outline: 2px solid var(--crm-focus-ring); outline-offset: -2px; }
 .holds-table { min-width: 48rem; }
 .holds-table :is(th, td) { vertical-align: middle; }
@@ -47,7 +49,11 @@
 .create-dialog form, .person-picker, .form-grid { display: grid; gap: var(--crm-space-2); }
 .picker-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--crm-space-2); }
 .person-options { display: grid; gap: var(--crm-space-1); max-height: 14rem; overflow: auto; }
-.person-option { display: flex; justify-content: space-between; align-items: center; gap: var(--crm-space-3); padding: var(--crm-space-2) var(--crm-space-3); border: 1px solid var(--crm-border); border-radius: var(--crm-radius-md); background: var(--crm-surface); color: var(--crm-text-strong); text-align: left; }
+.person-option { display: flex; align-items: center; gap: var(--crm-space-3); width: 100%; padding: var(--crm-space-2) var(--crm-space-3); border: 1px solid var(--crm-border); border-radius: var(--crm-radius-md); background: var(--crm-surface); color: var(--crm-text-strong); text-align: left; }
+.person-option > span:last-child { display: grid; gap: .2rem; }
+.selected-person { display: flex; align-items: center; gap: var(--crm-space-3); padding: var(--crm-space-3); border: 1px solid var(--crm-border); border-radius: var(--crm-radius-md); background: var(--crm-surface-subtle); }
+.selected-person > div { display: grid; gap: .2rem; flex: 1; min-width: 0; }
+.selected-person > div span, .person-option small { color: var(--crm-text-muted); font-size: var(--crm-font-sm); }
 .person-option span, .selected-target { color: var(--crm-text-secondary); font-size: var(--crm-font-sm); }
 .person-option:focus-visible, .person-option:hover { outline: 2px solid var(--crm-focus-ring); }
 .form-grid { grid-template-columns: minmax(8rem, 12rem) minmax(10rem, 1fr); align-items: center; }

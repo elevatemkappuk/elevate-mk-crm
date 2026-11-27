@@ -13,6 +13,8 @@ import { LegalHoldsService } from '../../core/privacy/legal-holds.service';
 import { LegalHold, LegalHoldActor, LegalHoldReleaseRequest, LegalHoldReleaseRequestResult } from '../../core/privacy/legal-hold.types';
 import { PeopleService } from '../../core/people/people.service';
 import { PersonDirectoryItem } from '../../core/people/people.types';
+import { PersonListItem } from '../../core/people/people.types';
+import { recordTypeLabel } from '../../core/people/record-type-label';
 import { ConfirmationDialogComponent } from '../../shared/ui/confirmation-dialog.component';
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
 import { ToastService } from '../../shared/ui/toast.service';
@@ -59,10 +61,12 @@ export class LegalHoldsPageComponent {
   readonly feedback = signal<string | null>(null);
   readonly createValidationMessage = signal<string | null>(null);
   readonly personOptions = signal<readonly PersonDirectoryItem[]>([]);
+  readonly selectedPerson = signal<PersonListItem | null>(null);
   readonly personSearchLoading = signal(false);
   readonly personSearchError = signal<string | null>(null);
   readonly releaseHoldId = signal<string | null>(null);
   personId: number | null = null;
+  private listPersonId: number | null = null;
   personSearch = '';
   private selectedPersonName = '';
   auditEventReference = '';
@@ -79,6 +83,7 @@ export class LegalHoldsPageComponent {
   readonly pendingConfirmation = signal<LegalHoldConfirmation | null>(null);
   confirmationReason = '';
   private authorizationEpoch = 0;
+  private holdsRequestSequence = 0;
   private revalidatingAuthorization = false;
 
   constructor() {
@@ -93,6 +98,7 @@ export class LegalHoldsPageComponent {
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
       const value = Number(params.get('personId'));
       this.personId = Number.isSafeInteger(value) && value > 0 ? value : null;
+      this.listPersonId = this.personId;
       this.auditEventReference = params.get('eventReference') ?? '';
       if (this.personId !== null) this.loadSelectedPerson(this.personId);
       this.loadHolds();
@@ -123,7 +129,10 @@ export class LegalHoldsPageComponent {
   }
 
   activeHolds(): readonly LegalHold[] {
-    return this.holds().filter(hold => hold.status === 'ACTIVE');
+    return this.holds()
+      .filter(hold => hold.status === 'ACTIVE')
+      .slice()
+      .sort((left, right) => Date.parse(right.placed_at) - Date.parse(left.placed_at));
   }
 
   pendingReleaseRequests(): readonly ReleaseRequestRow[] {
@@ -204,7 +213,7 @@ export class LegalHoldsPageComponent {
 
   confirmationMessage(action: LegalHoldConfirmation): string {
     if (action.kind === 'release') return action.hold.execution_mode === 'DIRECT_SUPERUSER'
-      ? 'This will end retention protection immediately. The audited release will be recorded in legal-hold history.'
+      ? 'You are releasing this legal hold directly as a superuser without independent approval. Protection provided by this hold will end immediately. Other active legal holds will remain unaffected. This action will be recorded in legal-hold history.'
       : 'Submitting a release request does not end retention protection. It remains active until an authorized administrator approves the request.';
     return action.kind === 'approve'
       ? 'Approval will release the legal hold and end retention protection. This decision will be recorded in legal-hold history.'
@@ -213,8 +222,8 @@ export class LegalHoldsPageComponent {
       : 'Cancelling this request will stop the release approval process. The legal hold will remain active and continue protecting the covered records from scheduled disposal. The cancellation will be recorded in legal hold history.';
   }
 
-  confirmationVariant(action: LegalHoldConfirmation): 'positive' | 'destructive' | 'destructive-outline' | 'caution' {
-    return action.kind === 'reject' || action.kind === 'cancel' ? 'destructive-outline' : action.kind === 'approve' ? 'positive' : 'caution';
+  confirmationVariant(action: LegalHoldConfirmation): 'primary' | 'destructive' | 'destructive-outline' | 'caution' {
+    return action.kind === 'reject' || action.kind === 'cancel' ? 'destructive-outline' : action.kind === 'approve' ? 'primary' : 'caution';
   }
 
   confirmationLabel(action: LegalHoldConfirmation): string {
@@ -319,6 +328,7 @@ export class LegalHoldsPageComponent {
     this.personId = person.id;
     this.auditEventReference = '';
     this.personOptions.set([]);
+    this.selectedPerson.set(person);
     this.personSearch = `${person.first_name} ${person.last_name}`;
     this.selectedPersonName = this.personSearch;
   }
@@ -327,12 +337,31 @@ export class LegalHoldsPageComponent {
     this.personSearch = value;
     if (this.personId !== null && value.trim() !== this.selectedPersonName) {
       this.personId = null;
+      this.selectedPerson.set(null);
       this.selectedPersonName = '';
     }
   }
 
   selectedPersonLabel(): string {
-    return this.personId === null ? '' : this.personSearch.trim();
+    const person = this.selectedPerson();
+    return person ? `${person.first_name} ${person.last_name}` : '';
+  }
+
+  selectedPersonTypeLabel(): string {
+    return recordTypeLabel(this.selectedPerson()?.record_type);
+  }
+
+  personTypeLabel(value: string | undefined): string {
+    return recordTypeLabel(value);
+  }
+
+  clearSelectedPerson(): void {
+    this.personId = null;
+    this.selectedPerson.set(null);
+    this.personOptions.set([]);
+    this.personSearch = '';
+    this.selectedPersonName = '';
+    this.personSearchError.set(null);
   }
 
   actorLabel(actor: { display_name: string; contact_restricted: boolean }): string {
@@ -342,10 +371,12 @@ export class LegalHoldsPageComponent {
   private loadSelectedPerson(personId: number): void {
     this.peopleService.getPerson(personId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: person => {
+        this.selectedPerson.set(person);
         this.personSearch = `${person.first_name} ${person.last_name}`;
         this.selectedPersonName = this.personSearch;
       },
       error: () => {
+        this.selectedPerson.set(null);
         this.personSearch = '';
         this.selectedPersonName = '';
         this.personId = null;
@@ -355,18 +386,23 @@ export class LegalHoldsPageComponent {
 
   loadHolds(): void {
     const requestEpoch = this.authorizationEpoch;
+    const requestSequence = ++this.holdsRequestSequence;
     this.loading.set(true);
     this.errorMessage.set(null);
-    this.service.list(this.personId ?? undefined).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.service.list(this.listPersonId ?? undefined).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: response => {
-        if (requestEpoch === this.authorizationEpoch && this.staffAccess.hasCapability('LEGAL_HOLD_ADMIN')) {
+        if (requestSequence === this.holdsRequestSequence && requestEpoch === this.authorizationEpoch && this.staffAccess.hasCapability('LEGAL_HOLD_ADMIN')) {
           this.holds.set(response.results);
         }
       },
-      error: (error: HttpErrorResponse) => error.status === 403
-        ? this.handleProtectedReadDenied()
-        : this.showError(error, 'Legal holds could not be loaded.'),
-      complete: () => this.loading.set(false),
+      error: (error: HttpErrorResponse) => {
+        if (requestSequence !== this.holdsRequestSequence) return;
+        if (error.status === 403) this.handleProtectedReadDenied();
+        else this.showError(error, 'Legal holds could not be loaded.');
+      },
+      complete: () => {
+        if (requestSequence === this.holdsRequestSequence) this.loading.set(false);
+      },
     });
   }
 
@@ -374,7 +410,7 @@ export class LegalHoldsPageComponent {
     const hasPerson = this.personId !== null;
     const hasEvent = this.auditEventReference.trim().length > 0;
     if (hasPerson === hasEvent || !this.createReason.trim()) {
-      this.createValidationMessage.set('Provide exactly one target and a justification.');
+      this.createValidationMessage.set('Select a person and provide a reason for placing a legal hold.');
       return;
     }
     this.saving.set(true);

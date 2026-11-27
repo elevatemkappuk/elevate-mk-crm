@@ -48,7 +48,7 @@ exception. These exceptions must not be copied into ordinary feature screens.
 
 ## Opt-in patterns
 
-- Buttons: `crm-button` plus `crm-button--brand`, `--primary`, `--positive`,
+- Buttons: `crm-button` plus `crm-button--brand`, `--primary`,
   `--secondary`, `--quiet`, or `--destructive`. Use actual buttons for actions
   and links for navigation.
 - Fields: `crm-field`, `crm-label`, `crm-control` on native input/select/textarea,
@@ -78,7 +78,7 @@ action. Do not add feature-local colours or duplicate button rules.
 | Create a new record or protection | Yellow `crm-button--brand` | Add person, Place legal hold |
 | Continue an existing-record workflow or save/update | Teal `crm-button--primary` | Search, Request release, Save changes |
 | Secondary, search, filter, close or dialog cancellation | Neutral `crm-button--secondary` or `crm-button--quiet` | Retry, Cancel, Back |
-| Positive governance decision | Green `crm-button--positive` | Approve, Grant access, Restore access |
+| Existing-record workflow or positive governance decision | Teal `crm-button--primary` | Approve, Grant access, Restore access, Remove restriction |
 | Sensitive action requiring caution | Amber `crm-button` with the caution confirmation variant | Direct superuser release, Suspend, Restrict |
 | Negative, restrictive or destructive operation | Red `crm-button--destructive` or destructive confirmation variant | Reject, Revoke, Cancel an existing request |
 | Navigation | Text link or chevron | Back navigation, selectable table rows |

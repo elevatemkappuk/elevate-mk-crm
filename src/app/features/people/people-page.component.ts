@@ -6,6 +6,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, distinctUntilChanged, map, of, switchMap, tap } from 'rxjs';
 
 import { PeopleService } from '../../core/people/people.service';
+import { recordTypeLabel } from '../../core/people/record-type-label';
 import { canManagePeople } from '../../core/auth/auth-access';
 import { AuthService } from '../../core/auth/auth.service';
 import { StaffAccessService } from '../../core/auth/staff-access.service';
@@ -87,7 +88,7 @@ export class PeoplePageComponent {
   readonly exportFormat = signal<'csv' | 'xlsx'>('csv');
   readonly exporting = signal(false);
   readonly exportError = signal<string | null>(null);
-  recordTypeLabel(value: string | undefined): string { return value === 'STAFF' ? 'Staff' : value === 'TECHNICAL' ? 'Technical' : value === 'COMMUNITY' ? 'Community' : 'Unknown'; }
+  recordTypeLabel(value: string | undefined): string { return recordTypeLabel(value); }
 
   readonly currentPage = computed(() => this.queryState().page);
   readonly totalPages = computed(() => {

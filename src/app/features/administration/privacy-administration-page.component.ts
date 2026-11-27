@@ -326,15 +326,15 @@ export class PrivacyAdministrationPageComponent {
     return 'M5 12h14';
   }
 
-  actionTone(action: string): 'positive' | 'warning' | 'destructive' | 'neutral' {
-    if (action.includes('GRANT') || action.includes('RESTORE') || action.includes('UNRESTRICT') || action.includes('ENABLE') || action === 'approve') return 'positive';
+  actionTone(action: string): 'primary' | 'warning' | 'destructive' | 'neutral' {
+    if (action.includes('GRANT') || action.includes('RESTORE') || action.includes('UNRESTRICT') || action.includes('ENABLE') || action === 'approve') return 'primary';
     if (action.includes('SUSPEND')) return 'warning';
     if (action.includes('RESTRICT') || action.includes('REVOKE') || action === 'reject') return 'destructive';
     return 'neutral';
   }
 
-  confirmationVariant(action: string): 'primary' | 'positive' | 'destructive' | 'caution' | 'neutral' {
-    if (action === 'approve' || action.includes('GRANT') || action.includes('RESTORE') || action.includes('UNRESTRICT') || action.includes('ENABLE')) return 'positive';
+  confirmationVariant(action: string): 'primary' | 'destructive' | 'caution' | 'neutral' {
+    if (action === 'approve' || action.includes('GRANT') || action.includes('RESTORE') || action.includes('UNRESTRICT') || action.includes('ENABLE')) return 'primary';
     if (action === 'reject' || action.includes('REVOKE')) return 'destructive';
     if (action.includes('SUSPEND') || action.includes('RESTRICT') || action.includes('DISABLE')) return 'caution';
     return 'neutral';
