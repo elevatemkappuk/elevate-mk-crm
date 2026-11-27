@@ -4,37 +4,31 @@
     .notice, .card p { margin: 0; color: var(--crm-text-secondary); line-height: 1.6; }
     .lookup, .card { display: grid; gap: var(--crm-space-3); padding: var(--crm-space-4); border: 1px solid var(--crm-border); border-radius: var(--crm-radius-lg); background: var(--crm-surface); box-shadow: var(--crm-shadow-sm); }
     .lookup-row { display: flex; gap: .75rem; flex-wrap: wrap; }
-    input, button { min-height: var(--crm-control-height); border-radius: var(--crm-radius-sm); border: 1px solid var(--crm-control-border); padding: .5rem .75rem; font: inherit; }
-    input { max-width: 18rem; }
-    button:disabled { cursor: wait; opacity: .6; }
-    .actions { display: flex; gap: .5rem; flex-wrap: wrap; }
     .error { padding: var(--crm-space-3); color: var(--crm-error); background: var(--crm-error-surface); border-radius: var(--crm-radius-sm); }
-    .success { padding: var(--crm-space-3); color: var(--crm-success); background: var(--crm-success-surface); border-radius: var(--crm-radius-sm); }
-    small { color: var(--crm-text-secondary); font-size: var(--crm-font-sm); }
-    .staff-table-wrap { overflow-x: auto; border: 1px solid var(--crm-border); border-radius: var(--crm-radius-md); }
-    .permission-table-wrap { overflow: visible; border: 1px solid var(--crm-border); border-radius: var(--crm-radius-md); }
+    .permission-table-wrap { overflow: visible; }
+    .table-wrap.staff-table-wrap { border: 1px solid var(--crm-border); border-radius: var(--crm-radius-md); }
     .staff-table, .permission-table { min-width: 42rem; }
     .staff-row-select { display: inline-flex; align-items: center; gap: var(--crm-space-3); min-width: 12rem; padding: 0; border: 0; background: transparent; color: var(--crm-text-strong); font: inherit; text-align: left; }
-    .staff-row-select small, .permission-table small { display: block; margin-top: .2rem; color: var(--crm-text-muted); font-size: var(--crm-font-sm); }
+    .staff-row-select small, .permission-table small, .approval-table td small { display: block; margin-top: .2rem; color: var(--crm-text-muted); font-size: var(--crm-font-sm); }
     .staff-avatar { display: inline-flex; align-items: center; justify-content: center; width: 2.25rem; height: 2.25rem; flex: 0 0 2.25rem; border-radius: 50%; background: var(--crm-info-surface); color: var(--crm-text-strong); font-size: var(--crm-font-sm); font-weight: var(--crm-weight-bold); }
     .staff-table th:last-child, .staff-table td:last-child { width: 3rem; padding-inline: var(--crm-space-2); text-align: center; }
     .staff-row--interactive { cursor: pointer; }
     .staff-row--interactive:hover { background: var(--crm-info-surface); }
     .staff-row--interactive:focus-visible { outline: 2px solid var(--crm-focus-ring); outline-offset: -2px; background: var(--crm-info-surface); }
     .row-chevron { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; color: var(--crm-action); }
-    .row-chevron svg { width: 1.1rem; height: 1.1rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .row-chevron svg, .back-link svg, .approval-request-actions .crm-button svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .row-chevron svg { width: 1.1rem; height: 1.1rem; }
     .staff-detail { display: grid; gap: var(--crm-space-4); }
     .back-link { justify-self: start; gap: var(--crm-space-2); padding-inline: 0; border: 0; background: transparent; }
-    .back-link svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .back-link svg { width: 1rem; height: 1rem; }
     .staff-detail-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--crm-space-4); }
     .staff-heading-identity, .staff-heading-status { display: flex; align-items: center; gap: var(--crm-space-3); }
     .staff-heading-status { flex-wrap: wrap; justify-content: flex-end; }
-    .staff-detail-heading h2 { margin: 0; }
     .status-badge { display: inline-flex; align-items: center; min-height: var(--crm-control-height-sm); padding: var(--crm-space-1) var(--crm-space-3); border-radius: var(--crm-radius-pill); background: var(--crm-success-surface); color: var(--crm-success); font-size: var(--crm-font-sm); font-weight: var(--crm-weight-medium); white-space: nowrap; }
     .status-badge--muted { background: var(--crm-surface-subtle); color: var(--crm-text-muted); }
     .status-badge--restricted { background: var(--crm-error-surface); color: var(--crm-error); }
     .status-badge--warning, .status-badge--pending { background: var(--crm-warning-surface); color: var(--crm-warning, #b7791f); }
-    .permission-table :is(th, td) { padding: var(--crm-space-2) var(--crm-space-3); vertical-align: middle; }
+    .permission-table :is(th, td), .permission-matrix :is(th, td) { padding: var(--crm-space-2) var(--crm-space-3); vertical-align: middle; }
     .permission-table td:first-child { min-width: 15rem; }
     .permission-actions { width: 4rem; text-align: right; }
     .action-menu { position: relative; display: inline-block; }
@@ -49,12 +43,10 @@
     .advanced-lookup summary { color: var(--crm-action); cursor: pointer; font-weight: var(--crm-weight-medium); }
     .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     .history-list { display: grid; gap: .5rem; }
-    .history-row { display: grid; gap: .35rem; padding: var(--crm-space-3); border-top: 1px solid var(--crm-border); }
     .approval-table td strong { display: block; font-weight: var(--crm-weight-medium); }
-    .approval-table td small { display: block; margin-top: .2rem; color: var(--crm-text-muted); }
     .approval-request-detail { display: grid; gap: var(--crm-space-4); }
     .approval-request-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--crm-space-4); }
-    .approval-request-header h2, .approval-request-header p { margin: 0; }
+    .approval-request-header h2 { margin: 0; }
     .approval-request-header p { margin-top: .25rem; color: var(--crm-text-secondary); }
     .approval-request-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--crm-space-3) var(--crm-space-6); padding: var(--crm-space-4) 0; border-top: 1px solid var(--crm-border); border-bottom: 1px solid var(--crm-border); }
     .approval-request-meta dt { color: var(--crm-text-muted); font-size: var(--crm-font-sm); }
@@ -68,8 +60,7 @@
     .request-reason { display: grid; gap: var(--crm-space-2); padding: var(--crm-space-3); border-radius: var(--crm-radius-md); background: var(--crm-surface-subtle); }
     .request-reason p { margin: 0; color: var(--crm-text-secondary); line-height: 1.6; }
     .approval-request-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--crm-space-2); flex-wrap: wrap; }
-    .approval-request-actions .crm-button { min-height: var(--crm-control-height); }
-    .approval-request-actions .crm-button svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .approval-request-actions .crm-button svg { width: 1rem; height: 1rem; }
     .approval-request-action--reject, .approval-request-action--cancel { order: 1; border-color: var(--crm-destructive); background: transparent; color: var(--crm-destructive); }
     .approval-request-action--reject:hover, .approval-request-action--cancel:hover { background: var(--crm-error-surface); }
     .approval-request-action--approve { order: 2; }
@@ -80,7 +71,6 @@
     .role-defaults-heading { display: flex; justify-content: space-between; }
     .permission-matrix-wrap { overflow-x: auto; }
     .permission-matrix { min-width: 48rem; }
-    .permission-matrix :is(th, td) { padding: var(--crm-space-2) var(--crm-space-3); vertical-align: middle; }
     .permission-matrix th:first-child { text-align: left; }
     .permission-matrix th:not(:first-child), .permission-matrix td:not(:first-child) { width: 9rem; text-align: center; }
     .permission-status { display: inline-flex; align-items: center; justify-content: center; min-width: 2.5rem; min-height: 2.25rem; padding: var(--crm-space-2); border: 0; background: transparent; color: var(--crm-text-muted); cursor: pointer; }
@@ -96,6 +86,5 @@
     .admin-tabs button:hover { background: var(--crm-surface-subtle); color: var(--crm-text-strong); }
     .admin-tabs button:focus-visible { outline: 2px solid var(--crm-focus-ring); outline-offset: 3px; }
     .tab-panel { display: grid; gap: var(--crm-space-4); }
-    input:focus-visible, button:focus-visible { outline: 2px solid var(--crm-focus-ring); outline-offset: 3px; }
     @media (max-width: 700px) { .staff-detail-heading { align-items: flex-start; flex-direction: column; } .staff-heading-status { justify-content: flex-start; } .staff-table { min-width: 36rem; } .staff-table-wrap { margin-inline: calc(var(--crm-space-4) * -1); border-inline: 0; border-radius: 0; } .role-defaults-heading { flex-direction: column; } .permission-matrix { min-width: 42rem; } .approval-request-header { flex-direction: column; } .approval-request-meta { grid-template-columns: 1fr; } .state-flow { grid-template-columns: 1fr; } .state-flow__arrow { justify-self: center; transform: rotate(90deg); } }
 

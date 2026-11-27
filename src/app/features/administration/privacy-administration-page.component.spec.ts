@@ -203,6 +203,8 @@ describe('PrivacyAdministrationPageComponent', () => {
     } as any;
     component.roleDefaultHistory.set([entry]);
     component.decisionHistory.set([entry]);
+    component.selectedHistory.set(entry);
+    component.selectTab('governance-history');
     component.target.set({
       target_user_id: 5,
       person_id: 5,
@@ -228,9 +230,9 @@ describe('PrivacyAdministrationPageComponent', () => {
     fixture.detectChanges();
 
     expect(component.historyItems()).toHaveLength(1);
-    expect(fixture.nativeElement.textContent).toContain('Allowed');
+    expect(fixture.nativeElement.textContent).toContain('Enabled by default');
     expect(fixture.nativeElement.textContent).toContain('Enable by default');
-    expect(fixture.nativeElement.textContent).toContain('Previous/proposed state:');
+    expect(fixture.nativeElement.textContent).toContain('Proposed change');
   });
 
   it('opens Staff Permissions by default and isolates each tab panel', () => {
@@ -292,6 +294,9 @@ describe('PrivacyAdministrationPageComponent', () => {
   });
 
   it('derives role-default approval state from the authoritative current role-default record', () => {
+    http.expectOne(`${apiBaseUrl}/staff/governance/targets/`).flush({ count: 0, page: 1, page_size: 25, results: [] });
+    flushOverviewRequests();
+
     const removal = {
       operation: 'INDIVIDUAL_UNRESTRICT',
       proposed_state: { target_kind: 'individual', restriction_active: true, assignment_state: 'ACTIVE' },
