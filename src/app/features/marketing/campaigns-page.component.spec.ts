@@ -4,18 +4,27 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { Router } from '@angular/router';
+import { signal } from '@angular/core';
 import { vi } from 'vitest';
 
 import { API_CONFIG } from '../../core/http/api-config';
 import { CampaignsPageComponent } from './campaigns-page.component';
 import { Campaign } from '../../core/marketing/campaign.types';
+import { StaffAccessService } from '../../core/auth/staff-access.service';
 
 describe('CampaignsPageComponent', () => {
   let http: HttpTestingController;
+  let contactAllowed: ReturnType<typeof signal<boolean>>;
   const base = 'http://localhost:8000/api/v1';
 
   beforeEach(() => {
+    contactAllowed = signal(true);
     TestBed.configureTestingModule({ providers: [provideRouter([{ path: 'marketing/campaigns', component: CampaignsPageComponent }]), provideHttpClient(), provideHttpClientTesting(), { provide: API_CONFIG, useValue: { apiBaseUrl: base } }] });
+    TestBed.overrideProvider(StaffAccessService, { useValue: {
+      isReady: () => true,
+      hasCapability: (code: string) => code !== 'PERSON_CONTACT_READ' || contactAllowed(),
+      clearUnauthenticated: () => { contactAllowed.set(false); },
+    } });
     http = TestBed.inject(HttpTestingController);
   });
 
@@ -41,6 +50,20 @@ describe('CampaignsPageComponent', () => {
     await harness.fixture.whenStable();
     expect(harness.routeNativeElement?.textContent).toContain('No active campaigns');
     expect(harness.routeNativeElement?.textContent).toContain('0 active campaigns');
+  });
+
+  it('clears audience search text after contact access is unavailable', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/marketing/campaigns');
+    const campaign = makeCampaign({ audience_selection: { q: 'secret@example.com', relationship: [], location: [], industry: [], career_stage: [], interest: [], skill: [], tag: [] } });
+    flushList([campaign]);
+    await harness.fixture.whenStable();
+    expect(harness.routeNativeElement?.textContent).toContain('secret@example.com');
+
+    const access = TestBed.inject(StaffAccessService);
+    access.clearUnauthenticated();
+    harness.detectChanges();
+    expect(harness.routeNativeElement?.textContent).not.toContain('secret@example.com');
   });
 
   it('renders singular and plural collection counts with the selected lifecycle', async () => {

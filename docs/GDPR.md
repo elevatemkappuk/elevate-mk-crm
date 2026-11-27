@@ -2,12 +2,12 @@
 
 Status: Living Documentation. The backend capability foundation and governance
 implementation are source-inspected, with focused isolated PostgreSQL
-migration/test validation recorded by the API repository. The latest targeted
-Phase 1A.4D CRM privacy consumer is implemented in source. The available
-evidence is a successful Angular development build and 12/12
-focused API legal-hold tests. Broader Angular/backend suites,
-migration/concurrency validation, browser UAT for this remediation, and
-cross-repository deployment behavior remain historical or unverified.
+migration/test validation recorded by the API repository. The earlier targeted
+Phase 1A.4D CRM privacy-consumer evidence is explicitly historical/subset-
+specific; current Phase 1C evidence and limitations are recorded at the end of
+this guide. Broader Angular/backend suites, migration/concurrency validation,
+browser UAT for this remediation, and cross-repository deployment behavior
+remain unverified.
 
 ## Purpose and boundary
 
@@ -480,23 +480,24 @@ outside Staff CRM routes; no duplicate frontend authorization system was added.
 
 Phase 1A.5 legacy reconciliation is explicitly skipped because the current
 dataset is test data. No CRM reconciliation UI, dashboard, or remediation flow
-was added. Minor UX polish remains a non-blocking backlog item. Automated tests,
-cross-repository deployment verification, and final hardening remain unverified
-until the consolidated GDPR hardening stage.
+was added. Minor UX polish remains a non-blocking backlog item. At this
+pre-Phase 1C closure point, automated tests, cross-repository deployment
+verification, and final hardening remained unverified. The later targeted Phase
+1C evidence below does not replace the full-suite or deployment gates.
 
 The unresolved API security and governance obligations (AUTH-001, AUTH-002,
 GOV-003, GOV-005, uncovered GOV-006 paths, and trusted-provenance verification)
 are carried into GDPR Phase 1C final hardening and are not risk-accepted here.
 Independent specialist acceptance was incomplete because the active agent-thread
 limit prevented the remaining delegations. All implementation-stage regression
-tests remain **Implemented / Unexecuted**. Production activation still requires
+tests were **Implemented / Unexecuted at this pre-Phase 1C cutoff**. Production activation still requires
 the final security, QA, architecture and documentation gates plus runtime and
 deployment verification.
 
 ## Phase 1B.1 People privacy
 
 Status: **Implemented / source-inspected; automated tests and runtime
-verification deferred to GDPR Phase 1C hardening**.
+verification were deferred at the Phase 1B.1 cutoff**.
 
 The CRM consumes backend-authoritative Person projections. The People
 directory, Person profile, create/edit forms, nested community-account display,
@@ -523,8 +524,9 @@ values back to the API and preserves ordinary CRM session behavior.
 The API/CRM capability contract now discloses `PERSON_CONTACT_READ` and
 `PERSON_DEMOGRAPHIC_READ` in addition to the existing CRM privacy capabilities.
 The two repositories must be deployed compatibly; older strict CRM clients
-may not consume the expanded disclosure. Affected Angular tests remain
-**Implemented / Unexecuted** under the deferred-test policy.
+may not consume the expanded disclosure. Affected Angular tests were
+**Implemented / Unexecuted at the Phase 1B.1 cutoff** under the deferred-test
+policy; current Phase 1C focused evidence is recorded separately.
 
 The implementation does not yet classify location, professional profile,
 skills/interests/tags, notes, membership, marketing preferences, Community
@@ -602,14 +604,16 @@ Person access auditing remains `GDPR-FUTURE-001`.
 
 The modified audience-preview component follows the repository's external
 template and stylesheet convention and displays a permission-aware contact
-search note. New Angular/backend regression tests are **Implemented /
-Unexecuted** under the deferred-test policy. Build, runtime compatibility,
-and manual marketing UAT remain pending final GDPR hardening.
+search note. New Angular/backend regression tests were **Implemented /
+Unexecuted at the Phase 1B.2 cutoff** under the deferred-test policy. Build,
+runtime compatibility, and manual marketing UAT remain pending final GDPR
+hardening.
 
 ## Phase 1B.3 Exports and bulk operations
 
 Status: **Implemented / source-inspected; Angular tests, runtime downloads,
-and final-hardening verification deferred**.
+and final-hardening verification were deferred for the Phase 1B.3 closure
+batch**.
 
 The People directory exposes CSV/XLSX export controls only when the backend
 staff-access projection includes `PERSON_EXPORT`. The CRM sends the current
@@ -637,7 +641,8 @@ feedback, and the Privacy Audit disclosure activity filter. These follow-ups do
 not expand the approved privacy scope. Export-specific UAT remains pending for
 CSV/XLSX downloads, Microsoft Excel compatibility, formula-injection safety,
 record scope, capability revocation, export audit visibility and mandatory
-audit-failure behavior. Broader Angular tests remain **Implemented / Unexecuted** and
+audit-failure behavior. Broader Angular tests were **Implemented / Unexecuted
+at the pre-Phase 1C cutoff** and
 the existing stylesheet-budget and template warnings remain recorded in the
 UI-polishing backlog. Migration application, runtime verification and
 independent specialist acceptance remain outstanding and are carried into
@@ -669,13 +674,51 @@ branding, responsive conventions, and the separate TypeScript/HTML/CSS-or-SCSS
 and component-test file convention. The policy does not replace backend
 authorization or accessibility and security gates.
 
-No automated tests were executed under the deferred-test policy. Existing
-component tests remain **Implemented / Unexecuted**; the Angular production
-build, template/type validation, stylesheet-budget result, and `git diff
---check` must be recorded from the authorized lightweight validation run.
+For this earlier consolidated UI-polishing snapshot, no automated tests were
+executed under the deferred-test policy. Its component-test labels are
+historical/subset-specific; current Phase 1C focused validation is recorded
+below. The Angular production build, template/type validation,
+stylesheet-budget result, and `git diff --check` remain separate lightweight
+validation records and must not be inferred from the focused test count.
 Browser visual verification across representative CRM pages remains pending.
 The audience results-panel duplication was removed. The authorized lightweight
 build completed successfully, with the pre-existing People stylesheet budget
 warning reduced to 17 bytes over its 4.00 kB limit; this remains a non-blocking
 UI-polishing backlog item. Remaining minor UX polish is backlog work, not a new
 privacy capability or authorization change.
+
+## Phase 1C final hardening status
+
+Status: **In progress / not accepted**. Audience Preview now clears protected
+results when contact access becomes unavailable and rejects late responses from
+the prior authorization epoch, including in-flight requests and retries. The
+ focused affected CRM validation passed: **47/47** tests, and the final CRM
+ suite passed **484/484** tests, including the new
+capability-loss regression; the narrower Audience Preview run passed **6/6**.
+The Angular build completed for these runs with the existing NG8107 warning.
+
+Campaign Detail and the Campaigns list apply the same privacy-state boundary to
+recipient snapshots and audience search criteria:
+it increments a recipient request epoch when `PERSON_CONTACT_READ` is lost,
+clears the loaded recipient state, stops the loading state, and ignores late
+responses from the invalidated request or pagination chain. The focused
+component specification verifies that a late response containing a protected
+recipient email is not rendered and that the safe recipient-list error state is
+shown. Campaign search criteria are also cleared or sanitized on access loss,
+and stale list/detail responses cannot restore them. This is source/focused-test
+evidence; browser/runtime behavior remains unverified.
+
+The current CRM results include a green repository-wide suite. The new Audience
+Preview and Campaign Detail/list regressions cover late responses after
+capability loss; cross-repository runtime compatibility,
+export/audit checks, migration verification, and independent final acceptance
+remain unverified. The existing NG8107 warning is recorded as a build
+diagnostic; it is not evidence of full build or suite acceptance.
+
+The final CRM suite result is **484/484** and the Angular build completed with
+the existing NG8107 warning. Browser/runtime compatibility, export/audit checks,
+migration verification and independent final acceptance remain required. The documented
+15-scenario manual UAT result remains reported user evidence, with one
+historical-campaign scenario waived pending automated coverage. AUTH-001,
+AUTH-002, GOV-003, GOV-005, uncovered GOV-006 paths and trusted-provenance
+hardening remain open or activation dependencies.

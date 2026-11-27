@@ -1,11 +1,13 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { of } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { StaffAccessService } from '../../core/auth/staff-access.service';
 import { API_CONFIG } from '../../core/http/api-config';
 import { CampaignDetailPageComponent } from './campaign-detail-page.component';
 
@@ -14,13 +16,23 @@ class CampaignFallbackComponent {}
 
 describe('CampaignDetailPageComponent', () => {
   let http: HttpTestingController;
+  let revokeContactRead: () => void;
   const base = 'http://localhost:8000/api/v1';
 
   beforeEach(() => {
+    const contactAllowed = signal(true);
+    revokeContactRead = () => contactAllowed.set(false);
     TestBed.configureTestingModule({
       providers: [
         provideRouter([{ path: 'marketing/campaigns/:id', component: CampaignDetailPageComponent }, { path: '**', component: CampaignFallbackComponent }]),
         provideHttpClient(), provideHttpClientTesting(), { provide: API_CONFIG, useValue: { apiBaseUrl: base } },
+        { provide: StaffAccessService, useValue: {
+          isReady: () => true,
+          hasCapability: (code: string) => code !== 'PERSON_CONTACT_READ' || contactAllowed(),
+          selectAccount: () => undefined,
+          clearUnauthenticated: () => undefined,
+          refresh: () => of(null),
+        } },
       ],
     });
     http = TestBed.inject(HttpTestingController);
@@ -227,6 +239,36 @@ describe('CampaignDetailPageComponent', () => {
     http.expectOne(`${base}/marketing/campaigns/4/recipients/?page=2&page_size=100`).flush({ count: 101, next: null, previous: `${base}/marketing/campaigns/4/recipients/?page=1&page_size=100`, results: [{ id: 2, person: 2, first_name_snapshot: 'Second', last_name_snapshot: 'Page', consent_state_snapshot: 'INCLUDED', decision: 'INCLUDED', exclusion_reason: null, captured_at: '', provider_outcome: 'RECONCILIATION_REQUIRED', provider_error_code: 'UNKNOWN_CODE' }] });
     await harness.fixture.whenStable();
     expect(harness.routeNativeElement?.textContent).toContain('Second Page');
+  });
+
+  it('clears recipient snapshots and ignores a late response after contact access loss', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/marketing/campaigns/4');
+    http.expectOne(`${base}/marketing/campaigns/4/`).flush(campaign('SNAPSHOT_READY', 'SNAPSHOT_READY'));
+    const recipients = http.expectOne(`${base}/marketing/campaigns/4/recipients/?page=1&page_size=100`);
+
+    revokeContactRead();
+    harness.detectChanges();
+    recipients.flush({ count: 1, next: null, previous: null, results: [{ id: 1, person: 11, email_snapshot: 'revoked@example.com', first_name_snapshot: 'Revoked', last_name_snapshot: 'Person', consent_state_snapshot: 'OPTED_IN', decision: 'INCLUDED', exclusion_reason: null, captured_at: '', provider_outcome: 'ADDED_TO_CAMPAIGN_LIST', provider_error_code: null }] });
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+
+    expect(harness.routeNativeElement?.textContent).not.toContain('revoked@example.com');
+    expect(harness.routeNativeElement?.textContent).toContain('The Campaign recipient list could not be loaded.');
+  });
+
+  it('clears audience search text when contact access is lost', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/marketing/campaigns/4');
+    const loaded = campaign('DRAFT') as any;
+    loaded.audience_selection.q = 'secret@example.com';
+    http.expectOne(`${base}/marketing/campaigns/4/`).flush(loaded);
+    await harness.fixture.whenStable();
+    expect(harness.routeNativeElement?.textContent).toContain('secret@example.com');
+
+    revokeContactRead();
+    harness.detectChanges();
+    expect(harness.routeNativeElement?.textContent).not.toContain('secret@example.com');
   });
 
   it('lets managers deliberately retry reconciliation with the safe confirmation text', async () => {

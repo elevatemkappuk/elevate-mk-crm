@@ -69,6 +69,14 @@ export interface Campaign {
   current_preparation: CampaignPreparation | null;
 }
 
+/** Remove audience search text after contact access is lost. */
+export function sanitizeCampaignForContactAccessLoss(campaign: Campaign): Campaign {
+  return {
+    ...campaign,
+    audience_selection: { ...campaign.audience_selection, q: '' },
+  };
+}
+
 export interface CampaignCreateRequest {
   name: string;
   audience_selection: AudienceSelection;

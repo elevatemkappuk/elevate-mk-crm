@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, distinctUntilChanged, map, of, switchMap, tap } from 'rxjs';
@@ -72,6 +72,7 @@ export class AudiencePreviewPageComponent {
   private readonly auth = inject(AuthService);
   private readonly staffAccess = inject(StaffAccessService);
   private readonly destroyRef = inject(DestroyRef);
+  private requestEpoch = 0;
 
   readonly pageSizes = PAGE_SIZES;
   readonly orderingOptions = ORDERING_OPTIONS;
@@ -89,6 +90,19 @@ export class AudiencePreviewPageComponent {
   readonly contactSearchAllowed = computed(() => this.staffAccess.hasCapability('PERSON_CONTACT_READ'));
 
   constructor() {
+    effect(() => {
+      const accessReady = this.staffAccess.isReady();
+      const contactRead = this.staffAccess.hasCapability('PERSON_CONTACT_READ');
+      if (accessReady && contactRead) return;
+
+      // Audience rows may contain an authorized raw email projection. Clear it
+      // immediately when that capability is lost; late responses from the old
+      // authorization epoch must not repopulate the protected state.
+      this.requestEpoch += 1;
+      this.response.set(null);
+      this.createDialogOpen.set(false);
+      this.campaignError.set(null);
+    });
     this.route.queryParamMap.pipe(
       map((params) => parseAudiencePreviewQuery(params)),
       distinctUntilChanged(areAudiencePreviewQueriesEqual),
@@ -97,10 +111,14 @@ export class AudiencePreviewPageComponent {
         this.loading.set(true);
         this.errorMessage.set(null);
       }),
-      switchMap((query) => this.service.preview(this.requestFor(query)).pipe(
+      switchMap((query) => {
+        const requestEpoch = this.requestEpoch;
+        return this.service.preview(this.requestFor(query)).pipe(
         map((response) => ({ response, error: null as HttpErrorResponse | null })),
         catchError((error: HttpErrorResponse) => of({ response: null, error })),
-      )),
+        map((result) => requestEpoch === this.requestEpoch ? result : { response: null, error: null }),
+      );
+      }),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe(({ response, error }) => {
       this.loading.set(false);
@@ -139,11 +157,19 @@ export class AudiencePreviewPageComponent {
   }
 
   retry(): void {
+    const requestEpoch = this.requestEpoch;
     this.loading.set(true);
     this.errorMessage.set(null);
     this.service.preview(this.requestFor(this.queryState())).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (response) => { this.response.set(response); this.loading.set(false); },
-      error: (error: HttpErrorResponse) => { this.loading.set(false); this.errorMessage.set(error.status === 403 ? 'You do not have permission to preview audiences.' : 'The audience preview could not be loaded right now. Try again.'); },
+      next: (response) => {
+        if (requestEpoch !== this.requestEpoch) return;
+        this.response.set(response); this.loading.set(false);
+      },
+      error: (error: HttpErrorResponse) => {
+        if (requestEpoch !== this.requestEpoch) return;
+        this.loading.set(false);
+        this.errorMessage.set(error.status === 403 ? 'You do not have permission to preview audiences.' : 'The audience preview could not be loaded right now. Try again.');
+      },
     });
   }
 

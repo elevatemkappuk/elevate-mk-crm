@@ -1,13 +1,14 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
 import { canManagePeople } from '../../core/auth/auth-access';
+import { StaffAccessService } from '../../core/auth/staff-access.service';
 import { CampaignService } from '../../core/marketing/campaign.service';
-import { Campaign, CampaignRecipientSnapshot, campaignCriteriaSummary, campaignStatusLabel, campaignStatusTone, recipientDecisionLabel, recipientReasonLabel, recipientReconciliationReason } from '../../core/marketing/campaign.types';
+import { Campaign, CampaignRecipientSnapshot, campaignCriteriaSummary, campaignStatusLabel, campaignStatusTone, recipientDecisionLabel, recipientReasonLabel, recipientReconciliationReason, sanitizeCampaignForContactAccessLoss } from '../../core/marketing/campaign.types';
 import { ConfirmationDialogComponent } from '../../shared/ui/confirmation-dialog.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 
@@ -60,7 +61,10 @@ export class CampaignDetailPageComponent {
   private readonly router = inject(Router);
   private readonly service = inject(CampaignService);
   private readonly auth = inject(AuthService);
+  private readonly staffAccess = inject(StaffAccessService);
   private readonly destroyRef = inject(DestroyRef);
+  private recipientRequestEpoch = 0;
+  private recipientAccessAvailable: boolean | null = null;
   readonly campaign = signal<Campaign | null>(null);
   readonly recipients = signal<CampaignRecipientSnapshot[]>([]);
   readonly recipientsLoadError = signal(false);
@@ -75,8 +79,19 @@ export class CampaignDetailPageComponent {
   readonly successMessage = signal<string | null>(null);
   readonly canManage = () => canManagePeople(this.auth.currentUser());
 
-  constructor() { this.load(); }
-  load(): void { const id = Number(this.route.snapshot.paramMap.get('id')); this.loading.set(true); this.errorMessage.set(null); this.service.get(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ next: (campaign) => { this.campaign.set(campaign); this.loading.set(false); if (campaign.current_preparation) this.loadRecipients(id); }, error: (_error: HttpErrorResponse) => { this.loading.set(false); this.errorMessage.set('This campaign could not be loaded right now.'); } }); }
+  constructor() {
+    effect(() => {
+      const accessAvailable = this.staffAccess.isReady() && this.staffAccess.hasCapability('PERSON_CONTACT_READ');
+      if (this.recipientAccessAvailable === accessAvailable) return;
+      this.recipientAccessAvailable = accessAvailable;
+      if (!accessAvailable) {
+        this.invalidateRecipientState();
+        this.campaign.update((current) => current ? sanitizeCampaignForContactAccessLoss(current) : current);
+      }
+    });
+    this.load();
+  }
+  load(): void { const id = Number(this.route.snapshot.paramMap.get('id')); this.loading.set(true); this.errorMessage.set(null); this.service.get(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ next: (campaign) => { this.campaign.set(this.recipientAccessAvailable === false ? sanitizeCampaignForContactAccessLoss(campaign) : campaign); this.loading.set(false); if (campaign.current_preparation) this.loadRecipients(id); }, error: (_error: HttpErrorResponse) => { this.loading.set(false); this.errorMessage.set('This campaign could not be loaded right now.'); } }); }
   prepare(): void { const id = this.campaign()?.id; if (!id || this.preparing()) return; this.preparing.set(true); this.errorMessage.set(null); this.service.prepare(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ next: (campaign) => { this.campaign.set(campaign); this.preparing.set(false); this.loadRecipients(id); }, error: (error: HttpErrorResponse) => { this.preparing.set(false); this.errorMessage.set(error.status === 409 ? 'This campaign cannot be prepared in its current state.' : 'Recipients could not be prepared right now.'); } }); }
   prepareProvider(): void { const id = this.campaign()?.id; if (!id || this.providerPreparing()) return; this.providerPreparing.set(true); this.errorMessage.set(null); this.service.prepareProvider(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ next: () => { this.providerAction.set(null); this.providerPreparing.set(false); this.load(); }, error: (error: HttpErrorResponse) => { this.providerAction.set(null); this.providerPreparing.set(false); this.errorMessage.set(error.status === 409 ? 'This campaign cannot be prepared in Brevo in its current state.' : 'Brevo preparation could not be completed right now.'); this.load(); } }); }
   confirmLifecycleAction(): void {
@@ -100,8 +115,9 @@ export class CampaignDetailPageComponent {
     });
   }
   private lifecycleError(error: HttpErrorResponse, action: Exclude<LifecycleAction, null>): void { this.lifecycleAction.set(null); this.lifecycleSubmitting.set(false); this.errorMessage.set(error.status === 403 ? 'You do not have permission to change this Campaign.' : error.status === 409 ? 'This Campaign changed before the lifecycle action completed. Its current state has been refreshed.' : action === 'delete' ? 'The unused draft could not be deleted right now.' : 'The Campaign lifecycle action could not be completed right now.'); this.load(); }
-  loadRecipients(id: number): void { this.recipients.set([]); this.recipientsLoadError.set(false); this.recipientsLoading.set(true); this.loadRecipientPage(id, 1, []); }
-  private loadRecipientPage(id: number, pageNumber: number, accumulated: CampaignRecipientSnapshot[]): void { this.service.recipients(id, pageNumber, 100).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ next: (page) => { const results = [...accumulated, ...page.results]; if (page.next) { this.loadRecipientPage(id, pageNumber + 1, results); } else { this.recipients.set(results); this.recipientsLoading.set(false); } }, error: () => { this.recipients.set(accumulated); this.recipientsLoadError.set(true); this.recipientsLoading.set(false); } }); }
+  loadRecipients(id: number): void { const requestEpoch = ++this.recipientRequestEpoch; this.recipients.set([]); this.recipientsLoadError.set(false); this.recipientsLoading.set(true); this.loadRecipientPage(id, 1, [], requestEpoch); }
+  private loadRecipientPage(id: number, pageNumber: number, accumulated: CampaignRecipientSnapshot[], requestEpoch: number): void { this.service.recipients(id, pageNumber, 100).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ next: (page) => { if (requestEpoch !== this.recipientRequestEpoch) return; const results = [...accumulated, ...page.results]; if (page.next) { this.loadRecipientPage(id, pageNumber + 1, results, requestEpoch); } else { this.recipients.set(results); this.recipientsLoading.set(false); } }, error: () => { if (requestEpoch !== this.recipientRequestEpoch) return; this.recipients.set(accumulated); this.recipientsLoadError.set(true); this.recipientsLoading.set(false); } }); }
+  private invalidateRecipientState(): void { this.recipientRequestEpoch += 1; this.recipients.set([]); this.recipientsLoadError.set(true); this.recipientsLoading.set(false); }
   criteriaSummary(campaign: Campaign): string[] { return campaignCriteriaSummary(campaign.audience_selection); }
   selectionSummary(campaign: Campaign): string { const prep = campaign.current_preparation; if (!prep) return 'Recipients have not been prepared yet.'; return `${prep.selected_count} ${prep.selected_count === 1 ? 'person' : 'people'} selected \u00b7 ${prep.included_count} included \u00b7 ${prep.excluded_count} excluded`; }
   preparedRecipientsMessage(count: number): string { return `All ${count} ${count === 1 ? 'recipient is' : 'recipients are'} prepared in Brevo.`; }

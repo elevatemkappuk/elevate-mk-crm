@@ -1,13 +1,14 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
 import { canManagePeople } from '../../core/auth/auth-access';
+import { StaffAccessService } from '../../core/auth/staff-access.service';
 import { CampaignService } from '../../core/marketing/campaign.service';
-import { Campaign, CampaignLifecycle, campaignCriteriaSummary, campaignStatusLabel, campaignStatusTone } from '../../core/marketing/campaign.types';
+import { Campaign, CampaignLifecycle, campaignCriteriaSummary, campaignStatusLabel, campaignStatusTone, sanitizeCampaignForContactAccessLoss } from '../../core/marketing/campaign.types';
 import { ConfirmationDialogComponent } from '../../shared/ui/confirmation-dialog.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
 
@@ -57,6 +58,9 @@ export class CampaignsPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly staffAccess = inject(StaffAccessService);
+  private campaignRequestEpoch = 0;
+  private contactAccessAvailable: boolean | null = null;
   readonly campaigns = signal<Campaign[]>([]);
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
@@ -69,6 +73,16 @@ export class CampaignsPageComponent {
   readonly canManage = () => canManagePeople(this.auth.currentUser());
 
   constructor() {
+    effect(() => {
+      const accessAvailable = this.staffAccess.isReady() && this.staffAccess.hasCapability('PERSON_CONTACT_READ');
+      if (this.contactAccessAvailable === accessAvailable) return;
+      this.contactAccessAvailable = accessAvailable;
+      if (!accessAvailable) {
+        this.campaignRequestEpoch += 1;
+        this.campaigns.update((current) => current.map(sanitizeCampaignForContactAccessLoss));
+        this.loading.set(false);
+      }
+    });
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
       const value = params.get('lifecycle');
       this.lifecycle.set(value === 'archived' || value === 'all' ? value : 'active');
@@ -79,10 +93,15 @@ export class CampaignsPageComponent {
   }
 
   load(clearError = true): void {
+    const requestEpoch = this.campaignRequestEpoch;
     this.loading.set(true);
     if (clearError) this.errorMessage.set(null);
     this.service.list(this.lifecycle()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (page) => { this.campaigns.set(page.results); this.collectionCount.set(page.count); this.loading.set(false); },
+      next: (page) => {
+        if (requestEpoch !== this.campaignRequestEpoch) return;
+        const results = this.contactAccessAvailable === false ? page.results.map(sanitizeCampaignForContactAccessLoss) : page.results;
+        this.campaigns.set(results); this.collectionCount.set(page.count); this.loading.set(false);
+      },
       error: (_error: HttpErrorResponse) => { this.loading.set(false); this.errorMessage.set('Campaigns could not be loaded right now. Try again.'); },
     });
   }
