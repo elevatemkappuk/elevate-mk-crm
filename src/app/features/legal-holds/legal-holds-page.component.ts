@@ -10,10 +10,18 @@ import { formatForbiddenError } from '../../core/http/forbidden-error';
 import { StaffAccessService } from '../../core/auth/staff-access.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { LegalHoldsService } from '../../core/privacy/legal-holds.service';
-import { LegalHold, LegalHoldReleaseRequest, LegalHoldReleaseRequestResult } from '../../core/privacy/legal-hold.types';
+import { LegalHold, LegalHoldActor, LegalHoldReleaseRequest, LegalHoldReleaseRequestResult } from '../../core/privacy/legal-hold.types';
 import { PeopleService } from '../../core/people/people.service';
 import { PersonDirectoryItem } from '../../core/people/people.types';
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
+import { ToastService } from '../../shared/ui/toast.service';
+
+type LegalHoldsTab = 'active' | 'requests' | 'history';
+
+interface ReleaseRequestRow {
+  readonly hold: LegalHold;
+  readonly request: LegalHoldReleaseRequest;
+}
 
 @Component({
   selector: 'app-legal-holds-page',
@@ -29,6 +37,7 @@ export class LegalHoldsPageComponent {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly toast = inject(ToastService);
 
   readonly holds = signal<readonly LegalHold[]>([]);
   readonly loading = signal(false);
@@ -50,6 +59,10 @@ export class LegalHoldsPageComponent {
   resolveReason = '';
   resolveAction: 'approve' | 'reject' = 'approve';
   readonly resolvingRequest = signal(false);
+  readonly activeTab = signal<LegalHoldsTab>('active');
+  readonly selectedHold = signal<LegalHold | null>(null);
+  readonly selectedReleaseRequest = signal<ReleaseRequestRow | null>(null);
+  readonly createDialogOpen = signal(false);
   private authorizationEpoch = 0;
   private revalidatingAuthorization = false;
 
@@ -86,6 +99,94 @@ export class LegalHoldsPageComponent {
       next: response => this.personOptions.set(response.results),
       error: () => this.personSearchError.set('Person search could not be completed.'),
     });
+  }
+
+  selectTab(tab: LegalHoldsTab): void {
+    this.activeTab.set(tab);
+    this.selectedHold.set(null);
+    this.selectedReleaseRequest.set(null);
+  }
+
+  activeHolds(): readonly LegalHold[] {
+    return this.holds().filter(hold => hold.status === 'ACTIVE');
+  }
+
+  pendingReleaseRequests(): readonly ReleaseRequestRow[] {
+    return this.holds().flatMap(hold => hold.release_requests
+      .filter(request => request.status === 'PENDING')
+      .map(request => ({ hold, request })));
+  }
+
+  historyHolds(): readonly LegalHold[] {
+    return this.holds().filter(hold => hold.status === 'RELEASED' || hold.release_requests.some(request => request.status !== 'PENDING'));
+  }
+
+  historyReleaseRequests(): readonly ReleaseRequestRow[] {
+    return this.holds().flatMap(hold => hold.release_requests
+      .filter(request => request.status !== 'PENDING')
+      .map(request => ({ hold, request })));
+  }
+
+  selectHold(hold: LegalHold): void {
+    this.selectedHold.set(hold);
+  }
+
+  selectReleaseRequest(row: ReleaseRequestRow): void {
+    this.selectedReleaseRequest.set(row);
+  }
+
+  backToLegalHoldList(): void {
+    this.selectedHold.set(null);
+    this.selectedReleaseRequest.set(null);
+  }
+
+  openCreateDialog(): void {
+    this.createDialogOpen.set(true);
+    this.createValidationMessage.set(null);
+  }
+
+  closeCreateDialog(): void {
+    if (!this.saving()) this.createDialogOpen.set(false);
+  }
+
+  activateRow(event: KeyboardEvent, action: () => void): void {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    action();
+  }
+
+  holdTypeLabel(scope: LegalHold['scope']): string {
+    return scope === 'PERSON' ? 'Person-wide hold' : 'Privacy audit event hold';
+  }
+
+  statusLabel(status: LegalHold['status']): string {
+    return status === 'ACTIVE' ? 'Active' : 'Released';
+  }
+
+  releaseStatusLabel(status: LegalHoldReleaseRequest['status']): string {
+    return status === 'PENDING' ? 'Pending approval' : status === 'APPROVED' ? 'Approved' : 'Rejected';
+  }
+
+  statusClass(status: LegalHold['status'] | LegalHoldReleaseRequest['status']): string {
+    if (status === 'PENDING') return 'status-badge status-badge--warning';
+    if (status === 'REJECTED') return 'status-badge status-badge--muted';
+    return 'status-badge';
+  }
+
+  holdTargetLabel(hold: LegalHold): string {
+    return hold.person_display_name || (hold.person_id ? `Person ${hold.person_id}` : 'Authorized audit event');
+  }
+
+  canRequestRelease(hold: LegalHold): boolean {
+    return hold.status === 'ACTIVE' && (hold.permitted_actions.includes('request_release') || hold.permitted_actions.includes('direct_release'));
+  }
+
+  requestActionLabel(hold: LegalHold): string {
+    return hold.permitted_actions.includes('direct_release') ? 'Release hold' : 'Request release';
+  }
+
+  historyActorLabel(actor: LegalHoldActor | null): string {
+    return actor ? this.actorLabel(actor) : 'Not recorded';
   }
 
   selectPerson(person: PersonDirectoryItem): void {
@@ -159,7 +260,9 @@ export class LegalHoldsPageComponent {
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.createReason = '';
-        this.feedback.set('Legal hold placed.');
+        this.createDialogOpen.set(false);
+        this.feedback.set(null);
+        this.toast.success('Legal hold placed', 'The hold is now protecting the authorized target.');
         this.loadHolds();
       },
       error: (error: HttpErrorResponse) => error.status === 403
@@ -189,7 +292,9 @@ export class LegalHoldsPageComponent {
       : this.service.requestRelease(hold.public_id, this.releaseReason.trim())) as Observable<LegalHold | LegalHoldReleaseRequestResult>;
     request$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: response => {
-        this.feedback.set('status' in response && response.status === 'PENDING' ? `Release request submitted: ${response.public_id}.` : 'Legal hold released.');
+        const pending = 'status' in response && response.status === 'PENDING';
+        this.feedback.set(null);
+        this.toast.success(pending ? 'Release request submitted' : 'Legal hold released', pending ? 'The hold remains active until an authorized administrator approves release.' : 'The legal hold was released and recorded.');
         this.releaseRequestId = 'public_id' in response ? response.public_id : this.releaseRequestId;
         this.cancelRelease();
         this.loadHolds();
@@ -224,7 +329,8 @@ export class LegalHoldsPageComponent {
       : this.service.rejectRelease(this.releaseRequestId.trim(), this.resolveReason.trim())) as Observable<LegalHold | LegalHoldReleaseRequestResult>;
     request$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
-        this.feedback.set(`Release request ${this.resolveAction}d.`);
+        this.feedback.set(null);
+        this.toast.success(`Release request ${this.resolveAction}d`, 'The legal-hold history was updated.');
         this.resolveReason = '';
         this.releaseRequestId = '';
         this.resolvingRequest.set(false);
