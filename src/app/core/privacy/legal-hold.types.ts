@@ -27,7 +27,7 @@ export interface LegalHold {
 
 export interface LegalHoldReleaseRequest {
   readonly public_id: string;
-  readonly status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  readonly status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
   readonly justification: string;
   readonly requested_by_id: number;
   readonly requested_by: LegalHoldActor;
@@ -40,7 +40,11 @@ export interface LegalHoldReleaseRequest {
   readonly rejected_by: LegalHoldActor | null;
   readonly rejected_at: string | null;
   readonly rejection_reason: string | null;
-  readonly permitted_actions: readonly ('approve' | 'reject')[];
+  readonly cancelled_by_id: number | null;
+  readonly cancelled_by: LegalHoldActor | null;
+  readonly cancelled_at: string | null;
+  readonly cancellation_reason: string | null;
+  readonly permitted_actions: readonly ('approve' | 'reject' | 'cancel')[];
 }
 
 export interface PaginatedLegalHoldsResponse {
@@ -58,7 +62,7 @@ export interface CreateLegalHoldRequest {
 
 export interface LegalHoldReleaseRequestResult {
   readonly public_id: string;
-  readonly status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  readonly status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
   readonly permitted_actions?: readonly string[];
   readonly execution_mode?: LegalHoldExecutionMode;
 }

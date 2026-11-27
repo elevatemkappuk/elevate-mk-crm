@@ -33,11 +33,13 @@
         <div><dt>Reason for request</dt><dd>{{ selectedRequest.request.justification }}</dd></div>
         @if (selectedRequest.request.approved_by) { <div><dt>Approved by</dt><dd>{{ actorLabel(selectedRequest.request.approved_by) }} &middot; {{ formatDateTime(selectedRequest.request.approved_at!) }}</dd></div><div><dt>Approval reason</dt><dd>{{ selectedRequest.request.approval_justification || 'Not recorded' }}</dd></div> }
         @if (selectedRequest.request.rejected_by) { <div><dt>Rejected by</dt><dd>{{ actorLabel(selectedRequest.request.rejected_by) }} &middot; {{ formatDateTime(selectedRequest.request.rejected_at!) }}</dd></div><div><dt>Rejection reason</dt><dd>{{ selectedRequest.request.rejection_reason || 'Not recorded' }}</dd></div> }
+        @if (selectedRequest.request.cancelled_by) { <div><dt>Cancelled by</dt><dd>{{ actorLabel(selectedRequest.request.cancelled_by) }} &middot; {{ formatDateTime(selectedRequest.request.cancelled_at!) }}</dd></div><div><dt>Cancellation reason</dt><dd>{{ selectedRequest.request.cancellation_reason || 'Not recorded' }}</dd></div> }
       </dl>
-      @if (selectedRequest.request.permitted_actions.includes('approve') || selectedRequest.request.permitted_actions.includes('reject')) {
+      @if (selectedRequest.request.permitted_actions.length) {
         <div class="detail-actions">
-          @if (selectedRequest.request.permitted_actions.includes('reject')) { <button class="crm-button crm-button--destructive" type="button" (click)="openDecisionConfirmation(selectedRequest.request, 'reject')" [disabled]="saving()">Reject request</button> }
+          @if (selectedRequest.request.permitted_actions.includes('reject')) { <button class="crm-button crm-button--destructive-outline" type="button" (click)="openDecisionConfirmation(selectedRequest.request, 'reject')" [disabled]="saving()"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18" /></svg>Reject request</button> }
           @if (selectedRequest.request.permitted_actions.includes('approve')) { <button class="crm-button crm-button--positive" type="button" (click)="openDecisionConfirmation(selectedRequest.request, 'approve')" [disabled]="saving()">Approve request</button> }
+          @if (selectedRequest.request.permitted_actions.includes('cancel')) { <button class="crm-button crm-button--destructive-outline" type="button" (click)="openDecisionConfirmation(selectedRequest.request, 'cancel')" [disabled]="saving()"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18" /></svg>Cancel request</button> }
         </div>
       }
     </section>
@@ -65,7 +67,7 @@
     <div id="release-requests-panel" role="tabpanel" aria-labelledby="release-requests-tab">
       @if (pendingReleaseRequests().length) { <p class="record-count">{{ pendingReleaseRequests().length }} pending release request{{ pendingReleaseRequests().length === 1 ? '' : 's' }}</p> }
       <div class="crm-table-wrap"><table class="crm-table holds-table" aria-label="Pending legal-hold release requests"><thead><tr><th scope="col">Request</th><th scope="col">Target</th><th scope="col">Requested</th><th scope="col">Status</th><th scope="col" aria-hidden="true"></th></tr></thead><tbody>
-        @for (row of pendingReleaseRequests(); track row.request.public_id) { <tr class="selectable-row" tabindex="0" [attr.aria-label]="'View release request for ' + holdTargetLabel(row.hold)" (click)="selectReleaseRequest(row)" (keydown)="activateRow($event, () => selectReleaseRequest(row))"><td><strong>Release request</strong><small>{{ holdTypeLabel(row.hold.scope) }}</small></td><td>{{ holdTargetLabel(row.hold) }}</td><td>{{ formatDateTime(row.request.requested_at) }}</td><td><span class="status-badge status-badge--warning">Pending approval</span></td><td class="row-action" aria-hidden="true">&rsaquo;</td></tr> }
+        @for (row of pendingReleaseRequests(); track row.request.public_id) { <tr class="selectable-row" tabindex="0" [attr.aria-label]="'View release request for ' + holdTargetLabel(row.hold)" (click)="selectReleaseRequest(row)" (keydown)="activateRow($event, () => selectReleaseRequest(row))"><td><strong>Release request</strong><small>{{ holdTypeLabel(row.hold.scope) }}</small></td><td>{{ holdTargetLabel(row.hold) }}</td><td>{{ formatDateTime(row.request.requested_at) }}<small>{{ actorLabel(row.request.requested_by) }}</small></td><td><span class="status-badge status-badge--warning">Pending approval</span></td><td class="row-action" aria-hidden="true">&rsaquo;</td></tr> }
         @empty { <tr><td colspan="5"><div class="empty-state"><strong>No pending release requests</strong><span>Requests awaiting approval will appear here.</span></div></td></tr> }
       </tbody></table></div>
     </div>
@@ -92,5 +94,5 @@
     </section></div>
   }
 
-  @if (pendingConfirmation(); as action) { <app-confirmation-dialog [open]="true" [title]="confirmationTitle(action)" [context]="confirmationContext(action)" [message]="confirmationMessage(action)" [confirmLabel]="confirmationLabel(action)" [reasonLabel]="confirmationReasonLabel(action)" [actionVariant]="confirmationVariant(action)" [busy]="saving()" [requireReason]="true" [reason]="confirmationReason" (reasonChanged)="confirmationReason = $event" (confirmed)="confirmPendingAction()" (cancelled)="closeConfirmation()" /> }
+  @if (pendingConfirmation(); as action) { <app-confirmation-dialog [open]="true" [title]="confirmationTitle(action)" [context]="confirmationContext(action)" [message]="confirmationMessage(action)" [confirmLabel]="confirmationLabel(action)" [cancelLabel]="action.kind === 'cancel' ? 'Keep request' : 'Cancel'" [reasonLabel]="confirmationReasonLabel(action)" [actionVariant]="confirmationVariant(action)" [busy]="saving()" [requireReason]="true" [reason]="confirmationReason" (reasonChanged)="confirmationReason = $event" (confirmed)="confirmPendingAction()" (cancelled)="closeConfirmation()" /> }
 </section>

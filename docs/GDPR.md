@@ -486,7 +486,10 @@ preserved. Sensitive data is not written to browser storage.
 Legal-hold list/detail responses include backend-projected release-request
 summaries. An independent authorized administrator can discover pending
 requests after login or refresh and approve or reject them from the relevant
-hold without manually entering an internal request ID. Self-approval controls
+hold without manually entering an internal request ID. The original requester
+may cancel a pending request with a mandatory reason; cancellation leaves the
+hold active, preserves request history, and permits a subsequent request.
+Self-approval controls
 remain backend-calculated; the CRM only renders permitted actions.
 
 Status: **Implemented / isolated validation and manual UAT verified; operational

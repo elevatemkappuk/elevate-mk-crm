@@ -33,7 +33,7 @@ interface HistoryRow {
 
 type LegalHoldConfirmation =
   | { readonly kind: 'release'; readonly hold: LegalHold }
-  | { readonly kind: 'approve' | 'reject'; readonly request: LegalHoldReleaseRequest };
+  | { readonly kind: 'approve' | 'reject' | 'cancel'; readonly request: LegalHoldReleaseRequest };
 
 @Component({
   selector: 'app-legal-holds-page',
@@ -149,7 +149,7 @@ export class LegalHoldsPageComponent {
           hold,
           request,
           outcome: this.releaseStatusLabel(request.status),
-          timestamp: request.approved_at || request.rejected_at || request.requested_at,
+          timestamp: request.approved_at || request.rejected_at || request.cancelled_at || request.requested_at,
         }));
       if (completed.some(row => row.request?.status === 'APPROVED')) return completed;
       if (hold.status === 'RELEASED') {
@@ -177,7 +177,7 @@ export class LegalHoldsPageComponent {
     this.pendingConfirmation.set({ kind: 'release', hold });
   }
 
-  openDecisionConfirmation(request: LegalHoldReleaseRequest, action: 'approve' | 'reject'): void {
+  openDecisionConfirmation(request: LegalHoldReleaseRequest, action: 'approve' | 'reject' | 'cancel'): void {
     this.confirmationReason = '';
     this.pendingConfirmation.set({ kind: action, request });
   }
@@ -191,7 +191,7 @@ export class LegalHoldsPageComponent {
 
   confirmationTitle(action: LegalHoldConfirmation): string {
     if (action.kind === 'release') return action.hold.execution_mode === 'DIRECT_SUPERUSER' ? 'Release legal hold' : 'Request legal-hold release';
-    return action.kind === 'approve' ? 'Approve release request' : 'Reject release request';
+    return action.kind === 'approve' ? 'Approve release request' : action.kind === 'reject' ? 'Reject release request' : 'Cancel release request';
   }
 
   confirmationContext(action: LegalHoldConfirmation): string {
@@ -205,20 +205,22 @@ export class LegalHoldsPageComponent {
       : 'Submitting a release request does not end retention protection. It remains active until an authorized administrator approves the request.';
     return action.kind === 'approve'
       ? 'Approval will release the legal hold and end retention protection. This decision will be recorded in legal-hold history.'
-      : 'Rejecting this request leaves the legal hold active. The decision will be recorded in legal-hold history.';
+      : action.kind === 'reject'
+        ? 'Rejecting this request leaves the legal hold active. The decision will be recorded in legal-hold history.'
+      : 'Cancelling this request will stop the release approval process. The legal hold will remain active and continue protecting the covered records from scheduled disposal. The cancellation will be recorded in legal hold history.';
   }
 
-  confirmationVariant(action: LegalHoldConfirmation): 'positive' | 'destructive' | 'caution' {
-    return action.kind === 'reject' ? 'destructive' : action.kind === 'approve' ? 'positive' : 'caution';
+  confirmationVariant(action: LegalHoldConfirmation): 'positive' | 'destructive' | 'destructive-outline' | 'caution' {
+    return action.kind === 'reject' || action.kind === 'cancel' ? 'destructive-outline' : action.kind === 'approve' ? 'positive' : 'caution';
   }
 
   confirmationLabel(action: LegalHoldConfirmation): string {
     if (action.kind === 'release') return action.hold.execution_mode === 'DIRECT_SUPERUSER' ? 'Release hold' : 'Request release';
-    return action.kind === 'approve' ? 'Approve request' : 'Reject request';
+    return action.kind === 'approve' ? 'Approve request' : action.kind === 'reject' ? 'Reject request' : 'Cancel request';
   }
 
   confirmationReasonLabel(action: LegalHoldConfirmation): string {
-    return action.kind === 'approve' ? 'Reason for approval' : action.kind === 'reject' ? 'Reason for rejection' : 'Reason for release';
+    return action.kind === 'approve' ? 'Reason for approval' : action.kind === 'reject' ? 'Reason for rejection' : action.kind === 'cancel' ? 'Reason for cancellation' : 'Reason for release';
   }
 
   confirmPendingAction(): void {
@@ -231,7 +233,9 @@ export class LegalHoldsPageComponent {
         : this.service.requestRelease(action.hold.public_id, this.confirmationReason.trim()))
       : action.kind === 'approve'
         ? this.service.approveRelease(action.request.public_id, this.confirmationReason.trim())
-        : this.service.rejectRelease(action.request.public_id, this.confirmationReason.trim())) as Observable<LegalHold | LegalHoldReleaseRequestResult>;
+        : action.kind === 'reject'
+          ? this.service.rejectRelease(action.request.public_id, this.confirmationReason.trim())
+          : this.service.cancelRelease(action.request.public_id, this.confirmationReason.trim())) as Observable<LegalHold | LegalHoldReleaseRequestResult>;
     request$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: response => {
         const pending = action.kind === 'release' && 'status' in response && response.status === 'PENDING';
@@ -240,8 +244,8 @@ export class LegalHoldsPageComponent {
         this.selectedHold.set(null);
         this.selectedReleaseRequest.set(null);
         this.toast.success(
-          pending ? 'Release request submitted' : action.kind === 'approve' ? 'Release request approved' : action.kind === 'reject' ? 'Release request rejected' : 'Legal hold released',
-          pending ? 'The hold remains active until an authorized administrator approves release.' : 'The legal-hold history was updated.',
+          pending ? 'Release request submitted' : action.kind === 'approve' ? 'Release request approved' : action.kind === 'reject' ? 'Release request rejected' : action.kind === 'cancel' ? 'Request cancelled' : 'Legal hold released',
+          pending ? 'The hold remains active until an authorized administrator approves release.' : action.kind === 'cancel' ? 'Existing permissions remain unchanged.' : 'The legal-hold history was updated.',
         );
         this.loadHolds();
       },
@@ -282,12 +286,12 @@ export class LegalHoldsPageComponent {
   }
 
   releaseStatusLabel(status: LegalHoldReleaseRequest['status']): string {
-    return status === 'PENDING' ? 'Pending approval' : status === 'APPROVED' ? 'Approved' : 'Rejected';
+    return status === 'PENDING' ? 'Pending approval' : status === 'APPROVED' ? 'Approved' : status === 'CANCELLED' ? 'Cancelled' : 'Rejected';
   }
 
   statusClass(status: LegalHold['status'] | LegalHoldReleaseRequest['status']): string {
     if (status === 'PENDING') return 'status-badge status-badge--warning';
-    if (status === 'REJECTED') return 'status-badge status-badge--muted';
+    if (status === 'REJECTED' || status === 'CANCELLED') return 'status-badge status-badge--muted';
     return 'status-badge';
   }
 

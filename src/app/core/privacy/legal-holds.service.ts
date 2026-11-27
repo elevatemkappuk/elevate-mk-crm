@@ -55,6 +55,13 @@ export class LegalHoldsService {
     );
   }
 
+  cancelRelease(requestId: string, reason: string): Observable<LegalHoldReleaseRequestResult> {
+    return this.http.post<LegalHoldReleaseRequestResult>(
+      `${this.apiConfig.apiBaseUrl}/privacy/legal-hold-release-requests/${requestId}/cancel/`,
+      { reason },
+    );
+  }
+
   directRelease(publicId: string, reason: string): Observable<LegalHold> {
     return this.http.post<LegalHold>(
       `${this.baseUrl}/legal-holds/${publicId}/direct-release/`,

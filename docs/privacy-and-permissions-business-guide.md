@@ -277,7 +277,9 @@ disclosure events. Comprehensive Person access auditing remains deferred as
 Authorized staff may place a Person-wide or event-specific legal hold where the
 approved workflow permits it. Holds protect the relevant records from eligible
 disposal. Release requests preserve their requester, decision, reason and
-history; ordinary approval requires separation of duties. The approved
+history. The original requester may cancel a pending request with a reason;
+this leaves the hold active and permits a later request. Ordinary approval
+requires separation of duties. The approved
 superuser exception is not a general substitute for legal-hold governance.
 
 The proposed initial privacy-audit retention period is 24 months from audit

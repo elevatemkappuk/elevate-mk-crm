@@ -29,7 +29,7 @@ let nextDialogId = 0;
           }
           <div class="crm-actions crm-actions--end">
             <button type="button" class="button-secondary crm-button crm-button--secondary" [disabled]="busy()" (click)="cancel()">{{ cancelLabel() }}</button>
-            <button type="button" class="button-primary crm-button" [class.crm-button--primary]="actionVariant() === 'primary'" [class.crm-button--positive]="actionVariant() === 'positive'" [class.crm-button--destructive]="actionVariant() === 'destructive'" [class.confirm-button--destructive]="actionVariant() === 'destructive'" [class.confirm-button--caution]="actionVariant() === 'caution'" [class.confirm-button--neutral]="actionVariant() === 'neutral'" [attr.aria-busy]="busy()" [disabled]="busy() || (requireReason() && !reason().trim())" (click)="confirmed.emit()">
+            <button type="button" class="button-primary crm-button" [class.crm-button--primary]="actionVariant() === 'primary'" [class.crm-button--positive]="actionVariant() === 'positive'" [class.crm-button--destructive]="actionVariant() === 'destructive'" [class.crm-button--destructive-outline]="actionVariant() === 'destructive-outline'" [class.confirm-button--destructive]="actionVariant() === 'destructive'" [class.confirm-button--caution]="actionVariant() === 'caution'" [class.confirm-button--neutral]="actionVariant() === 'neutral'" [attr.aria-busy]="busy()" [disabled]="busy() || (requireReason() && !reason().trim())" (click)="confirmed.emit()">
               @if (actionVariant() !== 'neutral') { <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path [attr.d]="confirmIconPath()" /></svg> }<span>{{ confirmLabel() }}</span>
             </button>
           </div>
@@ -71,7 +71,7 @@ export class ConfirmationDialogComponent implements OnDestroy {
   readonly cancelLabel = input('Cancel');
   readonly reasonLabel = input('Reason');
   readonly reasonPlaceholder = input('Enter a reason');
-  readonly actionVariant = input<'primary' | 'positive' | 'destructive' | 'caution' | 'neutral'>('primary');
+  readonly actionVariant = input<'primary' | 'positive' | 'destructive' | 'destructive-outline' | 'caution' | 'neutral'>('primary');
   readonly busy = input(false);
   readonly requireReason = input(false);
   readonly reason = input('');
@@ -146,7 +146,7 @@ export class ConfirmationDialogComponent implements OnDestroy {
   }
 
   confirmIconPath(): string {
-    return this.actionVariant() === 'destructive'
+    return this.actionVariant() === 'destructive' || this.actionVariant() === 'destructive-outline'
       ? 'M6 6l12 12M18 6 6 18'
       : this.actionVariant() === 'caution'
         ? 'M12 8v4m0 4h.01M10.3 4.5 2.8 18a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 4.5a2 2 0 0 0-3.4 0Z'
