@@ -492,6 +492,24 @@ hold active, preserves request history, and permits a subsequent request.
 Self-approval controls
 remain backend-calculated; the CRM only renders permitted actions.
 
+Final targeted CRM evidence includes 2/2 cancellation service tests, 1/1 Legal
+Holds list-synchronization regression, 17/17 focused Legal Holds, Privacy
+Administration, and shared-confirmation tests, and one successful production
+build. The build retains the known NG8107 diagnostic and a non-blocking
+Privacy Administration shared-stylesheet budget warning. Manual Legal Holds
+UAT was accepted, including cancellation, direct superuser release, history
+presentation, and automatic list refresh. After successful creation or release
+workflow completion, the CRM refreshes the authoritative collection, preserves
+existing holds, orders active holds newest first, and ignores stale responses.
+The focused Legal Holds regression coverage also verifies that cancelled
+release history uses the cancellation actor, cancellation timestamp, and
+cancellation reason while retaining the original request metadata separately.
+When `LEGAL_HOLD_ADMIN` is revoked, selected targets, person-search results,
+contextual target state, protected dialogs, and pending actions are cleared;
+late person-search, selected-person, list, detail, and mutation responses are
+ignored using the authorization epoch and request sequences. The targeted
+correction passed **3/3** component tests.
+
 Status: **Implemented / isolated validation and manual UAT verified; operational
 deployment unverified**. Older CRM
 clients must not consume the expanded API capability disclosure until this

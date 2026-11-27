@@ -281,6 +281,16 @@ history. The original requester may cancel a pending request with a reason;
 this leaves the hold active and permits a later request. Ordinary approval
 requires separation of duties. The approved
 superuser exception is not a general substitute for legal-hold governance.
+An admitted Django superuser may release a hold directly through the approved
+audited exception; this ends only that hold's protection and does not affect
+other active holds. After successful placement, request, cancellation,
+approval, rejection, or direct release, the CRM refreshes the authoritative
+hold list and keeps existing active holds visible.
+If Legal Hold administration is revoked during an open workflow, the CRM
+clears the selected target, search results, protected dialogs and pending
+actions. Late responses cannot restore protected hold or Person information;
+the authenticated CRM session and unrelated authorized functions remain
+available.
 
 The proposed initial privacy-audit retention period is 24 months from audit
 event creation, but remains provisional pending formal legal/privacy approval.
