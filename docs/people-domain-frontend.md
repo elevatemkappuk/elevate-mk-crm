@@ -181,9 +181,9 @@ browser storage.
 
 The API remains authoritative for masking, search filtering, write rejection,
 record scope, and superuser behavior. This document records source-level
-implementation only: affected frontend tests and runtime/browser validation
-remain unexecuted or unverified under the deferred-test policy. Cross-repository
-deployment compatibility and final hardening remain outstanding.
+implementation and the recorded CRM suite/build evidence; targeted
+runtime/browser validation and cross-repository deployment compatibility remain
+unverified. Final hardening remains outstanding.
 
 ## Frontend component file organization
 

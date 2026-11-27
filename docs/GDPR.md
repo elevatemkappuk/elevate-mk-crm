@@ -564,7 +564,8 @@ The focused projection spec passed **9/9** with the installed Vitest runner.
 An isolated browser check verified that the restricted synthetic staff account
 could navigate from People Directory to Person 10, receive an HTTP 200 overview,
 render the profile, and see restricted fields. The Angular test builder was
-attempted but did not complete; the full Angular suite remains unverified.
+attempted but did not complete in this historical intermediate run; the later
+documented **484/484** Angular suite result is the authoritative current evidence.
 
 The shared projection preserves backend-authorized partial contact masks such
 as `u***@e***.invalid` and `******02`, preserves missing contact values for
@@ -721,4 +722,8 @@ migration verification and independent final acceptance remain required. The doc
 15-scenario manual UAT result remains reported user evidence, with one
 historical-campaign scenario waived pending automated coverage. AUTH-001,
 AUTH-002, GOV-003, GOV-005, uncovered GOV-006 paths and trusted-provenance
-hardening remain open or activation dependencies.
+hardening remain open or activation dependencies. The application-level actor,
+Admin privacy-mutation, and trusted-provenance corrections reviewed in the
+latest API remediation are implemented and targeted-tested; the remaining
+items are full-suite, deployment, cross-repository runtime, and independent
+release-gate verification rather than unreviewed CRM defects.
