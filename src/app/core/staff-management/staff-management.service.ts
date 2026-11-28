@@ -3,7 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { API_CONFIG } from '../http/api-config';
-import { StaffActivityResponse, StaffDetail, StaffDirectoryResponse } from './staff-management.types';
+import { StaffActivityResponse, StaffDetail, StaffDirectoryResponse, StaffOnboardingLookupResponse, StaffOnboardingRoleOption, StaffOnboardingValidationResponse } from './staff-management.types';
 
 export interface StaffDirectoryQuery {
   q?: string;
@@ -13,6 +13,18 @@ export interface StaffDirectoryQuery {
   ordering?: string;
   page?: number;
   page_size?: number;
+}
+
+export interface StaffOnboardingValidationRequest {
+  person_id?: number;
+  first_name?: string;
+  last_name?: string;
+  primary_email?: string | null;
+  mobile?: string;
+  location?: string;
+  login_email?: string;
+  role_code: string;
+  reason: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -30,6 +42,38 @@ export class StaffManagementService {
 
   activity(userId: number, page = 1): Observable<StaffActivityResponse> {
     return this.http.get<StaffActivityResponse>(this.url(`/staff/directory/${userId}/activity/`), { params: new HttpParams().set('page', page) });
+  }
+
+  onboardingRoles(): Observable<{ results: StaffOnboardingRoleOption[] }> {
+    return this.http.get<{ results: StaffOnboardingRoleOption[] }>(this.url('/staff/onboarding/roles/'));
+  }
+
+  searchOnboardingPeople(q: string): Observable<StaffOnboardingLookupResponse> {
+    return this.http.get<StaffOnboardingLookupResponse>(this.url('/staff/onboarding/people/'), { params: new HttpParams().set('q', q) });
+  }
+
+  validateOnboarding(payload: StaffOnboardingValidationRequest): Observable<StaffOnboardingValidationResponse> {
+    return this.http.post<StaffOnboardingValidationResponse>(this.url('/staff/onboarding/validate/'), payload);
+  }
+
+  submitOnboarding(payload: StaffOnboardingValidationRequest): Observable<{ public_id: string; intended_email: string; expires_at: string; delivery: string }> {
+    return this.http.post<{ public_id: string; intended_email: string; expires_at: string; delivery: string }>(this.url('/staff/onboarding/'), payload);
+  }
+
+  inspectInvitation(invitation: string, token: string): Observable<{ usable: boolean; existing_account: boolean; role_code: string; expires_at: string }> {
+    return this.http.get<{ usable: boolean; existing_account: boolean; role_code: string; expires_at: string }>(this.url('/staff/invitations/inspect/'), { params: { invitation, token } });
+  }
+
+  acceptInvitation(invitation: string, token: string, payload: { password?: string; confirm_password?: string }): Observable<{ detail: string; user_id: number }> {
+    return this.http.post<{ detail: string; user_id: number }>(this.url('/staff/invitations/accept/'), { invitation, token, ...payload });
+  }
+
+  resendInvitation(invitationId: string, reason: string): Observable<{ public_id: string; expires_at: string; delivery: string }> {
+    return this.http.post<{ public_id: string; expires_at: string; delivery: string }>(this.url(`/staff/invitations/${invitationId}/resend/`), { reason });
+  }
+
+  cancelInvitation(invitationId: string, reason: string): Observable<{ detail: string }> {
+    return this.http.post<{ detail: string }>(this.url(`/staff/invitations/${invitationId}/cancel/`), { reason });
   }
 
   private params(query: StaffDirectoryQuery): HttpParams {

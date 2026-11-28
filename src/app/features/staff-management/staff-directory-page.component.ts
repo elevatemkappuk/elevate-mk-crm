@@ -8,10 +8,11 @@ import { StaffManagementService, StaffDirectoryQuery } from '../../core/staff-ma
 import { StaffDirectoryRow } from '../../core/staff-management/staff-management.types';
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
 import { StatusBadgeComponent, StatusBadgeTone } from '../../shared/ui/status-badge.component';
+import { StaffOnboardingDrawerComponent } from './staff-onboarding-drawer.component';
 
 @Component({
   selector: 'app-staff-directory-page',
-  imports: [CommonModule, RouterLink, StateMessageComponent, StatusBadgeComponent],
+  imports: [CommonModule, RouterLink, StateMessageComponent, StatusBadgeComponent, StaffOnboardingDrawerComponent],
   templateUrl: './staff-directory-page.component.html',
   styleUrl: './staff-directory-page.component.css',
 })
@@ -27,6 +28,7 @@ export class StaffDirectoryPageComponent {
   readonly page = signal(1);
   readonly hasNext = signal(false);
   readonly hasPrevious = signal(false);
+  readonly onboardingOpen = signal(false);
 
   constructor() {
     this.queryChanges.pipe(

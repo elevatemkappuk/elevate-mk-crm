@@ -1,6 +1,7 @@
 <main class="staff-page">
   <header class="crm-page-heading">
-    <div class="crm-page-heading__copy"><h1 class="crm-page-heading__title">Staff Management</h1><p class="crm-page-heading__description">Read-only staff access, account and approval state.</p></div>
+    <div class="crm-page-heading__copy"><h1 class="crm-page-heading__title">Staff Management</h1><p class="crm-page-heading__description">Staff access, account and approval state.</p></div>
+    <button class="crm-button crm-button--brand" type="button" (click)="onboardingOpen.set(true)">Invite Staff Member</button>
   </header>
   <section class="filters" aria-label="Staff directory filters">
     <label class="crm-label">Search <input class="crm-control" type="search" (input)="update('q', $any($event.target).value)" placeholder="Name or permitted email" /></label>
@@ -18,4 +19,5 @@
     </tbody></table></div>
     <nav class="crm-pagination" aria-label="Staff directory pagination"><button class="crm-button crm-button--secondary" type="button" [disabled]="!hasPrevious()" (click)="previousPage()">Previous</button><span>Page {{ page() }}</span><button class="crm-button crm-button--secondary" type="button" [disabled]="!hasNext()" (click)="nextPage()">Next</button></nav>
   }
+  @if (onboardingOpen()) { <app-staff-onboarding-drawer (closed)="onboardingOpen.set(false)" /> }
 </main>

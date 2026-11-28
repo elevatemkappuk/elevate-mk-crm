@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, of, switchMap, tap } from 'rxjs';
+import { Observable } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { StaffManagementService } from '../../core/staff-management/staff-management.service';
@@ -10,10 +11,11 @@ import { DetailListComponent } from '../../shared/ui/detail-list.component';
 import { CrmSectionCardComponent } from '../../shared/ui/crm-section-card.component';
 import { StateMessageComponent } from '../../shared/ui/state-message.component';
 import { StatusBadgeComponent } from '../../shared/ui/status-badge.component';
+import { ConfirmationDialogComponent } from '../../shared/ui/confirmation-dialog.component';
 
 @Component({
   selector: 'app-staff-detail-page',
-  imports: [CommonModule, RouterLink, DetailListComponent, CrmSectionCardComponent, StateMessageComponent, StatusBadgeComponent],
+  imports: [CommonModule, RouterLink, DetailListComponent, CrmSectionCardComponent, StateMessageComponent, StatusBadgeComponent, ConfirmationDialogComponent],
   templateUrl: './staff-detail-page.component.html',
   styleUrl: './staff-detail-page.component.css',
 })
@@ -25,6 +27,9 @@ export class StaffDetailPageComponent {
   readonly activity = signal<StaffActivityEvent[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
+  readonly action = signal<{ kind: 'resend' | 'cancel'; id: string } | null>(null);
+  readonly reason = signal('');
+  readonly actionBusy = signal(false);
 
   constructor() {
     this.route.paramMap.pipe(
@@ -40,5 +45,34 @@ export class StaffDetailPageComponent {
         );
       }), takeUntilDestroyed(this.destroyRef),
     ).subscribe();
+  }
+
+  openInvitationAction(kind: 'resend' | 'cancel', id: string): void { this.reason.set(''); this.action.set({ kind, id }); }
+  invitationStatus(invitation: StaffDetail['invitations'][number]): string {
+    if (invitation.accepted_at) return 'Accepted';
+    if (invitation.revoked_at) return 'Cancelled';
+    if (invitation.superseded_at) return 'Superseded';
+    return new Date(invitation.expires_at).getTime() <= Date.now() ? 'Expired' : 'Pending';
+  }
+  closeInvitationAction(): void { if (!this.actionBusy()) this.action.set(null); }
+  confirmInvitationAction(): void {
+    const action = this.action();
+    if (!action || !this.reason().trim() || this.actionBusy()) return;
+    this.actionBusy.set(true); this.error.set(null);
+    const request: Observable<{ detail?: string; public_id?: string; expires_at?: string; delivery?: string }> = action.kind === 'resend'
+      ? this.service.resendInvitation(action.id, this.reason().trim())
+      : this.service.cancelInvitation(action.id, this.reason().trim());
+    request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => { this.actionBusy.set(false); this.action.set(null); this.reason.set(''); this.reload(); },
+      error: () => { this.actionBusy.set(false); this.error.set(`Invitation ${action.kind} could not be completed.`); },
+    });
+  }
+  private reload(): void {
+    const id = Number(this.route.snapshot.paramMap.get('id'));
+    this.loading.set(true);
+    this.service.get(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: value => { this.detail.set(value); this.loading.set(false); },
+      error: () => { this.loading.set(false); this.error.set('Staff details could not be refreshed.'); },
+    });
   }
 }

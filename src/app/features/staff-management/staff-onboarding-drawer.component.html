@@ -1,0 +1,35 @@
+<app-crm-drawer title="Invite staff member" description="Resolve a Person and validate the next safe onboarding step." [busy]="busy()" [dirty]="dirty()" (closed)="close()">
+  <div class="onboarding-body">
+    <p class="notice">Invitation issuance creates a pending account and queues the secure invitation email. Staff access is not active until acceptance.</p>
+    <div class="mode-switch" role="group" aria-label="Onboarding identity source">
+      <button type="button" class="crm-button" [class.crm-button--brand]="mode() === 'existing'" (click)="setMode('existing')">Existing Person</button>
+      <button type="button" class="crm-button" [class.crm-button--brand]="mode() === 'new'" (click)="setMode('new')">New Person</button>
+    </div>
+
+    @if (mode() === 'existing') {
+      @if (selected(); as person) {
+        <div class="selected-person" aria-live="polite"><strong>{{ person.display_name }}</strong><span>{{ person.primary_email || 'Contact email restricted' }}</span><button type="button" class="crm-button crm-button--quiet" (click)="clearSelection()">Change</button></div>
+      } @else {
+        <label class="crm-label">Search permitted People
+          <input class="crm-control" type="search" [formControl]="search" placeholder="Search by name or permitted email" autocomplete="off" />
+        </label>
+        @if (searchLoading()) { <app-state-message title="Searching" message="Looking for permitted Person records." /> }
+        @if (!searchLoading() && candidates().length) { <ul class="candidate-list" aria-label="Person candidates">@for (candidate of candidates(); track candidate.person_id) { <li><button type="button" class="candidate" (click)="choose(candidate)"><strong>{{ candidate.display_name }}</strong><span>{{ candidate.primary_email || 'Contact email restricted' }}</span><app-status-badge [label]="candidate.onboarding_eligibility" tone="neutral" /></button></li> }</ul> }
+        @if (!searchLoading() && search.value.trim().length >= 2 && !candidates().length) { <p class="muted">No permitted Person candidates found.</p> }
+      }
+    } @else {
+      <app-person-form [drawer]="true" [member]="false" submitLabel="Use identity" (submitted)="captureNewPerson($event)" (cancelled)="close()" />
+    }
+
+    <label class="crm-label">Login email @if (mode() === 'new') { <span>(required for a new account)</span> }<input class="crm-control" type="email" [formControl]="form.controls.login_email" autocomplete="email" /></label>
+    <label class="crm-label">Requested CRM role<select class="crm-control" [formControl]="form.controls.role_code">@for (role of roles(); track role.code) { <option [value]="role.code">{{ role.name }}</option> }</select></label>
+    @if (form.controls.role_code.value === 'CRM_ADMIN') { <p class="notice">Administrator appointments require independent approval before staff access can be activated.</p> }
+    <label class="crm-label">Onboarding reason<textarea class="crm-control" rows="4" [formControl]="form.controls.reason" placeholder="Explain the administrative reason for this request."></textarea></label>
+    @if (error()) { <app-state-message title="Onboarding unavailable" [message]="error()!" tone="error" /> }
+    <button type="button" class="crm-button crm-button--brand" [disabled]="busy()" (click)="validate()">Validate onboarding</button>
+    @if (result(); as validation) {
+      @if (validation.conflict) { <section class="conflict" aria-live="assertive"><h3>{{ validation.conflict.code }}</h3><p>{{ validation.conflict.detail }}</p></section> }
+      @else if (validation.eligible) { <section class="result" aria-live="polite"><h3>Ready for invitation</h3><p>{{ validation.person?.display_name }} will use {{ roleLabel(validation.requested_role) }}.</p><p>Account resolution: {{ validation.user?.account_resolution }}.</p>@if (validation.administrator_approval_required) { <p>Independent Administrator approval will be required; invitation submission is restricted.</p> } @else { <button type="button" class="crm-button crm-button--brand" [disabled]="busy()" (click)="submit()">Create invitation</button> } @if (submitted()) { <p class="success" role="status">Invitation created and email queued. Staff access remains pending acceptance.</p> }</section> }
+    }
+  </div>
+</app-crm-drawer>

@@ -1,6 +1,6 @@
 # Staff Management V1
 
-Status: **Read-only Staff Management directory and detail implemented; runtime verification pending**
+Status: **Directory/detail, onboarding submission and invitation acceptance implemented; runtime verification pending**
 
 This document is the CRM repository's living guide to the read-only Staff
 Management experience. The Django API remains authoritative for identity,
@@ -11,8 +11,10 @@ the backend contract and approved business rules.
 
 ## Current status
 
-Staff Management directory and detail are implemented as read-only CRM
-features. Mutation workflows remain unavailable until separately authorized.
+Staff Management directory, detail, persisted onboarding submission and the
+public invitation acceptance route are implemented. Invitation delivery remains
+durable and backend-authoritative; runtime verification is pending final
+hardening.
 
 The API provides the Staff Management authorization foundation and the
 backend-authoritative `access.staff_management` indicator:
@@ -65,13 +67,13 @@ Django Superusers. A Superuser without a CRM role may enter Staff Management
 only; this exception must not grant access to People, Marketing, Moderation or
 other CRM resources.
 
-The planned experience includes:
+The implemented and planned experience includes:
 
 - server-side Staff directory;
 - lifecycle, role and approval filters;
 - Staff detail workspace;
-- existing Person selection;
-- duplicate and identity-collision review;
+- onboarding Person selection and identity validation;
+- duplicate and identity-collision review in the onboarding boundary;
 - invitation issue, resend and cancellation;
 - Administrator approval queue;
 - role changes;
@@ -82,16 +84,24 @@ The planned experience includes:
 - read-only privacy capability summaries;
 - lifecycle audit history.
 
-## Planned route structure
+## Invitation experience
 
-Proposed routes are not implemented:
+Implemented contracts include:
 
 ```text
 /administration/staff
 /administration/staff/:id
 /administration/staff/approvals
-/staff/activate/:invitation/:token
+/staff/invitation/accept?invitation=<id>&token=<credential>
 ```
+
+The onboarding drawer submits only after advisory validation and reports the
+email as queued, never as delivered or active staff. The public acceptance page
+keeps the bearer token in memory and does not store it in local storage.
+For existing active accounts, the page uses the existing `AuthService` login
+flow, clears any currently authenticated account before switching identity, and
+then submits acceptance under that authenticated session. The API still checks
+the exact invitation target and rejects a different account.
 
 The route guard must consult backend-derived authority. Frontend navigation is
 not a security boundary.
@@ -135,10 +145,11 @@ The business-facing workflow summary is in
 
 ### Add Staff
 
-The workflow will search permitted Persons, present identity-collision evidence,
-allow an existing Person or a new Person, and establish or reuse the correct
-User relationship. It must not silently merge identities, overwrite contact
-data, create Membership or expose restricted Person data.
+The onboarding drawer searches permitted Persons, supports a new identity form,
+shows backend account resolution, validates the requested canonical role and
+requires a reason. It must not silently merge identities, overwrite contact
+data, create Membership or expose restricted Person data. Final persistence is
+unavailable until invitation issuance can be integrated safely.
 
 ### Invitation
 
@@ -193,5 +204,5 @@ Future CRM coverage must include:
 - audit timeline projection;
 - keyboard, focus and responsive interaction.
 
-No Staff Management frontend tests have been created or executed in this
-documentation stage.
+Permanent onboarding frontend tests have been created but not executed.
+Runtime and full regression verification remain pending final hardening.

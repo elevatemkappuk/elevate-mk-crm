@@ -1,10 +1,11 @@
 # Staff Management V1 — Business Guide
 
-Status: **Implemented read-only directory and detail; mutation workflows unavailable**
+Status: **Directory/detail, onboarding submission and invitation acceptance implemented; runtime verification pending**
 
 This guide describes the implemented read-only Staff Management directory and
-detail capability for authorized Elevate MK administrators. Mutation workflows
-remain unavailable and are not operating instructions.
+detail capability for authorized Elevate MK administrators. Invitation-backed
+onboarding is available; runtime verification remains pending and the public
+Administrator approval workflow is not exposed.
 
 ## Purpose
 
@@ -49,9 +50,12 @@ The CRM provides:
 - server-side search, filters and pagination;
 - read-only role, account, invitation and Administrator approval state;
 - read-only staff activity history;
+- onboarding Person lookup, validation and transactional invitation submission;
+- public new-account invitation acceptance;
+- existing-account authentication followed by invitation acceptance;
 
 The following remain unavailable:
-- Add Staff workflow;
+- Administrator approval submission and decision workflow;
 - existing Person search and identity review;
 - invitation and delivery recovery controls;
 - Administrator approval queue;

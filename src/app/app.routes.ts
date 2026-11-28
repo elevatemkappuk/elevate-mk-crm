@@ -11,6 +11,7 @@ import {
   staffManagementGuard,
 } from './core/guards/auth.guards';
 export const routes: Routes = [
+  { path: 'staff/invitation/accept', loadComponent: () => import('./features/staff-management/staff-invitation-accept-page.component').then(m => m.StaffInvitationAcceptPageComponent) },
   {
     path: 'staff-management',
     canActivate: [staffManagementGuard],
