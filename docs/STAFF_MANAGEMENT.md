@@ -46,8 +46,9 @@ eligibility, and invalidates incompatible invitations/proposals. Global
 disablement retains role history but invalidates authentication credentials;
 enablement resumes retained active roles and grants but does not restore revoked
 roles, suspended grants, sessions or tokens. Staff Detail exposes backend-
-authorized role-change, deactivation and reactivation actions; global account
-disablement remains outside this feature.
+authorized role-change, deactivation, reactivation and global account
+disablement/enablement actions. Account actions retain roles and privacy grants
+while making them ineffective during disablement.
 
 The historical CRM regression baseline of 493/493 is not new Staff Management
 verification.
@@ -182,6 +183,14 @@ reactivated CRM Administrator access becomes effective.
 ### Staff and account lifecycle
 
 Staff-access deactivation and global account disablement are separate actions.
+
+The Staff Detail page exposes `Disable global account` and `Enable global
+account` only when the backend returns the corresponding eligibility flags.
+Disablement blocks ecosystem authentication, invalidates applicable sessions
+and credentials, and cancels incompatible invitations, proposals and pending
+email changes. Enablement requires fresh authentication and does not resurrect
+invalidated credentials, revoked roles or suspended grants. Runtime API and
+browser verification remains pending final hardening.
 Reactivation requires a new invitation and does not restore suspended privacy
 grants. Account enablement does not restore revoked staff access, invalidated
 sessions or suspended grants.

@@ -27,7 +27,7 @@ export class StaffDetailPageComponent {
   readonly activity = signal<StaffActivityEvent[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
-  readonly action = signal<{ kind: 'resend' | 'cancel'; id: string } | { kind: 'promote' | 'role' | 'deactivate' | 'reactivate'; id: number } | null>(null);
+  readonly action = signal<{ kind: 'resend' | 'cancel'; id: string } | { kind: 'promote' | 'role' | 'deactivate' | 'reactivate' | 'disable-account' | 'enable-account'; id: number } | null>(null);
   readonly reason = signal('');
   readonly selectedRole = signal<'CRM_ADMIN' | 'CRM_MANAGER' | 'CRM_VIEWER'>('CRM_VIEWER');
   readonly actionBusy = signal(false);
@@ -61,6 +61,10 @@ export class StaffDetailPageComponent {
     if (userId === null) return;
     this.reason.set(''); this.selectedRole.set(kind === 'reactivate' ? 'CRM_VIEWER' : 'CRM_MANAGER'); this.action.set({ kind, id: userId });
   }
+  openAccountAction(kind: 'disable-account' | 'enable-account', userId: number | null): void {
+    if (userId === null) return;
+    this.reason.set(''); this.action.set({ kind, id: userId });
+  }
   invitationStatus(invitation: StaffDetail['invitations'][number]): string {
     if (invitation.accepted_at) return 'Accepted';
     if (invitation.revoked_at) return 'Cancelled';
@@ -76,7 +80,11 @@ export class StaffDetailPageComponent {
       ? this.service.createAdministratorProposal('PROMOTE_EXISTING', action.id, this.reason().trim())
       : action.kind === 'role'
         ? this.service.changeStaffRole(action.id, this.selectedRole(), this.reason().trim())
-        : action.kind === 'deactivate'
+      : action.kind === 'disable-account'
+          ? this.service.disableAccount(action.id, this.reason().trim())
+          : action.kind === 'enable-account'
+            ? this.service.enableAccount(action.id, this.reason().trim())
+      : action.kind === 'deactivate'
           ? this.service.deactivateStaff(action.id, this.reason().trim())
           : action.kind === 'reactivate'
             ? this.service.reactivateStaff(action.id, this.selectedRole(), this.reason().trim())
@@ -85,7 +93,7 @@ export class StaffDetailPageComponent {
               : this.service.cancelInvitation(String(action.id), this.reason().trim());
     request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => { this.actionBusy.set(false); this.action.set(null); this.reason.set(''); this.reload(); },
-      error: () => { this.actionBusy.set(false); this.error.set(action.kind === 'promote' ? 'The Administrator proposal could not be created.' : action.kind === 'role' ? 'The CRM role could not be changed.' : action.kind === 'deactivate' ? 'Staff access could not be deactivated.' : action.kind === 'reactivate' ? 'Staff reactivation could not be started.' : `Invitation ${action.kind} could not be completed.`); },
+      error: () => { this.actionBusy.set(false); this.error.set(action.kind === 'disable-account' ? 'The global account could not be disabled.' : action.kind === 'enable-account' ? 'The global account could not be enabled.' : action.kind === 'promote' ? 'The Administrator proposal could not be created.' : action.kind === 'role' ? 'The CRM role could not be changed.' : action.kind === 'deactivate' ? 'Staff access could not be deactivated.' : action.kind === 'reactivate' ? 'Staff reactivation could not be started.' : `Invitation ${action.kind} could not be completed.`); },
     });
   }
   private reload(): void {

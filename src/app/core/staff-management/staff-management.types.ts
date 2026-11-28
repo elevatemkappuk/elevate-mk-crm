@@ -31,6 +31,8 @@ export interface StaffDetail extends StaffDirectoryRow {
   can_change_role: boolean;
   can_deactivate: boolean;
   can_reactivate: boolean;
+  can_disable_account: boolean;
+  can_enable_account: boolean;
 }
 
 export interface StaffActivityEvent {

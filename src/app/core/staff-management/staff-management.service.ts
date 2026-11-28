@@ -91,6 +91,8 @@ export class StaffManagementService {
   changeStaffRole(userId: number, roleCode: string, reason: string): Observable<Record<string, unknown>> { return this.http.post<Record<string, unknown>>(this.url('/staff/role-change/'), { user_id: userId, role_code: roleCode, reason }); }
   deactivateStaff(userId: number, reason: string): Observable<Record<string, unknown>> { return this.http.post<Record<string, unknown>>(this.url('/staff/deactivate/'), { user_id: userId, reason }); }
   reactivateStaff(userId: number, roleCode: string, reason: string): Observable<Record<string, unknown>> { return this.http.post<Record<string, unknown>>(this.url('/staff/reactivate/'), { user_id: userId, role_code: roleCode, reason }); }
+  disableAccount(userId: number, reason: string): Observable<Record<string, unknown>> { return this.http.post<Record<string, unknown>>(this.url('/staff/account/disable/'), { user_id: userId, reason }); }
+  enableAccount(userId: number, reason: string): Observable<Record<string, unknown>> { return this.http.post<Record<string, unknown>>(this.url('/staff/account/enable/'), { user_id: userId, reason }); }
 
   private params(query: StaffDirectoryQuery): HttpParams {
     let params = new HttpParams();

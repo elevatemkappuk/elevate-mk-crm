@@ -85,8 +85,10 @@ global account disablement. Deactivation preserves global authentication
 eligibility while removing CRM access. Account disablement invalidates account
 credentials; enablement resumes retained active CRM roles and active privacy
 grants, but does not restore revoked roles, suspended grants, sessions, tokens,
-invitations or proposals. Global account lifecycle mutations remain unavailable
-in the CRM screens.
+invitations or proposals. The CRM now exposes separate backend-authorized
+global account disablement and enablement actions from Staff Detail. Disabled
+accounts display retained roles as ineffective and require fresh
+authentication after enablement.
 
 Passwords, invitation tokens, reset tokens, invitation URLs and provider
 payloads must never be displayed or recorded in ordinary staff workflows.
@@ -97,7 +99,8 @@ Management screens.
 
 ## Current limitations
 
-- Global account mutation workflows remain unavailable in the CRM.
+- Global account actions require a mandatory reason; frontend visibility is not
+  an authorization boundary.
 - Activity and directory behavior is implemented but runtime verification is pending.
 - Mutation actions remain subject to backend authorization, current-state validation and mandatory reasons.
 - Historical API and CRM regression baselines are not Staff Management validation.
