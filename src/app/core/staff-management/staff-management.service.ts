@@ -3,7 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { API_CONFIG } from '../http/api-config';
-import { StaffActivityResponse, StaffDetail, StaffDirectoryResponse, StaffOnboardingLookupResponse, StaffOnboardingRoleOption, StaffOnboardingValidationResponse } from './staff-management.types';
+import { StaffActivityResponse, StaffDetail, StaffDirectoryResponse, StaffOnboardingRoleOption, StaffOnboardingValidationResponse } from './staff-management.types';
 
 export interface StaffDirectoryQuery {
   q?: string;
@@ -16,9 +16,8 @@ export interface StaffDirectoryQuery {
 }
 
 export interface StaffOnboardingValidationRequest {
-  person_id?: number;
-  first_name?: string;
-  last_name?: string;
+  first_name: string;
+  last_name: string;
   primary_email?: string | null;
   mobile?: string;
   location?: string;
@@ -46,10 +45,6 @@ export class StaffManagementService {
 
   onboardingRoles(): Observable<{ results: StaffOnboardingRoleOption[] }> {
     return this.http.get<{ results: StaffOnboardingRoleOption[] }>(this.url('/staff/onboarding/roles/'));
-  }
-
-  searchOnboardingPeople(q: string): Observable<StaffOnboardingLookupResponse> {
-    return this.http.get<StaffOnboardingLookupResponse>(this.url('/staff/onboarding/people/'), { params: new HttpParams().set('q', q) });
   }
 
   validateOnboarding(payload: StaffOnboardingValidationRequest): Observable<StaffOnboardingValidationResponse> {

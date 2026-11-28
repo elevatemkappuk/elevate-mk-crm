@@ -60,23 +60,9 @@ export interface StaffOnboardingRoleOption {
   administrator_approval_required: boolean;
 }
 
-export interface StaffOnboardingPersonCandidate {
-  person_id: number;
-  display_name: string;
-  primary_email: string | null;
-  account_state: string;
-  staff_role: StaffRoleCode | null;
-  onboarding_eligibility: string;
-}
-
-export interface StaffOnboardingLookupResponse {
-  results: StaffOnboardingPersonCandidate[];
-  has_more: boolean;
-}
-
 export interface StaffOnboardingValidationResponse {
   eligible: boolean;
-  person?: StaffOnboardingPersonCandidate;
+  person?: { person_id: null; display_name: string; primary_email: string | null; account_state: string; staff_role: null; onboarding_eligibility: string };
   user?: { user_id: number | null; account_resolution: string; login_email: string | null; credentials_preserved: boolean };
   requested_role?: StaffRoleCode;
   administrator_approval_required?: boolean;

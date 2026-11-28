@@ -1,14 +1,8 @@
 .onboarding-body { display:grid; gap:1rem; padding-bottom:1.5rem; }
-.mode-switch { display:flex; gap:.5rem; flex-wrap:wrap; }
 .notice, .conflict, .result { margin:0; padding:.85rem 1rem; border:1px solid var(--crm-border); border-radius:.75rem; line-height:1.45; }
 .notice { background:var(--crm-surface-muted); }
 .conflict { border-color:var(--crm-danger); background:color-mix(in srgb, var(--crm-danger) 8%, transparent); }
 .result { border-color:var(--crm-success); background:color-mix(in srgb, var(--crm-success) 8%, transparent); }
-.notice span, .muted, .candidate span, .selected-person span { color:var(--crm-text-secondary); }
-.candidate-list { display:grid; gap:.5rem; list-style:none; margin:0; padding:0; }
-.candidate { display:grid; gap:.2rem; width:100%; padding:.8rem; border:1px solid var(--crm-border); border-radius:.65rem; background:var(--crm-surface); color:var(--crm-text-strong); text-align:left; cursor:pointer; }
-.candidate:hover, .candidate:focus-visible { border-color:var(--crm-focus-ring); }
-.selected-person { display:grid; gap:.25rem; padding:.8rem; border:1px solid var(--crm-border); border-radius:.65rem; }
-.selected-person .crm-button { justify-self:start; }
+.notice span, .muted { color:var(--crm-text-secondary); }
 h3, p { margin:0; }
 textarea { resize:vertical; }

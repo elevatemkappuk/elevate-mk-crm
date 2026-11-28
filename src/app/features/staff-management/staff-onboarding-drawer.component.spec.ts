@@ -11,7 +11,6 @@ describe('StaffOnboardingDrawerComponent', () => {
   it('loads the authoritative role options for the invitation workflow', () => {
     const service = {
       onboardingRoles: () => of({ results: [{ code: 'CRM_VIEWER', name: 'CRM Viewer', administrator_approval_required: false }] }),
-      searchOnboardingPeople: () => of({ results: [], has_more: false }),
       validateOnboarding: () => of({ eligible: true, requested_role: 'CRM_VIEWER', submission_available: false, unavailable_reason: 'Invitation lifecycle pending.' }),
       submitOnboarding: () => of({ public_id: 'invitation', intended_email: 'person@example.com', expires_at: '2030-01-01T00:00:00Z', delivery: 'PENDING' }),
     };

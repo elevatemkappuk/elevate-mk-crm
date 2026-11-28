@@ -29,18 +29,35 @@ that an operation is unavailable or secure.
 Staff Management will preserve the following rules:
 
 1. Staff receive secure invitations and choose their own password.
-2. Existing People and Users are reused where identity is confirmed.
-3. Existing active Users keep their existing credentials.
-4. Membership and Community access are not automatically changed.
-5. One CRM-family role is active at a time.
-6. CRM Administrator authority requires two distinct administrators.
-7. Administrators cannot use Staff Management to perform prohibited actions on themselves.
-8. Staff access deactivation is separate from disabling the User account.
-9. Reactivation requires a new invitation and current permission review.
-10. Privacy grants suspended during deactivation do not automatically return.
-11. Login email and Person contact email remain separate.
-12. Technical accounts receive restricted actions.
-13. Lifecycle actions and denied sensitive operations are audited.
+2. New Staff onboarding always creates a new STAFF Person and User.
+3. Existing Person selection and account reuse are not supported by new onboarding.
+4. Former Staff reactivation reuses the existing Staff Person and User.
+5. Existing active Users keep their existing credentials when using the separate invitation or reactivation workflows.
+6. Membership and Community access are not automatically changed.
+7. One CRM-family role is active at a time.
+8. CRM Administrator authority requires two distinct administrators.
+9. Administrators cannot use Staff Management to perform prohibited actions on themselves.
+10. Staff access deactivation is separate from disabling the User account.
+11. Reactivation requires a new invitation and current permission review.
+12. Privacy grants suspended during deactivation do not automatically return.
+13. Login email and Person contact email remain separate.
+14. Technical accounts receive restricted actions.
+15. Lifecycle actions and denied sensitive operations are audited.
+
+## Staff and Community identity boundary
+
+`Person` classification is a permanent domain boundary. A Community identity
+cannot be converted into a Staff identity, and a Staff identity cannot be
+converted into a Community identity. Staff deactivation preserves the Staff
+identity, and reactivation reuses that existing Staff identity.
+
+The same physical individual may have separate Community and Staff
+`Person`/`User` identities. Staff onboarding always creates a new STAFF Person
+and User; it must not reuse a Community member identity or overwrite its
+Membership or contact data. Existing Staff identities use the dedicated
+lifecycle or reactivation workflow. Staff duplicate signals are domain-scoped,
+while login-email uniqueness remains global. The backend remains authoritative;
+CRM visibility or form restrictions do not grant permission.
 
 ## Available workflows
 
@@ -51,7 +68,7 @@ The CRM provides:
 - role, account, invitation and Administrator approval state;
 - Administrator approval queue and proposal review;
 - read-only staff activity history;
-- onboarding Person lookup, validation and transactional invitation submission;
+- new Staff identity validation and transactional invitation submission;
 - public new-account invitation acceptance;
 - existing-account authentication followed by invitation acceptance;
 - backend-authorized role changes between Manager and Viewer;
@@ -59,7 +76,7 @@ The CRM provides:
 - Manager/Viewer reactivation invitations and Administrator reactivation proposals.
 
 The following remain unavailable:
-- existing Person search and identity review;
+- existing Person selection and account reuse during new onboarding;
 - invitation and delivery recovery controls;
 - separate account disablement and enablement;
 - password recovery request;

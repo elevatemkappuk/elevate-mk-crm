@@ -53,6 +53,18 @@ while making them ineffective during disablement.
 The historical CRM regression baseline of 493/493 is not new Staff Management
 verification.
 
+## Identity boundary
+
+Implementation status: **Implemented**. Verification status: **Pending
+Verification**.
+
+The API treats Community and Staff `Person`/`User` identities as separate
+domains. Staff classification is required before ordinary CRM role access, but
+classification alone grants no access. Community identities cannot receive
+ordinary Staff roles, and Staff identities cannot receive Community access or
+Memberships. A person who needs both experiences uses independent identities;
+the CRM does not automatically merge or link them.
+
 ## Implemented contracts
 
 The CRM consumes `GET /api/v1/staff/directory/`,
@@ -75,7 +87,7 @@ The implemented and planned experience includes:
 - server-side Staff directory;
 - lifecycle, role and approval filters;
 - Staff detail workspace;
-- onboarding Person selection and identity validation;
+- new Staff identity validation and onboarding;
 - duplicate and identity-collision review in the onboarding boundary;
 - invitation issue, resend and cancellation;
 - Administrator approval queue;
@@ -96,6 +108,10 @@ and then confirms the request. It does not store or log the token. Completion
 returns the account owner to a fresh sign-in because the backend revokes
 credentials and sessions.
 
+The backend uses shared account-security token and request-invalidation
+infrastructure intended for future Community and Mobile entry points. This CRM
+stage does not expose those self-service workflows.
+
 ## Invitation experience
 
 Implemented contracts include:
@@ -107,8 +123,8 @@ Implemented contracts include:
 /staff/invitation/accept?invitation=<id>&token=<credential>
 ```
 
-The onboarding drawer submits only after advisory validation and reports the
-email as queued, never as delivered or active staff. The public acceptance page
+The onboarding drawer creates a new Staff identity after advisory validation
+and reports the email as queued, never as delivered or active staff. The public acceptance page
 keeps the bearer token in memory and does not store it in local storage.
 For existing active accounts, the page uses the existing `AuthService` login
 flow, clears any currently authenticated account before switching identity, and
@@ -170,7 +186,8 @@ The business-facing workflow summary is in
 
 ### Add Staff
 
-The onboarding drawer searches permitted Persons, supports a new identity form,
+The onboarding drawer collects a new Staff identity directly. Existing Person
+selection and account reuse are not supported. It supports a new identity form,
 shows backend account resolution, validates the requested canonical role and
 requires a reason. It must not silently merge identities, overwrite contact
 data, create Membership or expose restricted Person data. Final persistence is
