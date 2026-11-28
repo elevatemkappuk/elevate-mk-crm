@@ -75,6 +75,24 @@ role, account, invitation, approval and activity information, with only the
 backend-authorized invitation and proposal actions. Tokens, credentials and
 unrestricted audit metadata are never exposed.
 
+Staff Detail also consumes the backend `privacy_summary` projection. When the
+operator has the existing governed privacy-read authority, the CRM presents
+capability names, effective state, backend-provided sources, role-default state,
+stored individual assignment state, restrictions, suspended grants and account
+or Staff eligibility. The CRM never calculates effective permissions locally.
+When the API returns `UNAVAILABLE`, no capability or assignment details are
+shown and the rest of Staff Detail remains usable. The available view links to
+Privacy Administration with the target Staff User selected; that interface
+remains the only place where privacy permissions can be changed.
+
+The Staff role-change dialog requests the non-mutating
+`POST /api/v1/staff/role-change/preview/` contract for a proposed role. It marks
+the result as hypothetical and shows current/proposed effective permissions,
+gained and lost capabilities, retained restrictions and suspended grants. Role
+selection changes invalidate prior previews; stale responses cannot replace the
+current target or role. The preview does not authorize or apply the eventual
+role change, including Administrator approval workflows.
+
 ## Approved experience
 
 The feature will support authorized CRM Administrators and eligible active

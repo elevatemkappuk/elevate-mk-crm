@@ -2,3 +2,12 @@
 .history-list { display: grid; gap: var(--crm-space-3); }
 .history-list p { margin: 0; padding-bottom: var(--crm-space-3); border-bottom: 1px solid var(--crm-border); color: var(--crm-text-strong); }
 .history-list small { display: block; margin-top: var(--crm-space-1); color: var(--crm-text-muted); }
+.privacy-summary-header { display: grid; gap: var(--crm-space-4); }
+.privacy-help, .privacy-unavailable, .preview-status, .role-preview p { margin: var(--crm-space-3) 0 0; color: var(--crm-text-secondary); }
+.privacy-table-wrap { overflow-x: auto; margin-top: var(--crm-space-4); }
+.privacy-table { width: 100%; border-collapse: collapse; min-width: 46rem; }
+.privacy-table th, .privacy-table td { padding: var(--crm-space-3); border-bottom: 1px solid var(--crm-border); text-align: left; vertical-align: top; }
+.privacy-table th { color: var(--crm-text-strong); font-weight: var(--crm-weight-medium); }
+.role-preview { margin-top: var(--crm-space-3); padding: var(--crm-space-4); border: 1px solid var(--crm-info); border-radius: var(--crm-radius-md); background: var(--crm-info-surface); }
+.role-preview h2 { margin: 0; font-size: var(--crm-font-base); color: var(--crm-text-strong); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }

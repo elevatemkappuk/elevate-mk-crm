@@ -103,6 +103,14 @@ values, persist protected values in browser storage, or treat a hidden field as
 permission to edit it. CRM Viewer access excludes Internal Notes and their
 related operational audit rows.
 
+Staff Detail has a read-only privacy summary for operators who already have
+the governed Privacy Administration read authority. It displays backend-
+calculated effective state and source alongside stored assignment state;
+restrictions override grants and suspended grants remain suspended. An
+unavailable summary exposes no capability or assignment details. The CRM links
+to Privacy Administration for governed changes and never adds mutation actions
+to Staff Management.
+
 Location, professional profile fields, skills, interests, tags, notes,
 membership data, marketing preferences, Community lifecycle/provider data, and
 general audit-history classification are not all resolved by the current privacy

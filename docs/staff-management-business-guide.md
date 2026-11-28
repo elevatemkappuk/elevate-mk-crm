@@ -110,6 +110,29 @@ authentication after enablement.
 Passwords, invitation tokens, reset tokens, invitation URLs and provider
 payloads must never be displayed or recorded in ordinary staff workflows.
 
+### Read-only privacy visibility
+
+Staff Detail may show a read-only Privacy Permissions summary when the
+operator already has Privacy Administration read authority. It distinguishes
+permissions that are currently effective from stored role defaults, individual
+grants, restrictions and suspended grants. A restriction overrides a grant,
+and a suspended grant is not presented as restored. Disabled, pending or
+otherwise ineligible accounts do not appear to have ordinary effective CRM
+privacy permissions.
+
+If the backend marks privacy information unavailable, the CRM hides all
+capability and assignment details while keeping the rest of Staff Detail
+usable. Authorized users can open the existing Privacy Administration view for
+the selected Staff member. Privacy changes, approvals and restoration remain
+exclusive to that governed interface.
+
+When changing a CRM role, the dialog can show a clearly labelled hypothetical
+privacy impact preview. It reports current and proposed effective permissions,
+gained or lost capabilities, retained restrictions and suspended grants. The
+preview is informational only and does not approve or apply a role or privacy
+change; Administrator proposals still require their existing independent
+approval.
+
 Exceptional recovery for a person who has lost both credentials and registered
 email remains a controlled technical procedure outside the normal Staff
 Management screens.

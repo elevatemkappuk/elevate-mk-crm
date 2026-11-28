@@ -22,4 +22,18 @@ describe('StaffManagementService', () => {
     request.flush({ count: 0, next: null, previous: null, results: [] });
     http.verify();
   });
+
+  it('uses the non-mutating role privacy preview contract', () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting(), { provide: API_CONFIG, useValue: { apiBaseUrl: '/api' } }],
+    });
+    const service = TestBed.inject(StaffManagementService);
+    const http = TestBed.inject(HttpTestingController);
+    service.previewStaffRole(7, 'CRM_MANAGER', 'Role-change privacy preview').subscribe();
+    const request = http.expectOne('/api/staff/role-change/preview/');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ user_id: 7, role_code: 'CRM_MANAGER', reason: 'Role-change privacy preview' });
+    request.flush({ status: 'HYPOTHETICAL', target_user_id: 7, current_role_codes: ['CRM_VIEWER'], proposed_role_code: 'CRM_MANAGER', current: {}, proposed: {}, gained: [], lost: [], retained_restrictions: [], suspended_grants: [] });
+    http.verify();
+  });
 });

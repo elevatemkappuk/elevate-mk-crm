@@ -6,6 +6,7 @@ import { of } from 'rxjs';
 import { describe, expect, it } from 'vitest';
 
 import { StaffManagementService } from '../../core/staff-management/staff-management.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { StaffDetailPageComponent } from './staff-detail-page.component';
 
 describe('StaffDetailPageComponent', () => {
@@ -18,12 +19,14 @@ describe('StaffDetailPageComponent', () => {
       role_assignments: [], invitations: [], administrator_proposals: [],
       can_propose_administrator_promotion: false, can_change_role: false, can_deactivate: false, can_reactivate: false,
       can_disable_account: false, can_enable_account: false, can_send_password_reset: false, can_change_login_email: false, email_change_requests: [],
+      privacy_summary: { status: 'UNAVAILABLE', reason: 'PRIVACY_AUTHORIZATION_REQUIRED' },
     };
     const service = { get: () => of(detail), activity: () => of({ count: 0, next: null, previous: null, results: [] }) };
     TestBed.configureTestingModule({
       imports: [StaffDetailPageComponent],
       providers: [
         { provide: StaffManagementService, useValue: service },
+        { provide: AuthService, useValue: { hasPrivacyAdministration: () => false } },
         { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ id: '1' })) } },
       ],
     });
@@ -39,6 +42,7 @@ describe('StaffDetailPageComponent', () => {
       imports: [StaffDetailPageComponent],
       providers: [
         { provide: StaffManagementService, useValue: service },
+        { provide: AuthService, useValue: { hasPrivacyAdministration: () => false } },
         { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ id: '1' })) } },
       ],
     });

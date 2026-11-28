@@ -3,7 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { API_CONFIG } from '../http/api-config';
-import { StaffActivityResponse, StaffDetail, StaffDirectoryResponse, StaffOnboardingRoleOption, StaffOnboardingValidationResponse } from './staff-management.types';
+import { StaffActivityResponse, StaffDetail, StaffDirectoryResponse, StaffOnboardingRoleOption, StaffOnboardingValidationResponse, StaffRolePrivacyPreview } from './staff-management.types';
 
 export interface StaffDirectoryQuery {
   q?: string;
@@ -84,6 +84,7 @@ export class StaffManagementService {
   administratorProposalAction(proposalId: string, action: 'approve' | 'reject' | 'cancel', reason = ''): Observable<Record<string, unknown>> { return this.http.post<Record<string, unknown>>(this.url(`/staff/administrator-proposals/${proposalId}/${action}/`), { reason }); }
 
   changeStaffRole(userId: number, roleCode: string, reason: string): Observable<Record<string, unknown>> { return this.http.post<Record<string, unknown>>(this.url('/staff/role-change/'), { user_id: userId, role_code: roleCode, reason }); }
+  previewStaffRole(userId: number, roleCode: string, reason: string): Observable<StaffRolePrivacyPreview> { return this.http.post<StaffRolePrivacyPreview>(this.url('/staff/role-change/preview/'), { user_id: userId, role_code: roleCode, reason }); }
   deactivateStaff(userId: number, reason: string): Observable<Record<string, unknown>> { return this.http.post<Record<string, unknown>>(this.url('/staff/deactivate/'), { user_id: userId, reason }); }
   reactivateStaff(userId: number, roleCode: string, reason: string): Observable<Record<string, unknown>> { return this.http.post<Record<string, unknown>>(this.url('/staff/reactivate/'), { user_id: userId, role_code: roleCode, reason }); }
   disableAccount(userId: number, reason: string): Observable<Record<string, unknown>> { return this.http.post<Record<string, unknown>>(this.url('/staff/account/disable/'), { user_id: userId, reason }); }

@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { finalize, Observable } from 'rxjs';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
 import { StaffAccessService } from '../../core/auth/staff-access.service';
@@ -27,6 +27,7 @@ export class PrivacyAdministrationPageComponent {
   private readonly auth = inject(AuthService);
   private readonly staffAccess = inject(StaffAccessService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly toast = inject(ToastService);
   private authorizationEpoch = 0;
   private revalidatingAuthorization = false;
@@ -80,6 +81,11 @@ export class PrivacyAdministrationPageComponent {
   constructor() {
     this.searchStaff();
     this.refreshGovernance();
+    const requestedTargetId = Number(this.route.snapshot.queryParamMap.get('user_id'));
+    if (Number.isSafeInteger(requestedTargetId) && requestedTargetId > 0) {
+      this.targetUserId = requestedTargetId;
+      this.loadTarget();
+    }
   }
 
   refreshGovernance(): void {
