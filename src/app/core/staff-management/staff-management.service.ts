@@ -94,6 +94,10 @@ export class StaffManagementService {
   disableAccount(userId: number, reason: string): Observable<Record<string, unknown>> { return this.http.post<Record<string, unknown>>(this.url('/staff/account/disable/'), { user_id: userId, reason }); }
   enableAccount(userId: number, reason: string): Observable<Record<string, unknown>> { return this.http.post<Record<string, unknown>>(this.url('/staff/account/enable/'), { user_id: userId, reason }); }
   sendAdministrativePasswordReset(userId: number, reason: string): Observable<Record<string, unknown>> { return this.http.post<Record<string, unknown>>(this.url('/staff/account/password-reset/'), { user_id: userId, reason }); }
+  requestLoginEmailChange(userId: number, requestedEmail: string, reason: string): Observable<Record<string, unknown>> { return this.http.post<Record<string, unknown>>(this.url('/staff/account/email-change/'), { user_id: userId, requested_email: requestedEmail, reason }); }
+  cancelLoginEmailChange(requestId: number, reason: string): Observable<Record<string, unknown>> { return this.http.post<Record<string, unknown>>(this.url(`/staff/account/email-change/${requestId}/cancel/`), { reason }); }
+  inspectLoginEmailChange(requestId: string, token: string): Observable<{ usable: boolean; expires_at: string; requested_email: string }> { return this.http.get<{ usable: boolean; expires_at: string; requested_email: string }>(this.url(`/staff/account/email-change/${requestId}/${encodeURIComponent(token)}/inspect/`)); }
+  confirmLoginEmailChange(requestId: string, token: string): Observable<Record<string, unknown>> { return this.http.post<Record<string, unknown>>(this.url(`/staff/account/email-change/${requestId}/confirm/`), { token }); }
 
   private params(query: StaffDirectoryQuery): HttpParams {
     let params = new HttpParams();

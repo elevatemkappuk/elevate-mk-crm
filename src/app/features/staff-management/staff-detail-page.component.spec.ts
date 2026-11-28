@@ -17,7 +17,7 @@ describe('StaffDetailPageComponent', () => {
       person: { id: 2, first_name: 'Ada', last_name: 'Lovelace', primary_email: 'a***@e***' },
       role_assignments: [], invitations: [], administrator_proposals: [],
       can_propose_administrator_promotion: false, can_change_role: false, can_deactivate: false, can_reactivate: false,
-      can_disable_account: false, can_enable_account: false, can_send_password_reset: false,
+      can_disable_account: false, can_enable_account: false, can_send_password_reset: false, can_change_login_email: false, email_change_requests: [],
     };
     const service = { get: () => of(detail), activity: () => of({ count: 0, next: null, previous: null, results: [] }) };
     TestBed.configureTestingModule({

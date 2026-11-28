@@ -104,6 +104,11 @@ Management screens.
 - Active Staff accounts may expose `Send Password Reset Email`; the email is
   queued only to the registered login address and the account owner completes
   the existing secure password-recovery flow.
+- Authorized Administrators may request a login-email change with a mandatory
+  reason. The account owner must authenticate with the existing credentials and
+  verify the new address. The Person contact email is not changed; sessions and
+  credentials are revoked after completion. Staff-specific transactional-email
+  templates must be configured before the action is available operationally.
 - Activity and directory behavior is implemented but runtime verification is pending.
 - Mutation actions remain subject to backend authorization, current-state validation and mandatory reasons.
 - Historical API and CRM regression baselines are not Staff Management validation.

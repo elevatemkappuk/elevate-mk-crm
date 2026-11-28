@@ -87,6 +87,15 @@ The implemented and planned experience includes:
 - read-only privacy capability summaries;
 - lifecycle audit history.
 
+Verified login-email changes are **Implemented / Pending Verification**. The
+Staff Detail page queues an administrative request with a new email and
+mandatory reason, displays its lifecycle, and permits cancellation when the
+backend allows it. The public verification page inspects the link without
+mutation, requires the account owner to sign in with the existing credentials,
+and then confirms the request. It does not store or log the token. Completion
+returns the account owner to a fresh sign-in because the backend revokes
+credentials and sessions.
+
 ## Invitation experience
 
 Implemented contracts include:
@@ -157,7 +166,7 @@ for governed changes.
 The business-facing workflow summary is in
 [staff-management-business-guide.md](staff-management-business-guide.md).
 
-## Planned workflows
+## Feature workflows
 
 ### Add Staff
 

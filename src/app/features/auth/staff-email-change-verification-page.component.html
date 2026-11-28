@@ -1,0 +1,16 @@
+<app-auth-page-shell>
+  <header class="auth-heading"><h1>Verify login email</h1><p>Confirm the new login email for your Elevate MK staff account.</p></header>
+  @if (loading()) { <p class="crm-banner crm-banner--warning" role="status">Checking this secure link...</p> }
+  @else if (complete()) { <p class="crm-banner crm-banner--success" role="status">Your login email was changed. All sessions and credentials were revoked. Sign in again with the new email.</p> }
+  @else if (requestedEmail()) {
+    <p class="crm-help">New login email: <strong>{{ requestedEmail() }}</strong></p>
+    @if (!auth.currentUser()) {
+      <form class="auth-form" [formGroup]="form" (ngSubmit)="signInAndConfirm()" [attr.aria-busy]="submitting()">
+        <div class="crm-field"><label class="crm-label" for="verification-email">Existing login email</label><input class="crm-control" id="verification-email" type="email" formControlName="email" autocomplete="username" /></div>
+        <div class="crm-field"><label class="crm-label" for="verification-password">Existing password</label><div class="auth-password"><input #password class="crm-control" id="verification-password" type="password" formControlName="password" autocomplete="current-password" /><button [appPasswordVisibility]="password" class="auth-password-toggle crm-focusable"></button></div></div>
+        @if (error()) { <p class="crm-banner crm-banner--error" role="alert">{{ error() }}</p> }
+        <button class="crm-button crm-button--primary auth-submit" type="submit" [disabled]="submitting() || form.invalid">{{ submitting() ? 'Verifying...' : 'Sign in and verify' }}</button>
+      </form>
+    } @else { <p class="crm-help">Confirming this request for the currently signed-in account...</p> }
+  } @else if (error()) { <p class="crm-banner crm-banner--error" role="alert">{{ error() }}</p> }
+</app-auth-page-shell>

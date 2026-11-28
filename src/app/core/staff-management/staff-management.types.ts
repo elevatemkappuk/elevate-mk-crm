@@ -34,6 +34,8 @@ export interface StaffDetail extends StaffDirectoryRow {
   can_disable_account: boolean;
   can_enable_account: boolean;
   can_send_password_reset: boolean;
+  can_change_login_email: boolean;
+  email_change_requests: Array<{ request_id: number; requested_email: string; status: string; created_at: string; expires_at: string; created_by_id: number; can_cancel: boolean }>;
 }
 
 export interface StaffActivityEvent {

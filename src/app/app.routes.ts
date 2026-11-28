@@ -12,6 +12,7 @@ import {
 } from './core/guards/auth.guards';
 export const routes: Routes = [
   { path: 'staff/invitation/accept', loadComponent: () => import('./features/staff-management/staff-invitation-accept-page.component').then(m => m.StaffInvitationAcceptPageComponent) },
+  { path: 'staff/email-change/verify/:requestId/:token', loadComponent: () => import('./features/auth/staff-email-change-verification-page.component').then(m => m.StaffEmailChangeVerificationPageComponent) },
   {
     path: 'staff-management',
     canActivate: [staffManagementGuard],
