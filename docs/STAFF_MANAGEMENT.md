@@ -195,6 +195,13 @@ Reactivation requires a new invitation and does not restore suspended privacy
 grants. Account enablement does not restore revoked staff access, invalidated
 sessions or suspended grants.
 
+Eligible Staff Administrators also receive a `Send Password Reset Email`
+action for active Staff accounts. The action queues a reset email for the
+registered login address only; Administrators cannot choose or view the
+password or reset link. Existing credentials remain unchanged until the
+account owner completes the existing public `/reset-password/:uid/:token`
+workflow. The backend returns queued status, not inbox delivery confirmation.
+
 ### Privacy and audit
 
 Staff Management may display an authorized read-only privacy summary and

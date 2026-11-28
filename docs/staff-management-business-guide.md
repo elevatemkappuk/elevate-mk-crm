@@ -101,6 +101,9 @@ Management screens.
 
 - Global account actions require a mandatory reason; frontend visibility is not
   an authorization boundary.
+- Active Staff accounts may expose `Send Password Reset Email`; the email is
+  queued only to the registered login address and the account owner completes
+  the existing secure password-recovery flow.
 - Activity and directory behavior is implemented but runtime verification is pending.
 - Mutation actions remain subject to backend authorization, current-state validation and mandatory reasons.
 - Historical API and CRM regression baselines are not Staff Management validation.

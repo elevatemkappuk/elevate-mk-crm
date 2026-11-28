@@ -33,6 +33,7 @@ export interface StaffDetail extends StaffDirectoryRow {
   can_reactivate: boolean;
   can_disable_account: boolean;
   can_enable_account: boolean;
+  can_send_password_reset: boolean;
 }
 
 export interface StaffActivityEvent {

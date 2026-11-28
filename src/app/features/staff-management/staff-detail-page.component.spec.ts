@@ -17,7 +17,7 @@ describe('StaffDetailPageComponent', () => {
       person: { id: 2, first_name: 'Ada', last_name: 'Lovelace', primary_email: 'a***@e***' },
       role_assignments: [], invitations: [], administrator_proposals: [],
       can_propose_administrator_promotion: false, can_change_role: false, can_deactivate: false, can_reactivate: false,
-      can_disable_account: false, can_enable_account: false,
+      can_disable_account: false, can_enable_account: false, can_send_password_reset: false,
     };
     const service = { get: () => of(detail), activity: () => of({ count: 0, next: null, previous: null, results: [] }) };
     TestBed.configureTestingModule({
@@ -31,5 +31,19 @@ describe('StaffDetailPageComponent', () => {
     fixture.detectChanges();
     expect(fixture.componentInstance.detail()?.display_name).toBe('Ada Lovelace');
     expect(fixture.componentInstance.activity()).toEqual([]);
+  });
+
+  it('opens the administrative password-reset confirmation action', () => {
+    const service = { get: () => of(null), activity: () => of({ count: 0, next: null, previous: null, results: [] }) };
+    TestBed.configureTestingModule({
+      imports: [StaffDetailPageComponent],
+      providers: [
+        { provide: StaffManagementService, useValue: service },
+        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ id: '1' })) } },
+      ],
+    });
+    const fixture = TestBed.createComponent(StaffDetailPageComponent);
+    fixture.componentInstance.openAccountAction('password-reset', 1);
+    expect(fixture.componentInstance.action()).toEqual({ kind: 'password-reset', id: 1 });
   });
 });
