@@ -8,8 +8,17 @@ import {
   moderationGuard,
   privacyAdministrationGuard,
   legalHoldGuard,
+  staffManagementGuard,
 } from './core/guards/auth.guards';
 export const routes: Routes = [
+  {
+    path: 'staff-management',
+    canActivate: [staffManagementGuard],
+    children: [
+      { path: '', pathMatch: 'full', loadComponent: () => import('./features/staff-management/staff-directory-page.component').then(m => m.StaffDirectoryPageComponent) },
+      { path: ':id', loadComponent: () => import('./features/staff-management/staff-detail-page.component').then(m => m.StaffDetailPageComponent) },
+    ],
+  },
   {
     path: 'login',
     loadComponent: () => import('./features/auth/login-page.component').then((module) => module.LoginPageComponent),

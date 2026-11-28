@@ -1,11 +1,10 @@
 # Staff Management V1 — Business Guide
 
-Status: **Approved planned feature; not currently available**
+Status: **Implemented read-only directory and detail; mutation workflows unavailable**
 
-This guide describes the approved future Staff Management capability for
-authorized Elevate MK administrators. It is not an instruction manual for a
-currently deployed screen and must be updated when the implemented CRM
-workflow becomes available.
+This guide describes the implemented read-only Staff Management directory and
+detail capability for authorized Elevate MK administrators. Mutation workflows
+remain unavailable and are not operating instructions.
 
 ## Purpose
 
@@ -42,11 +41,16 @@ Staff Management will preserve the following rules:
 12. Technical accounts receive restricted actions.
 13. Lifecycle actions and denied sensitive operations are audited.
 
-## Planned workflows
+## Available read-only workflows
 
-The planned CRM will provide:
+The CRM provides:
 
 - Staff directory and detail view;
+- server-side search, filters and pagination;
+- read-only role, account, invitation and Administrator approval state;
+- read-only staff activity history;
+
+The following remain unavailable:
 - Add Staff workflow;
 - existing Person search and identity review;
 - invitation and delivery recovery controls;
@@ -59,8 +63,8 @@ The planned CRM will provide:
 - privacy capability summary;
 - lifecycle audit history.
 
-These workflows are approved plans, not current operating instructions. Exact
-screen names, labels and navigation will be documented after implementation.
+These unavailable workflows remain approved future functionality, not current
+operating instructions.
 
 ## Privacy and security boundaries
 
@@ -74,10 +78,11 @@ existing governed process.
 
 The backend foundation now keeps staff-access deactivation separate from
 global account disablement. Deactivation preserves global authentication
-eligibility while removing CRM access; global disablement invalidates account
-credentials and does not restore staff roles or privacy grants when enabled.
-These are backend contracts only; no CRM screen or public lifecycle workflow
-is available yet.
+eligibility while removing CRM access. Account disablement invalidates account
+credentials; enablement resumes retained active CRM roles and active privacy
+grants, but does not restore revoked roles, suspended grants, sessions, tokens,
+invitations or proposals. These lifecycle mutations remain unavailable in the
+read-only CRM screens.
 
 Passwords, invitation tokens, reset tokens, invitation URLs and provider
 payloads must never be displayed or recorded in ordinary staff workflows.
@@ -88,9 +93,9 @@ Management screens.
 
 ## Current limitations
 
-- Staff Management screens are not implemented.
-- Proposed API endpoints are not available.
-- No Staff Management operational instructions should be inferred from this guide.
+- Mutation workflows remain unavailable in the CRM.
+- Activity and directory behavior is implemented but runtime verification is pending.
+- No mutation operating instructions should be inferred from this guide.
 - Historical API and CRM regression baselines are not Staff Management validation.
 
 ## Related documentation

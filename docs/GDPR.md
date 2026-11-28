@@ -110,7 +110,7 @@ The successful response has exactly two fields:
 
 Historically, the initial CRM capability disclosure allowlist was intentionally
 empty before the later approved CRM consumer and disclosure policy. The current
-coordinated Phase 1A.4D allowlist is documented below. `policy_version` is informational only; `2` is the verified
+coordinated capability-consumer integration allowlist is documented below. `policy_version` is informational only; `2` is the verified
 current example value, not a fixed contract value, and it is not a grant, token,
 or client precondition. The API reads the locked singleton policy state and
 performs the effective-access evaluation in one transaction; no policy mutation
@@ -314,13 +314,13 @@ The following are approved for later stages but are not implemented here:
 - Person creation/editing privacy enforcement;
 - Person search/filtering, marketing, campaign, and export protection;
 - broader privacy-audit and legal-hold workflows beyond the implemented
-  Phase 1A.4D consumers;
-- broader Phase 1A.4C workflows beyond the separate capability-protected
+  capability-consumer integration consumers;
+- broader governance validation workflows beyond the separate capability-protected
   administration foundation described above.
 
 Broader capability-consuming UI, masking, and Person user-facing privacy
-workflows remain deferred. The Phase 1A.4B memory-only Staff Access integration
-and Phase 1A.4D privacy consumers are implemented as documented below; runtime/browser, staging,
+workflows remain deferred. The CRM Staff Access integration memory-only Staff Access integration
+and capability-consumer integration privacy consumers are implemented as documented below; runtime/browser, staging,
 deployment, and cross-repository behavior remain **Unverified**.
 
 ## Current evidence and verification status
@@ -333,22 +333,22 @@ current status.
 - **Approved:** CRM remains a permission-aware client of backend-authoritative
   contracts.
 - **Implemented / Source-inspected:** the existing API capability foundation,
-  the historical Phase 1A.4A Staff Access contract, the implemented Phase 1A.4B
+  the historical effective-access contract Staff Access contract, the implemented CRM Staff Access integration
   `StaffAccessService`, projection types/signals, AuthService lifecycle
-  integration, and the Phase 1A.4C.3 privacy-administration route, service,
+  integration, and the privacy-administration route validation privacy-administration route, service,
   guard, page and safe-presentation contracts; backend authorization remains
   authoritative.
 - **Source-inspected / Source-confirmed:** CRM `/auth/me/`, `staff_roles`,
   session, CSRF, role-guard conventions, `StaffAccessService`, access types,
   AuthService lifecycle integration, and interceptors were inspected in
   `src/app/core/auth/`, `src/app/core/http/`, and the API contract sources.
-- **Verified elsewhere:** the API Phase 1A.4A focused suite passed 34/34 against
+- **Verified elsewhere:** the API effective-access contract focused suite passed 34/34 against
   isolated PostgreSQL database `test_elevate_gdpr_phase1a4a_20261124`;
   `manage.py check` passed; `makemigrations --check --dry-run` reported `No
   changes detected`; `migrate --plan` reported no planned migration operations;
   and `git diff --check` was clean. No schema or migration files changed or were
   applied.
-- **Verified:** Phase 1A.4B focused Angular validation passed 5 files and 38
+- **Verified:** CRM Staff Access integration focused Angular validation passed 5 files and 38
   tests; the historical CRM validation passed 51 files and 454/454 tests;
   the historical repository-native Angular validation passed 51 files and
   457/457 tests;
@@ -378,11 +378,11 @@ current status.
   and user-facing privacy workflows.
 - **Implemented:** the CRM capability disclosure allowlist exposes
   `STAFF_CAPABILITY_ADMIN`, `PRIVACY_AUDIT_READ`, and `LEGAL_HOLD_ADMIN` for
-  the coordinated Phase 1A.4D rollout; other capability consumers remain
+  the coordinated capability-consumer integration rollout; other capability consumers remain
   deferred.
 - **Unverified:** Mobile and Community compatibility, deployment behavior, and
   runtime behavior after future capability-aware UI integration.
-- **Verified (Phase 1A.4D.4 targeted evidence):** the affected Angular
+- **Verified (release-governance remediation targeted evidence):** the affected Angular
   component specifications passed 120/120, the production build passed, the
   focused API legal-hold suite passed 12/12, the focused PostgreSQL concurrency
   suite passed 4/4, the Django system check and migration-drift check passed,
@@ -515,7 +515,7 @@ deployment unverified**. Older CRM
 clients must not consume the expanded API capability disclosure until this
 frontend version is deployed in the coordinated rollout.
 
-Phase 1A.4D.4 remediation adds a permission-aware searchable Person selector
+release-governance remediation remediation adds a permission-aware searchable Person selector
 for Person-wide holds, contextual navigation from an authorized Person profile,
 and contextual event-hold navigation from privacy-audit rows only when the
 backend supplies an opaque reference and `place_event_hold` action. The
@@ -524,7 +524,7 @@ discovery to users who lack `PRIVACY_AUDIT_READ`. Hold and release history now
 uses safe actor and Person names, timestamps, reasons, decision state, and
 decision actors. Pending release requests no longer show the duplicate request
 action. Privacy filters use controlled activity and outcome values supported by
-the current API projection. The complete Phase 1A.4D isolated manual UAT is
+the current API projection. The complete capability-consumer integration isolated manual UAT is
 accepted for the API/CRM workflow. Minor UX polish remains deferred as
 non-blocking backlog work; operational migrations, deployment, cross-repository
 release compatibility, and final-hardening evidence remain outstanding.
@@ -537,29 +537,29 @@ actions, privacy projections, and revocation behavior through the accepted
 Django session-authenticated API contracts. Mobile JWT authentication remains
 outside Staff CRM routes; no duplicate frontend authorization system was added.
 
-Phase 1A.5 legacy reconciliation is explicitly skipped because the current
+legacy reconciliation legacy reconciliation is explicitly skipped because the current
 dataset is test data. No CRM reconciliation UI, dashboard, or remediation flow
 was added. Minor UX polish remains a non-blocking backlog item. At this
-pre-Phase 1C closure point, automated tests, cross-repository deployment
+pre-final GDPR hardening closure point, automated tests, cross-repository deployment
 verification, and final hardening remained unverified. The later targeted Phase
 1C evidence below does not replace the full-suite or deployment gates.
 
 The unresolved API security and governance obligations (AUTH-001, AUTH-002,
 GOV-003, GOV-005, uncovered GOV-006 paths, and trusted-provenance verification)
-are carried into GDPR Phase 1C final hardening and are not risk-accepted here.
+are carried into GDPR final GDPR hardening final hardening and are not risk-accepted here.
 Independent specialist acceptance was incomplete because the active agent-thread
 limit prevented the remaining delegations. All implementation-stage regression
-tests were **Implemented / Unexecuted at this pre-Phase 1C cutoff**. Production activation still requires
+tests were **Implemented / Unexecuted at this pre-final GDPR hardening cutoff**. Production activation still requires
 the final security, QA, architecture and documentation gates plus runtime and
 deployment verification.
 
 ## People privacy and protected disclosure
 
-Historical evidence label: **Phase 1B.1**. The evidence below is retained for
+Historical evidence label: **People privacy projection validation**. The evidence below is retained for
 traceability; current status is summarized in the functional map above.
 
 Status: **Implemented / source-inspected; automated tests and runtime
-verification were deferred at the Phase 1B.1 cutoff**.
+verification were deferred at the People privacy projection validation cutoff**.
 
 The CRM consumes backend-authoritative Person projections. The People
 directory, Person profile, create/edit forms, nested community-account display,
@@ -587,8 +587,8 @@ The API/CRM capability contract now discloses `PERSON_CONTACT_READ` and
 `PERSON_DEMOGRAPHIC_READ` in addition to the existing CRM privacy capabilities.
 The two repositories must be deployed compatibly; older strict CRM clients
 may not consume the expanded disclosure. Affected Angular tests were
-**Implemented / Unexecuted at the Phase 1B.1 cutoff** under the deferred-test
-policy; current Phase 1C focused evidence is recorded separately.
+**Implemented / Unexecuted at the People privacy projection validation cutoff** under the deferred-test
+policy; current final GDPR hardening focused evidence is recorded separately.
 
 The implementation does not yet classify location, professional profile,
 skills/interests/tags, notes, membership, marketing preferences, Community
@@ -607,7 +607,7 @@ unprotected reads are not treated as raw disclosure events. The
 projection exposes safe event fields only; it does not expose raw AuditEvent
 metadata or protected Person values. The audit-choice migration is generated
 but not applied, and frontend/runtime verification remains deferred to GDPR
-Phase 1C hardening. Comprehensive Person access auditing remains the deferred
+final GDPR hardening hardening. Comprehensive Person access auditing remains the deferred
 `GDPR-FUTURE-001` enhancement.
 
 ### Stable privacy state management
@@ -648,7 +648,7 @@ routes. This correction is **Implemented / focused verification pending**.
 
 ## Marketing consent and provider privacy
 
-Historical evidence label: **Phase 1B.2**. The evidence below is retained for
+Historical evidence label: **Marketing privacy validation**. The evidence below is retained for
 traceability; current status is summarized in the functional map above.
 
 Status: **Implemented / source-inspected; Angular tests and runtime/provider
@@ -671,17 +671,17 @@ Person access auditing remains `GDPR-FUTURE-001`.
 The modified audience-preview component follows the repository's external
 template and stylesheet convention and displays a permission-aware contact
 search note. New Angular/backend regression tests were **Implemented /
-Unexecuted at the Phase 1B.2 cutoff** under the deferred-test policy. Build,
+Unexecuted at the Marketing privacy validation cutoff** under the deferred-test policy. Build,
 runtime compatibility, and manual marketing UAT remain pending final GDPR
 hardening.
 
 ## Exports and bulk operations
 
-Historical evidence label: **Phase 1B.3**. The evidence below is retained for
+Historical evidence label: **People export validation**. The evidence below is retained for
 traceability; current status is summarized in the functional map above.
 
 Status: **Implemented / source-inspected; Angular tests, runtime downloads,
-and final-hardening verification were deferred for the Phase 1B.3 closure
+and final-hardening verification were deferred for the People export validation closure
 batch**.
 
 The People directory exposes CSV/XLSX export controls only when the backend
@@ -711,17 +711,17 @@ not expand the approved privacy scope. Export-specific UAT remains pending for
 CSV/XLSX downloads, Microsoft Excel compatibility, formula-injection safety,
 record scope, capability revocation, export audit visibility and mandatory
 audit-failure behavior. Broader Angular tests were **Implemented / Unexecuted
-at the pre-Phase 1C cutoff** and
+at the pre-final GDPR hardening cutoff** and
 the existing stylesheet-budget and template warnings remain recorded in the
 UI-polishing backlog. Migration application, runtime verification and
 independent specialist acceptance remain outstanding and are carried into
-GDPR Phase 1C, including Marketing capability-revocation and privileged-
+GDPR final GDPR hardening, including Marketing capability-revocation and privileged-
 disclosure verification.
 
-The consolidated GDPR Phase 1 manual UAT is **Verified** for 15 passed
+The consolidated GDPR GDPR engineering manual UAT is **Verified** for 15 passed
 scenarios. One historical-campaign scenario was explicitly waived for manual
 verification and remains pending automated regression testing. This result does
-not claim completion of the outstanding Phase 1C automated hardening,
+not claim completion of the outstanding final GDPR hardening automated hardening,
 cross-repository/runtime verification, specialist acceptance, or
 production-activation gates.
 
@@ -745,7 +745,7 @@ authorization or accessibility and security gates.
 
 For this earlier consolidated UI-polishing snapshot, no automated tests were
 executed under the deferred-test policy. Its component-test labels are
-historical/subset-specific; current Phase 1C focused validation is recorded
+historical/subset-specific; current final GDPR hardening focused validation is recorded
 below. The Angular production build, template/type validation,
 stylesheet-budget result, and `git diff --check` remain separate lightweight
 validation records and must not be inferred from the focused test count.
@@ -758,7 +758,7 @@ privacy capability or authorization change.
 
 ## Cross-repository verification and final hardening
 
-Historical evidence label: **Phase 1C**. The evidence below is retained for
+Historical evidence label: **final GDPR hardening**. The evidence below is retained for
 traceability; current status is summarized in the functional map above.
 
 Status: **In progress / not accepted**. Audience Preview now clears protected

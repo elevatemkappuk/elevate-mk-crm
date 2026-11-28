@@ -18,6 +18,10 @@ export function hasStaffCrmAccess(user: AuthenticatedUser | null): boolean {
   );
 }
 
+export function hasStaffManagementAccess(user: AuthenticatedUser | null): boolean {
+  return Boolean(user?.access?.staff_management) || hasStaffCrmAccess(user);
+}
+
 export function hasStaffRole(user: AuthenticatedUser | null, roleCode: string): boolean {
   return getStaffRoles(user).includes(roleCode);
 }

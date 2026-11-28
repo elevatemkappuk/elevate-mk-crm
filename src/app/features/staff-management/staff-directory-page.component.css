@@ -1,0 +1,7 @@
+.staff-page { display: grid; gap: var(--crm-space-5); max-width: var(--crm-width-wide); margin: 0 auto; padding: var(--crm-space-6); }
+.filters { display: flex; gap: var(--crm-space-4); align-items: end; flex-wrap: wrap; padding: var(--crm-space-4); border: 1px solid var(--crm-border); border-radius: var(--crm-radius-lg); background: var(--crm-surface); }
+.crm-label { display: grid; gap: var(--crm-space-2); min-width: 12rem; }
+.directory-summary { color: var(--crm-text-secondary); }
+td small { display: block; color: var(--crm-text-muted); }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+@media (max-width: 680px) { .staff-page { padding: var(--crm-space-4); } .filters > * { width: 100%; } .crm-table { min-width: 42rem; } }

@@ -1,8 +1,8 @@
 # Staff Management V1
 
-Status: **Approved architecture / backend role integrity implemented; CRM implementation planned**
+Status: **Read-only Staff Management directory and detail implemented; runtime verification pending**
 
-This document is the CRM repository's living guide to the planned Staff
+This document is the CRM repository's living guide to the read-only Staff
 Management experience. The Django API remains authoritative for identity,
 authorization, lifecycle state, privacy permissions, audit history and
 security decisions. See the API repository's
@@ -11,18 +11,16 @@ the backend contract and approved business rules.
 
 ## Current status
 
-Staff Management is approved architecture, not an implemented CRM feature.
-The current Administration page is a placeholder. Proposed routes, components
-and services in this document are not available until implementation is
-authorized and completed.
+Staff Management directory and detail are implemented as read-only CRM
+features. Mutation workflows remain unavailable until separately authorized.
 
-The API now provides the Staff Management authorization foundation:
+The API provides the Staff Management authorization foundation and the
+backend-authoritative `access.staff_management` indicator:
 active CRM Administrators and eligible active Django Superusers with a valid
 linked Person may reach the Staff Management boundary. The Superuser exception
 is narrowly scoped and does not grant general CRM or privacy authority. This
-does not make Staff Management screens, navigation, directory contracts or
-lifecycle workflows available. CRM route guards and capability-aware state
-remain future integration work and must use backend responses.
+the read-only directory and detail routes use backend responses. The exception
+does not grant general CRM or privacy authority.
 
 The API now enforces one active CRM-family role per staff member, atomic role
 replacement, final usable-Administrator continuity and CRM-session invalidation
@@ -43,12 +41,22 @@ separate from global account disablement: it removes CRM-family roles,
 suspends individual privacy grants, preserves restrictions and global account
 eligibility, and invalidates incompatible invitations/proposals. Global
 disablement retains role history but invalidates authentication credentials;
-enablement does not restore roles, grants, sessions or tokens. No CRM lifecycle
+enablement resumes retained active roles and grants but does not restore revoked
+roles, suspended grants, sessions or tokens. No CRM lifecycle
 UI or new public lifecycle endpoint is available, and the complete
 invitation-backed reactivation workflow remains planned.
 
 The historical CRM regression baseline of 493/493 is not new Staff Management
 verification.
+
+## Implemented read-only contracts
+
+The CRM consumes `GET /api/v1/staff/directory/`,
+`GET /api/v1/staff/directory/{user_id}/`, and
+`GET /api/v1/staff/directory/{user_id}/activity/`. Search, filters, stable
+ordering and pagination are server-side. Detail presents privacy-safe identity,
+role, account, invitation, approval and activity information without mutation
+controls, tokens, credentials or unrestricted audit metadata.
 
 ## Approved experience
 

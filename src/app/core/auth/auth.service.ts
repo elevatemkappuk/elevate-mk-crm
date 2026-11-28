@@ -5,7 +5,7 @@ import { catchError, map, switchMap, tap } from 'rxjs/operators';
 
 import { API_CONFIG } from '../http/api-config';
 import { clearCsrfToken, setCsrfToken } from '../http/auth-http.interceptors';
-import { hasStaffCrmAccess, isCrmAdmin } from './auth-access';
+import { hasStaffCrmAccess, hasStaffManagementAccess as hasStaffManagementAuthority, isCrmAdmin } from './auth-access';
 import { AuthenticatedUser, CsrfBootstrapResponse, DetailResponse, LoginCredentials, PasswordResetConfirmRequest, PasswordResetRequest } from './auth.types';
 import { StaffAccessService } from './staff-access.service';
 
@@ -25,6 +25,7 @@ export class AuthService {
   readonly sessionExpiredMessage = this.sessionExpiredMessageState.asReadonly();
   readonly isAuthenticated = computed(() => this.currentUser() !== null);
   readonly hasStaffAccess = computed(() => hasStaffCrmAccess(this.currentUser()));
+  readonly hasStaffManagementAccess = computed(() => hasStaffManagementAuthority(this.currentUser()));
   readonly isCrmAdmin = computed(() => isCrmAdmin(this.currentUser()));
   readonly hasPrivacyAdministration = computed(() => this.staffAccess.hasCapability('STAFF_CAPABILITY_ADMIN'));
   readonly hasPrivacyAuditRead = computed(() => this.staffAccess.hasCapability('PRIVACY_AUDIT_READ'));
@@ -142,7 +143,8 @@ export class AuthService {
       return '/login';
     }
 
-    return hasStaffCrmAccess(user) ? '/' : '/access-denied';
+    if (hasStaffCrmAccess(user)) return '/';
+    return hasStaffManagementAuthority(user) ? '/staff-management' : '/access-denied';
   }
 
   canAccessAdministration(user: AuthenticatedUser | null = this.currentUser()): boolean {

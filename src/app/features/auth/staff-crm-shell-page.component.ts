@@ -102,6 +102,7 @@ export class StaffCrmShellPageComponent {
       items.push({ label: 'Moderation', path: '/moderation', group: 'Management', icon: 'M12 3 4 6v5c0 5 3.4 8.4 8 10 4.6-1.6 8-5 8-10V6Zm0 5v4m0 3h.01' });
     }
     if (this.auth.isCrmAdmin()) {
+      items.push({ label: 'Staff Management', path: '/staff-management', group: 'Management', icon: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 3a4 4 0 1 0 0 8 4 4 0 0 0-8M17 11a4 4 0 0 0 4-4 4 4 0 0 0-4-4' });
       items.push({ label: 'Historical Imports', path: '/imports', group: 'Management', icon: 'M12 16V3m-5 5 5-5 5 5M4 14v7h16v-7' });
       items.push({ label: 'Administration', path: '/administration', group: 'Management', icon: 'm9 3-1 3-3 1-2 5 2 5 3 1 1 3h6l1-3 3-1 2-5-2-5-3-1-1-3ZM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8' });
     }

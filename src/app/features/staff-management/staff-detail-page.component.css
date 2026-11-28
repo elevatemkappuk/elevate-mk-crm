@@ -1,0 +1,4 @@
+.staff-page { display: grid; gap: var(--crm-space-5); max-width: var(--crm-width-wide); margin: 0 auto; padding: var(--crm-space-6); }
+.history-list { display: grid; gap: var(--crm-space-3); }
+.history-list p { margin: 0; padding-bottom: var(--crm-space-3); border-bottom: 1px solid var(--crm-border); color: var(--crm-text-strong); }
+.history-list small { display: block; margin-top: var(--crm-space-1); color: var(--crm-text-muted); }

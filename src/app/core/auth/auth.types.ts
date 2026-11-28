@@ -10,6 +10,9 @@ export interface AuthenticatedUser {
   email: string;
   person: PersonIdentity;
   staff_roles: string[];
+  access?: {
+    staff_management: boolean;
+  };
 }
 
 export interface LoginCredentials {

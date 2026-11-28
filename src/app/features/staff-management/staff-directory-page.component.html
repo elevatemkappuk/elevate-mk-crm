@@ -1,0 +1,21 @@
+<main class="staff-page">
+  <header class="crm-page-heading">
+    <div class="crm-page-heading__copy"><h1 class="crm-page-heading__title">Staff Management</h1><p class="crm-page-heading__description">Read-only staff access, account and approval state.</p></div>
+  </header>
+  <section class="filters" aria-label="Staff directory filters">
+    <label class="crm-label">Search <input class="crm-control" type="search" (input)="update('q', $any($event.target).value)" placeholder="Name or permitted email" /></label>
+    <label class="crm-label">Role <select class="crm-control" (change)="update('role', $any($event.target).value)"><option value="">All roles</option><option value="CRM_ADMIN">Administrator</option><option value="CRM_MANAGER">Manager</option><option value="CRM_VIEWER">Viewer</option></select></label>
+    <label class="crm-label">Staff state <select class="crm-control" (change)="update('staff_state', $any($event.target).value)"><option value="">All states</option><option value="ACTIVE">Active</option><option value="PENDING">Pending</option><option value="FORMER">Former</option><option value="DISABLED">Disabled</option></select></label>
+    <button class="crm-button crm-button--secondary" type="button" (click)="clear()">Clear filters</button>
+  </section>
+  @if (loading() && !rows().length) { <app-state-message title="Loading staff" message="Retrieving the authorized staff directory." /> }
+  @else if (error()) { <app-state-message title="Directory unavailable" [message]="error()!" tone="error"><button class="crm-button crm-button--secondary" type="button" (click)="retry()">Retry</button></app-state-message> }
+  @else if (!rows().length) { <app-state-message title="No staff found" message="No staff records match the current filters." /> }
+  @else {
+    <div class="directory-summary" aria-live="polite">{{ count() }} staff records</div>
+    <div class="crm-table-wrap"><table class="crm-table"><caption class="visually-hidden">Staff directory</caption><thead><tr><th scope="col">Staff member</th><th scope="col">Role</th><th scope="col">Access</th><th scope="col">Account</th></tr></thead><tbody>
+      @for (row of rows(); track row.user_id ?? row.display_name) { <tr><td><a [routerLink]="row.user_id ? ['/staff-management', row.user_id] : null">{{ row.display_name }}</a><small>{{ row.login_email }}</small></td><td>{{ row.crm_role || 'No active CRM role' }}</td><td><app-status-badge [label]="stateLabel(row)" [tone]="tone(row)" /></td><td>{{ row.account_state || 'Not provisioned' }}</td></tr> }
+    </tbody></table></div>
+    <nav class="crm-pagination" aria-label="Staff directory pagination"><button class="crm-button crm-button--secondary" type="button" [disabled]="!hasPrevious()" (click)="previousPage()">Previous</button><span>Page {{ page() }}</span><button class="crm-button crm-button--secondary" type="button" [disabled]="!hasNext()" (click)="nextPage()">Next</button></nav>
+  }
+</main>

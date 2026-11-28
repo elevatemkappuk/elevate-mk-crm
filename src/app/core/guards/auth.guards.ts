@@ -2,7 +2,7 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router, UrlTree } from '@angular/router';
 
 import { AuthService } from '../auth/auth.service';
-import { canManagePeople } from '../auth/auth-access';
+import { canManagePeople, hasStaffManagementAccess } from '../auth/auth-access';
 import { StaffAccessService } from '../auth/staff-access.service';
 
 function redirectTo(url: string): UrlTree {
@@ -32,7 +32,16 @@ export const staffAccessGuard: CanActivateFn = () => {
     return redirectTo('/login');
   }
 
-  return auth.getAuthorizedRoute(user) === '/' ? true : redirectTo('/access-denied');
+  if (auth.hasStaffAccess()) return true;
+  return hasStaffManagementAccess(user) ? redirectTo('/staff-management') : redirectTo('/access-denied');
+};
+
+export const staffManagementGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  const user = auth.currentUser();
+  if (!auth.authInitialized()) return true;
+  if (!user) return redirectTo('/login');
+  return hasStaffManagementAccess(user) ? true : redirectTo('/access-denied');
 };
 
 export const loginGuard: CanActivateFn = () => {

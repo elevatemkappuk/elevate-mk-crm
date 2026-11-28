@@ -56,7 +56,7 @@ export class StaffAccessService {
 
     this.selectAccount(user.id);
 
-    if (!hasCrmRole(user)) {
+    if (!hasCrmRole(user) && !user.access?.staff_management) {
       this.invalidate('forbidden', 'Staff CRM access is not assigned.');
       return of(null);
     }
