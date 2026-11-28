@@ -16,6 +16,7 @@ describe('StaffDetailPageComponent', () => {
       administrator_approval_state: null, protected_account: false, updated_at: null,
       person: { id: 2, first_name: 'Ada', last_name: 'Lovelace', primary_email: 'a***@e***' },
       role_assignments: [], invitations: [], administrator_proposals: [],
+      can_propose_administrator_promotion: false, can_change_role: false, can_deactivate: false, can_reactivate: false,
     };
     const service = { get: () => of(detail), activity: () => of({ count: 0, next: null, previous: null, results: [] }) };
     TestBed.configureTestingModule({

@@ -1,11 +1,10 @@
 # Staff Management V1 — Business Guide
 
-Status: **Directory/detail, onboarding submission and invitation acceptance implemented; runtime verification pending**
+Status: **Directory/detail, governance, role changes, staff-access lifecycle and invitation acceptance implemented; runtime verification pending**
 
-This guide describes the implemented read-only Staff Management directory and
-detail capability for authorized Elevate MK administrators. Invitation-backed
-onboarding is available; runtime verification remains pending and the public
-Administrator approval workflow is available through the Staff Management queue;
+This guide describes the Staff Management capability for authorized Elevate MK
+administrators. Invitation-backed onboarding, Administrator approvals, direct
+role changes, staff-access deactivation and reactivation are available;
 runtime verification remains pending.
 
 ## Purpose
@@ -43,24 +42,25 @@ Staff Management will preserve the following rules:
 12. Technical accounts receive restricted actions.
 13. Lifecycle actions and denied sensitive operations are audited.
 
-## Available read-only workflows
+## Available workflows
 
 The CRM provides:
 
 - Staff directory and detail view;
 - server-side search, filters and pagination;
-- read-only role, account, invitation and Administrator approval state;
+- role, account, invitation and Administrator approval state;
 - Administrator approval queue and proposal review;
 - read-only staff activity history;
 - onboarding Person lookup, validation and transactional invitation submission;
 - public new-account invitation acceptance;
 - existing-account authentication followed by invitation acceptance;
+- backend-authorized role changes between Manager and Viewer;
+- staff-access deactivation without global account disablement;
+- Manager/Viewer reactivation invitations and Administrator reactivation proposals.
 
 The following remain unavailable:
 - existing Person search and identity review;
 - invitation and delivery recovery controls;
-- role changes;
-- staff-access deactivation and reactivation;
 - separate account disablement and enablement;
 - password recovery request;
 - verified login-email change;
@@ -85,8 +85,8 @@ global account disablement. Deactivation preserves global authentication
 eligibility while removing CRM access. Account disablement invalidates account
 credentials; enablement resumes retained active CRM roles and active privacy
 grants, but does not restore revoked roles, suspended grants, sessions, tokens,
-invitations or proposals. These lifecycle mutations remain unavailable in the
-read-only CRM screens.
+invitations or proposals. Global account lifecycle mutations remain unavailable
+in the CRM screens.
 
 Passwords, invitation tokens, reset tokens, invitation URLs and provider
 payloads must never be displayed or recorded in ordinary staff workflows.
@@ -97,9 +97,9 @@ Management screens.
 
 ## Current limitations
 
-- Mutation workflows remain unavailable in the CRM.
+- Global account mutation workflows remain unavailable in the CRM.
 - Activity and directory behavior is implemented but runtime verification is pending.
-- No mutation operating instructions should be inferred from this guide.
+- Mutation actions remain subject to backend authorization, current-state validation and mandatory reasons.
 - Historical API and CRM regression baselines are not Staff Management validation.
 
 ## Related documentation

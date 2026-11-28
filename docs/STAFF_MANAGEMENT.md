@@ -12,8 +12,9 @@ the backend contract and approved business rules.
 ## Current status
 
 Staff Management directory, detail, onboarding submission, Administrator
-approval queue, invitation management and public invitation acceptance are
-implemented. Invitation delivery remains durable and backend-authoritative;
+approval queue, role changes, staff-access deactivation, reactivation,
+invitation management and public invitation acceptance are implemented.
+Invitation delivery remains durable and backend-authoritative;
 runtime verification is pending final hardening.
 
 The API provides the Staff Management authorization foundation and the
@@ -27,8 +28,8 @@ does not grant general CRM or privacy authority.
 The API now enforces one active CRM-family role per staff member, atomic role
 replacement, final usable-Administrator continuity and CRM-session invalidation
 for material role changes. These backend contracts do not make CRM screens,
-navigation, directory contracts or lifecycle workflows available. Full CRM
-regression remains deferred until final hardening.
+navigation and directory contracts available without the corresponding
+frontend actions. Full CRM regression remains deferred until final hardening.
 
 Administrator approval governance is implemented in the backend. The API stores
 dedicated pending/approved/effected/rejected/cancelled/expired/invalidated
@@ -36,7 +37,7 @@ Administrator proposals, requires distinct authorized proposer and approver
 accounts, and effects existing staff promotion atomically. New onboarding
 approval issues an invitation whose acceptance activates the Administrator
 role. Former-staff reactivation approvals remain invitation-dependent for the
-reactivation workflow.
+reactivation workflow, with exact `REACTIVATE` operation binding.
 
 The backend provides lifecycle foundations. Staff-access deactivation is
 separate from global account disablement: it removes CRM-family roles,
@@ -44,14 +45,14 @@ suspends individual privacy grants, preserves restrictions and global account
 eligibility, and invalidates incompatible invitations/proposals. Global
 disablement retains role history but invalidates authentication credentials;
 enablement resumes retained active roles and grants but does not restore revoked
-roles, suspended grants, sessions or tokens. No CRM lifecycle
-UI or new public lifecycle endpoint is available, and the complete
-invitation-backed reactivation workflow remains planned.
+roles, suspended grants, sessions or tokens. Staff Detail exposes backend-
+authorized role-change, deactivation and reactivation actions; global account
+disablement remains outside this feature.
 
 The historical CRM regression baseline of 493/493 is not new Staff Management
 verification.
 
-## Implemented read-only contracts
+## Implemented contracts
 
 The CRM consumes `GET /api/v1/staff/directory/`,
 `GET /api/v1/staff/directory/{user_id}/`, and
