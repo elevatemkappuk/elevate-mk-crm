@@ -27,7 +27,7 @@ export class StaffDetailPageComponent {
   readonly activity = signal<StaffActivityEvent[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
-  readonly action = signal<{ kind: 'resend' | 'cancel'; id: string } | null>(null);
+  readonly action = signal<{ kind: 'resend' | 'cancel'; id: string } | { kind: 'promote'; id: number } | null>(null);
   readonly reason = signal('');
   readonly actionBusy = signal(false);
 
@@ -48,6 +48,10 @@ export class StaffDetailPageComponent {
   }
 
   openInvitationAction(kind: 'resend' | 'cancel', id: string): void { this.reason.set(''); this.action.set({ kind, id }); }
+  openPromotionAction(userId: number | null): void {
+    if (userId === null) return;
+    this.reason.set(''); this.action.set({ kind: 'promote', id: userId });
+  }
   invitationStatus(invitation: StaffDetail['invitations'][number]): string {
     if (invitation.accepted_at) return 'Accepted';
     if (invitation.revoked_at) return 'Cancelled';
@@ -59,12 +63,14 @@ export class StaffDetailPageComponent {
     const action = this.action();
     if (!action || !this.reason().trim() || this.actionBusy()) return;
     this.actionBusy.set(true); this.error.set(null);
-    const request: Observable<{ detail?: string; public_id?: string; expires_at?: string; delivery?: string }> = action.kind === 'resend'
-      ? this.service.resendInvitation(action.id, this.reason().trim())
-      : this.service.cancelInvitation(action.id, this.reason().trim());
+    const request: Observable<Record<string, unknown>> = action.kind === 'promote'
+      ? this.service.createAdministratorProposal('PROMOTE_EXISTING', action.id, this.reason().trim())
+      : action.kind === 'resend'
+        ? this.service.resendInvitation(action.id, this.reason().trim())
+        : this.service.cancelInvitation(action.id, this.reason().trim());
     request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => { this.actionBusy.set(false); this.action.set(null); this.reason.set(''); this.reload(); },
-      error: () => { this.actionBusy.set(false); this.error.set(`Invitation ${action.kind} could not be completed.`); },
+      error: () => { this.actionBusy.set(false); this.error.set(action.kind === 'promote' ? 'The Administrator proposal could not be created.' : `Invitation ${action.kind} could not be completed.`); },
     });
   }
   private reload(): void {

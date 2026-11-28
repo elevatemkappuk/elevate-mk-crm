@@ -17,6 +17,7 @@ export const routes: Routes = [
     canActivate: [staffManagementGuard],
     children: [
       { path: '', pathMatch: 'full', loadComponent: () => import('./features/staff-management/staff-directory-page.component').then(m => m.StaffDirectoryPageComponent) },
+      { path: 'administrator-approvals', loadComponent: () => import('./features/staff-management/administrator-proposals-page.component').then(m => m.AdministratorProposalsPageComponent) },
       { path: ':id', loadComponent: () => import('./features/staff-management/staff-detail-page.component').then(m => m.StaffDetailPageComponent) },
     ],
   },

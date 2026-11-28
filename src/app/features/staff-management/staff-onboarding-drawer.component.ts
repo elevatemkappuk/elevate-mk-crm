@@ -92,7 +92,7 @@ export class StaffOnboardingDrawerComponent {
 
   submit(): void {
     const validation = this.result();
-    if (!validation?.eligible || validation.administrator_approval_required || this.submitting()) return;
+    if (!validation?.eligible || this.submitting()) return;
     const payload: StaffOnboardingValidationRequest = {
       ...this.form.getRawValue(),
       ...(this.mode() === 'existing' ? { person_id: this.selected()!.person_id } : this.newPerson()!),

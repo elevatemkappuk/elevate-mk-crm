@@ -1,7 +1,7 @@
 <main class="staff-page">
   <header class="crm-page-heading">
     <div class="crm-page-heading__copy"><h1 class="crm-page-heading__title">Staff Management</h1><p class="crm-page-heading__description">Staff access, account and approval state.</p></div>
-    <button class="crm-button crm-button--brand" type="button" (click)="onboardingOpen.set(true)">Invite Staff Member</button>
+    <div class="crm-actions"><a class="crm-button crm-button--quiet" routerLink="administrator-approvals">Administrator Approvals</a><button class="crm-button crm-button--brand" type="button" (click)="onboardingOpen.set(true)">Invite Staff Member</button></div>
   </header>
   <section class="filters" aria-label="Staff directory filters">
     <label class="crm-label">Search <input class="crm-control" type="search" (input)="update('q', $any($event.target).value)" placeholder="Name or permitted email" /></label>

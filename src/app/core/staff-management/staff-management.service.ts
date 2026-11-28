@@ -76,6 +76,18 @@ export class StaffManagementService {
     return this.http.post<{ detail: string }>(this.url(`/staff/invitations/${invitationId}/cancel/`), { reason });
   }
 
+  createAdministratorProposal(operation: 'ONBOARD' | 'PROMOTE_EXISTING', targetUserId: number, reason: string): Observable<Record<string, unknown>> {
+    return this.http.post<Record<string, unknown>>(this.url('/staff/administrator-proposals/create/'), { operation, target_user_id: targetUserId, reason });
+  }
+
+  administratorProposals(query: Record<string, string | number> = {}): Observable<{ count: number; next: string | null; previous: string | null; results: Array<Record<string, unknown>> }> {
+    let params = new HttpParams(); Object.entries(query).forEach(([key, value]) => params = params.set(key, String(value)));
+    return this.http.get<{ count: number; next: string | null; previous: string | null; results: Array<Record<string, unknown>> }>(this.url('/staff/administrator-proposals/'), { params });
+  }
+
+  administratorProposal(proposalId: string): Observable<Record<string, unknown>> { return this.http.get<Record<string, unknown>>(this.url(`/staff/administrator-proposals/${proposalId}/`)); }
+  administratorProposalAction(proposalId: string, action: 'approve' | 'reject' | 'cancel', reason = ''): Observable<Record<string, unknown>> { return this.http.post<Record<string, unknown>>(this.url(`/staff/administrator-proposals/${proposalId}/${action}/`), { reason }); }
+
   private params(query: StaffDirectoryQuery): HttpParams {
     let params = new HttpParams();
     Object.entries(query).forEach(([key, value]) => {

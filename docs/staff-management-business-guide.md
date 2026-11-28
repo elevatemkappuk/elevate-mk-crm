@@ -5,7 +5,8 @@ Status: **Directory/detail, onboarding submission and invitation acceptance impl
 This guide describes the implemented read-only Staff Management directory and
 detail capability for authorized Elevate MK administrators. Invitation-backed
 onboarding is available; runtime verification remains pending and the public
-Administrator approval workflow is not exposed.
+Administrator approval workflow is available through the Staff Management queue;
+runtime verification remains pending.
 
 ## Purpose
 
@@ -49,16 +50,15 @@ The CRM provides:
 - Staff directory and detail view;
 - server-side search, filters and pagination;
 - read-only role, account, invitation and Administrator approval state;
+- Administrator approval queue and proposal review;
 - read-only staff activity history;
 - onboarding Person lookup, validation and transactional invitation submission;
 - public new-account invitation acceptance;
 - existing-account authentication followed by invitation acceptance;
 
 The following remain unavailable:
-- Administrator approval submission and decision workflow;
 - existing Person search and identity review;
 - invitation and delivery recovery controls;
-- Administrator approval queue;
 - role changes;
 - staff-access deactivation and reactivation;
 - separate account disablement and enablement;
@@ -67,7 +67,7 @@ The following remain unavailable:
 - privacy capability summary;
 - lifecycle audit history.
 
-These unavailable workflows remain approved future functionality, not current
+Remaining unavailable workflows are approved future functionality, not current
 operating instructions.
 
 ## Privacy and security boundaries

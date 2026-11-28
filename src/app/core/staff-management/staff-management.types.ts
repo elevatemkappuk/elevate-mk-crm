@@ -27,6 +27,7 @@ export interface StaffDetail extends StaffDirectoryRow {
   role_assignments: Array<{ id: number; role__code: string; role_family: string | null; is_active: boolean; assigned_at: string; revoked_at: string | null }>;
   invitations: Array<{ public_id: string; expires_at: string; accepted_at: string | null; revoked_at: string | null; superseded_at: string | null; created_at: string; requested_role: string | null; delivery_status: string | null; can_resend: boolean; can_cancel: boolean }>;
   administrator_proposals: Array<{ public_id: string; operation: string; status: string; expires_at: string; created_at: string; decided_at: string | null; effected_at: string | null }>;
+  can_propose_administrator_promotion: boolean;
 }
 
 export interface StaffActivityEvent {

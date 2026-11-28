@@ -1,9 +1,9 @@
 # Staff Management V1
 
-Status: **Directory/detail, onboarding submission and invitation acceptance implemented; runtime verification pending**
+Status: **Directory/detail, onboarding governance, invitation management and acceptance implemented; runtime verification pending**
 
-This document is the CRM repository's living guide to the read-only Staff
-Management experience. The Django API remains authoritative for identity,
+This document is the CRM repository's living guide to the Staff Management
+experience. The Django API remains authoritative for identity,
 authorization, lifecycle state, privacy permissions, audit history and
 security decisions. See the API repository's
 [Staff Management guide](../../elevate-mk-api/docs/STAFF_MANAGEMENT.md) for
@@ -11,17 +11,17 @@ the backend contract and approved business rules.
 
 ## Current status
 
-Staff Management directory, detail, persisted onboarding submission and the
-public invitation acceptance route are implemented. Invitation delivery remains
-durable and backend-authoritative; runtime verification is pending final
-hardening.
+Staff Management directory, detail, onboarding submission, Administrator
+approval queue, invitation management and public invitation acceptance are
+implemented. Invitation delivery remains durable and backend-authoritative;
+runtime verification is pending final hardening.
 
 The API provides the Staff Management authorization foundation and the
 backend-authoritative `access.staff_management` indicator:
 active CRM Administrators and eligible active Django Superusers with a valid
 linked Person may reach the Staff Management boundary. The Superuser exception
-is narrowly scoped and does not grant general CRM or privacy authority. This
-the read-only directory and detail routes use backend responses. The exception
+is narrowly scoped and does not grant general CRM or privacy authority. The
+directory and detail routes use backend responses. The exception
 does not grant general CRM or privacy authority.
 
 The API now enforces one active CRM-family role per staff member, atomic role
@@ -33,10 +33,10 @@ regression remains deferred until final hardening.
 Administrator approval governance is implemented in the backend. The API stores
 dedicated pending/approved/effected/rejected/cancelled/expired/invalidated
 Administrator proposals, requires distinct authorized proposer and approver
-accounts, and effects existing staff promotion atomically. New onboarding and
-former-staff reactivation approvals remain invitation-dependent for the
-onboarding and reactivation workflows. No CRM approval UI or frontend contract
-is implemented.
+accounts, and effects existing staff promotion atomically. New onboarding
+approval issues an invitation whose acceptance activates the Administrator
+role. Former-staff reactivation approvals remain invitation-dependent for the
+reactivation workflow.
 
 The backend provides lifecycle foundations. Staff-access deactivation is
 separate from global account disablement: it removes CRM-family roles,
@@ -57,8 +57,9 @@ The CRM consumes `GET /api/v1/staff/directory/`,
 `GET /api/v1/staff/directory/{user_id}/`, and
 `GET /api/v1/staff/directory/{user_id}/activity/`. Search, filters, stable
 ordering and pagination are server-side. Detail presents privacy-safe identity,
-role, account, invitation, approval and activity information without mutation
-controls, tokens, credentials or unrestricted audit metadata.
+role, account, invitation, approval and activity information, with only the
+backend-authorized invitation and proposal actions. Tokens, credentials and
+unrestricted audit metadata are never exposed.
 
 ## Approved experience
 
@@ -102,6 +103,19 @@ For existing active accounts, the page uses the existing `AuthService` login
 flow, clears any currently authenticated account before switching identity, and
 then submits acceptance under that authenticated session. The API still checks
 the exact invitation target and rejects a different account.
+
+## Administrator approvals
+
+Implementation status: **Implemented**. Verification status: **Pending
+Verification**.
+
+The Staff Management directory links to `/staff-management/administrator-approvals`.
+The queue displays safe proposal state and opens proposal detail with backend
+provided permitted actions. Approval, rejection and proposer cancellation use
+the shared confirmation dialog and mandatory reasons where required. Approval
+of onboarding issues an invitation but does not present Administrator access as
+active; promotion approval replaces the existing CRM role atomically on the
+backend. The frontend does not infer approval authority from a role label.
 
 The route guard must consult backend-derived authority. Frontend navigation is
 not a security boundary.
